@@ -21,11 +21,11 @@ import FloatingContact from "./components/FloatingContact";
 import ScrollToTop from "./components/ScrollToTop";
 import TopInfoBar from "./components/TopInfoBar";
 
+import PublicSite from "./pages/PublicSite";
 // ============================================================
 // PUBLIC PAGES — LAZY LOADED
 // ============================================================
 
-const PublicSite = lazy(() => import("./pages/PublicSite"));
 
 const HappyMoments = lazy(() => import("./pages/HappyMoments"));
 

@@ -18,6 +18,8 @@ import {
   Globe2,
 } from "lucide-react";
 
+import { cld, cldSrcSet } from "../utils/cloudinary";
+
 import { getMostVisited, getPackages } from "../api/content";
 import { useQuery } from "../hooks/useQuery";
 import { Reveal, useInView } from "./Reveal";
@@ -329,7 +331,9 @@ const AtlasCard = memo(function AtlasCard({
           >
             {imageUrl ? (
               <img
-                src={imageUrl}
+                src={cld(imageUrl,700)}
+                srcSet={cldSrcSet(imageUrl, [400, 700, 1000])}
+                 sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 25vw"
                 alt={`${name}, popular travel destination`}
                 loading="lazy"
                 decoding="async"

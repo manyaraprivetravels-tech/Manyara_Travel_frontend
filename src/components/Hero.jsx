@@ -1,4 +1,7 @@
 
+
+
+
 import {
   Fragment,
   useCallback,
@@ -42,6 +45,8 @@ import api from "../api/axios";
 import { getHero, getPackages, getSiteSettings } from "../api/content";
 import { useQuery } from "../hooks/useQuery";
 import { getHeroLayout } from "../utils/heroLayout";
+
+import {cld,cldSrcSet} from "../utils/cloudinary";
 
 /* ============================================================
    BRAND
@@ -551,14 +556,20 @@ function SlideBackgrounds({ slides, currentId, leavingId, reducedMotion }) {
         return (
           <Fragment key={slide.id}>
             <picture>
-              {slide.imageMobile && (
-                <source media="(max-width: 767px)" srcSet={slide.imageMobile} />
+            {slide.imageMobile && (
+                <source
+                  media="(max-width: 767px)"
+                  srcSet={cldSrcSet(slide.imageMobile, [480, 768])}
+                  sizes="100vw"
+                />
               )}
               <img
-                src={slide.image}
+                src={cld(slide.image, 1280)}
+                srcSet={cldSrcSet(slide.image, [768, 1280, 1920])}
+                sizes="100vw"
                 alt=""
                 loading={index === 0 ? "eager" : "lazy"}
-                fetchPriority={index === 0 ? "high" : "auto"}
+                fetchPriority={index === 0 ? "high" : undefined}
                 decoding="async"
                 draggable={false}
                 style={{ objectPosition: slide.position, transition }}
@@ -1876,6 +1887,44 @@ export default function Hero({ onPlanTrip }) {
     </>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

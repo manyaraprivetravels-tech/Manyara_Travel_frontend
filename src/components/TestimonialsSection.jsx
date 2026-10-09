@@ -23,7 +23,7 @@ import { Link } from "react-router-dom";
 import { getTestimonials } from "../api/content";
 import { useQuery } from "../hooks/useQuery";
 import ReviewFormModal from "./ReviewFormModal";
-
+import { cld, cldSrcSet } from "../utils/cloudinary";
 /* =========================================================
    CONSTANTS
 ========================================================= */
@@ -205,7 +205,9 @@ const TestimonialCard = memo(function TestimonialCard({ item, index }) {
           <div className="relative isolate h-56 shrink-0 overflow-hidden bg-champagne-light sm:h-auto sm:w-[40%]">
             {imageUrl ? (
               <img
-                src={imageUrl}
+                src={cld(imageUrl, 700)}
+                srcSet={cldSrcSet(imageUrl, [400, 700, 1000])}
+                sizes="(max-width: 640px) 100vw, 40vw"
                 alt={`${name}${destination ? ` in ${destination}` : ""}`}
                 loading={index === 0 ? "eager" : "lazy"}
                 decoding="async"
