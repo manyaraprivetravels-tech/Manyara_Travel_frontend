@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /admin/
 
-Sitemap: https://onatripholidays.com/sitemap.xml
+Sitemap: https://manyaraprive.com/sitemap.xml

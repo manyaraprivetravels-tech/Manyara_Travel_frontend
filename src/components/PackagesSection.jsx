@@ -26,6 +26,7 @@ import {
 import { getPackages } from "../api/content";
 import { useQuery } from "../hooks/useQuery";
 import { Reveal, useInView } from "./Reveal";
+import {cld,cldSrcSet} from "../utils/cloudinary";
 
 /* =========================================================
    PACKAGES: "MADE TO MEASURE"
@@ -244,8 +245,8 @@ const PackageCard = memo(function PackageCard({ packageItem, badge }) {
       <div className="relative aspect-[10/11] w-full shrink-0 transform-gpu overflow-hidden rounded-[1.4rem] bg-surface-strong">
         {!imageFailed ? (
           <img
-            src={cld(item.image, 700)}
-           srcSet={cldSrcSet(item.image, [400, 700, 1000])}
+            src={cld(image, 700)}
+           srcSet={cldSrcSet(image, [400, 700, 1000])}
             alt=""
             loading="lazy"
             decoding="async"
