@@ -19,30 +19,14 @@ import {
   Gem,
   ImageOff,
   MapPin,
-  PackageOpen,
   Sparkles,
 } from "lucide-react";
 
 import { getPackages } from "../api/content";
 import { useQuery } from "../hooks/useQuery";
 import { Reveal, useInView } from "./Reveal";
-import {cld,cldSrcSet} from "../utils/cloudinary";
+import { cld, cldSrcSet } from "../utils/cloudinary";
 
-/* =========================================================
-   PACKAGES: "MADE TO MEASURE"
-
-   One compact section instead of six carousels.
-   - Left column (desktop): heading, collection tabs, arrows, view all.
-   - Right column: one carousel of mat-framed journey cards.
-   - Tabs only appear for collections that actually have packages.
-   - Other collections (Most Visited, Trending, Popular) live on
-     /packages?collection=<key>, which "View all journeys" links to.
-
-   Visual language is deliberately different from its neighbours:
-     Seasonal     -> full-bleed photo cards
-     Most Visited -> arch windows
-     Packages     -> framed "print" cards, details on a light card
-========================================================= */
 
 const PACKAGE_PLACEHOLDER = "/images/package-placeholder.webp";
 
@@ -177,7 +161,8 @@ const getPackageKey = (packageItem, index) =>
 const sortByOrder = (a, b) =>
   Number(a?.display_order ?? 0) - Number(b?.display_order ?? 0);
 
-/* Last word set in italic, same treatment as the hero. */
+/* Last word set in italic, same treatment as the hero. Weight 500 matches
+   the Playfair Display weights loaded in index.html. */
 function renderTitle(text) {
   const words = String(text).trim().split(/\s+/);
   if (words.length < 3) return text;
@@ -185,27 +170,8 @@ function renderTitle(text) {
   return (
     <>
       {words.join(" ")}{" "}
-      <em className="font-normal italic text-ink/70">{last}</em>
+      <em className="font-medium italic text-ink/70">{last}</em>
     </>
-  );
-}
-
-/* =========================================================
-   SKELETON
-========================================================= */
-
-function PackageCardSkeleton() {
-  return (
-    <div className={CARD_BASIS} aria-hidden="true">
-      <div className="animate-pulse rounded-[1.75rem] border border-champagne/50 bg-white p-1.5">
-        <div className="aspect-[10/11] w-full rounded-[1.4rem] bg-surface-strong" />
-        <div className="space-y-3 px-4 pb-4 pt-5">
-          <div className="h-3 w-24 rounded bg-surface-strong" />
-          <div className="h-7 w-3/4 rounded bg-surface-strong" />
-          <div className="h-4 w-full rounded bg-surface-strong" />
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -246,7 +212,8 @@ const PackageCard = memo(function PackageCard({ packageItem, badge }) {
         {!imageFailed ? (
           <img
             src={cld(image, 700)}
-           srcSet={cldSrcSet(image, [400, 700, 1000])}
+            srcSet={cldSrcSet(image, [400, 700, 1000])}
+            sizes="(max-width: 640px) 78vw, (max-width: 1280px) 45vw, 30vw"
             alt=""
             loading="lazy"
             decoding="async"
@@ -271,17 +238,17 @@ const PackageCard = memo(function PackageCard({ packageItem, badge }) {
 
         {/* Secondary collection badge (only if the package belongs to another one) */}
         {badge && (
-          <span className="absolute left-3.5 top-3.5 inline-flex h-8 items-center gap-2 rounded-full border border-white/30 bg-ink/50 px-3 text-[11px] font-medium uppercase tracking-[0.18em] text-white sm:bg-ink/35 sm:backdrop-blur-md">
+          <span className="absolute left-3.5 top-3.5 inline-flex h-8 max-w-[calc(100%-1.75rem)] items-center gap-2 rounded-full border border-white/30 bg-ink/50 px-3 text-[11px] font-medium uppercase tracking-[0.18em] text-white sm:bg-ink/35 sm:backdrop-blur-md">
             <BadgeIcon
-              className="h-3.5 w-3.5 text-champagne"
+              className="h-3.5 w-3.5 shrink-0 text-champagne"
               aria-hidden="true"
             />
-            {badge.tab}
+            <span className="truncate">{badge.tab}</span>
           </span>
         )}
 
         {duration && (
-          <span className="absolute bottom-3.5 left-3.5 inline-flex h-8 max-w-[85%] items-center gap-2 rounded-full bg-white/90 px-3 text-[12px] font-medium text-text-dark">
+          <span className="absolute bottom-3.5 left-3.5 inline-flex h-8 max-w-[calc(100%-1.75rem)] items-center gap-2 rounded-full bg-white/90 px-3 text-[12px] font-medium text-text-dark">
             <Clock3
               className="h-3.5 w-3.5 shrink-0 text-primary"
               aria-hidden="true"
@@ -312,14 +279,20 @@ const PackageCard = memo(function PackageCard({ packageItem, badge }) {
           </p>
         )}
 
-        <div className="mt-auto flex items-end justify-between gap-3 border-t border-champagne/50 pt-4">
-          <div className="min-w-0 pt-4">
+        {/*
+          Price row. Alignment fix: the price block had its own pt-4 on top of
+          the row's pt-4, pushing the price lower than the arrow button.
+          The row is now vertically centred with a single padding.
+          lining-nums keeps the digits level in Playfair Display.
+        */}
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-champagne/50 pt-4">
+          <div className="min-w-0">
             {price ? (
               <>
                 <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-text-secondary">
                   From
                 </p>
-                <p className="mt-1 font-display text-[1.6rem] font-normal leading-none tracking-tight text-text-display tabular-nums">
+                <p className="mt-1 truncate font-display text-[1.6rem] font-medium leading-none tracking-tight text-text-display tabular-nums lining-nums">
                   {price}
                 </p>
               </>
@@ -331,7 +304,7 @@ const PackageCard = memo(function PackageCard({ packageItem, badge }) {
           </div>
 
           <span
-            className="mb-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-champagne/70 bg-white text-text-dark transition-all duration-300 group-hover:border-ink group-hover:bg-ink group-hover:text-champagne group-active:border-ink group-active:bg-ink group-active:text-champagne"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-champagne/70 bg-white text-text-dark transition-all duration-300 group-hover:border-ink group-hover:bg-ink group-hover:text-champagne group-active:border-ink group-active:bg-ink group-active:text-champagne"
             aria-hidden="true"
           >
             <ArrowUpRight className="h-[18px] w-[18px]" />
@@ -378,9 +351,6 @@ export default function PackagesSection() {
     () => packages.filter(isPublishedPackage),
     [packages]
   );
-
-  const errorMessage =
-    queryError?.message || (typeof queryError === "string" ? queryError : "");
 
   /* ---------- Tabs: only collections that have packages ---------- */
 
@@ -506,12 +476,23 @@ export default function PackagesSection() {
     });
   }, []);
 
-  const viewAllHref = activeCollection
-    ? `/packages?collection=${activeCollection.key}`
-    : "/packages";
+  /* ---------- Hide the section when there is nothing to show ----------
+     No heading, no skeleton, no "coming soon" box: while the first load is
+     pending, when the request fails, or when no published package is flagged
+     Featured / Recommended / New. A background refresh keeps the cards. */
+  const initialLoading = loading && packageResponse == null;
 
+  if (initialLoading) return null;
+
+  if (tabs.length === 0) {
+    if (queryError) {
+      console.error("Packages loading failed:", queryError);
+    }
+    return null;
+  }
+
+  const viewAllHref = `/packages?collection=${activeCollection.key}`;
   const canScroll = canScrollLeft || canScrollRight;
-  const hasContent = !loading && !errorMessage && tabs.length > 0;
 
   return (
     <section
@@ -560,7 +541,7 @@ export default function PackagesSection() {
             </Reveal>
 
             {/* TABS */}
-            {hasContent && tabs.length > 1 && (
+            {tabs.length > 1 && (
               <div
                 role="tablist"
                 aria-label="Journey collections"
@@ -591,169 +572,116 @@ export default function PackagesSection() {
               </div>
             )}
 
-            {hasContent && activeCollection && (
-              <p
-                key={activeCollection.key}
-                className="mt-4 max-w-xl text-sm leading-6 text-text-secondary"
-              >
-                {activeCollection.description}
-              </p>
-            )}
+            <p
+              key={activeCollection.key}
+              className="mt-4 max-w-xl text-sm leading-6 text-text-secondary"
+            >
+              {activeCollection.description}
+            </p>
 
             {/* DESKTOP CONTROLS */}
-            {hasContent && (
-              <div className="mt-8 hidden items-center gap-3 lg:flex">
-                <button
-                  type="button"
-                  onClick={() => scrollCarousel("left")}
-                  disabled={!canScrollLeft}
-                  aria-label="Previous journeys"
-                  className={NAV_BUTTON}
-                >
-                  <ChevronLeft
-                    className="h-5 w-5"
-                    strokeWidth={2.25}
-                    aria-hidden="true"
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollCarousel("right")}
-                  disabled={!canScrollRight}
-                  aria-label="Next journeys"
-                  className={NAV_BUTTON}
-                >
-                  <ChevronRight
-                    className="h-5 w-5"
-                    strokeWidth={2.25}
-                    aria-hidden="true"
-                  />
-                </button>
+            <div className="mt-8 hidden items-center gap-3 lg:flex">
+              <button
+                type="button"
+                onClick={() => scrollCarousel("left")}
+                disabled={!canScrollLeft}
+                aria-label="Previous journeys"
+                className={NAV_BUTTON}
+              >
+                <ChevronLeft
+                  className="h-5 w-5"
+                  strokeWidth={2.25}
+                  aria-hidden="true"
+                />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollCarousel("right")}
+                disabled={!canScrollRight}
+                aria-label="Next journeys"
+                className={NAV_BUTTON}
+              >
+                <ChevronRight
+                  className="h-5 w-5"
+                  strokeWidth={2.25}
+                  aria-hidden="true"
+                />
+              </button>
 
-                <Link to={viewAllHref} className={`${VIEW_ALL} ml-2`}>
-                  View all journeys
-                  <ArrowRight
-                    className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
-                    aria-hidden="true"
-                  />
-                </Link>
-              </div>
-            )}
+              <Link to={viewAllHref} className={`${VIEW_ALL} ml-2`}>
+                View all journeys
+                <ArrowRight
+                  className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+                  aria-hidden="true"
+                />
+              </Link>
+            </div>
           </div>
 
           {/* =================================================
-              RIGHT: CAROUSEL / STATES
+              RIGHT: CAROUSEL
           ================================================= */}
           <div
             ref={revealRef}
             data-inview={inView}
             className="mt-10 min-w-0 lg:mt-0"
           >
-            {/* LOADING */}
-            {loading && (
-              <div
-                className="-mx-4 flex gap-4 overflow-hidden px-4 sm:mx-0 sm:gap-5 sm:px-1 lg:gap-6"
-                role="status"
-                aria-label="Loading journeys"
-              >
-                {[1, 2, 3].map((item) => (
-                  <PackageCardSkeleton key={item} />
-                ))}
-              </div>
-            )}
-
-            {/* ERROR */}
-            {!loading && errorMessage && (
-              <div className="rounded-3xl border border-error/20 bg-error-bg px-6 py-10 text-center">
-                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-white">
-                  <PackageOpen
-                    className="h-5 w-5 text-error"
-                    aria-hidden="true"
-                  />
-                </div>
-                <h3 className="mt-3 text-lg font-semibold text-error-text">
-                  Unable to load journeys
-                </h3>
-                <p className="mx-auto mt-1.5 max-w-md text-sm text-error-text">
-                  Please refresh the page and try again.
-                </p>
-              </div>
-            )}
-
-            {/* EMPTY */}
-            {!loading && !errorMessage && tabs.length === 0 && (
-              <div className="rounded-3xl border border-dashed border-champagne/60 bg-card px-5 py-12 text-center sm:px-8">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-champagne/60 bg-white">
-                  <PackageOpen
-                    className="h-6 w-6 text-placeholder"
-                    aria-hidden="true"
-                  />
-                </div>
-                <h3 className="mt-4 font-display text-2xl font-medium text-text-display">
-                  New journeys coming soon
-                </h3>
-                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-text-secondary">
-                  We are preparing our next collection of journeys. Please
-                  check back soon.
-                </p>
-              </div>
-            )}
-
-            {/* CAROUSEL */}
-            {hasContent && (
-              <>
+            {/*
+              Mobile fix: this scroller had `w-full` together with `-mx-4`.
+              A fixed width of 100% ignores the negative margins, so the
+              scroller never reached the right screen edge. The peeking next
+              card was cut off 1rem early with a blank strip of background.
+              On phones the width is now automatic so the negative margins
+              stretch it edge to edge; from sm it is w-full again.
+            */}
+            <div
+              ref={carouselRef}
+              onScroll={handleScroll}
+              role="tabpanel"
+              className="-mx-4 flex snap-x snap-mandatory scroll-pl-4 gap-4 overflow-x-auto scroll-smooth px-4 pb-8 pt-2 sm:mx-0 sm:w-full sm:scroll-pl-0 sm:gap-5 sm:px-1 lg:gap-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            >
+              {items.map((packageItem, index) => (
                 <div
-                  ref={carouselRef}
-                  onScroll={handleScroll}
-                  role="tabpanel"
-                  className="-mx-4 flex w-full snap-x snap-mandatory scroll-pl-4 gap-4 overflow-x-auto scroll-smooth px-4 pb-8 pt-2 sm:mx-0 sm:scroll-pl-0 sm:gap-5 sm:px-1 lg:gap-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                  key={getPackageKey(packageItem, index)}
+                  data-package-card
+                  className={`${CARD_BASIS} reveal-item`}
+                  style={{ "--i": Math.min(index, 6) }}
                 >
-                  {items.map((packageItem, index) => (
-                    <div
-                      key={getPackageKey(packageItem, index)}
-                      data-package-card
-                      className={`${CARD_BASIS} reveal-item`}
-                      style={{ "--i": Math.min(index, 6) }}
-                    >
-                      <PackageCard
-                        packageItem={packageItem}
-                        badge={getBadge(packageItem)}
-                      />
-                    </div>
-                  ))}
+                  <PackageCard
+                    packageItem={packageItem}
+                    badge={getBadge(packageItem)}
+                  />
                 </div>
+              ))}
+            </div>
 
-                {/* PHONE / TABLET FOOTER: swipe progress + view all */}
-                <div className="mt-1 flex items-center gap-4 lg:hidden">
-                  {canScroll ? (
-                    <div
-                      className="h-0.5 flex-1 overflow-hidden rounded-full bg-champagne/40"
-                      aria-hidden="true"
-                    >
-                      <div
-                        ref={progressRef}
-                        className="h-full w-1/3 rounded-full bg-ink/70 will-change-transform"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex-1" />
-                  )}
-
-                  <Link to={viewAllHref} className={VIEW_ALL}>
-                    View all journeys
-                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </Link>
+            {/* PHONE / TABLET FOOTER: swipe progress + view all */}
+            <div className="mt-1 flex items-center gap-4 lg:hidden">
+              {canScroll ? (
+                <div
+                  className="h-0.5 flex-1 overflow-hidden rounded-full bg-champagne/40"
+                  aria-hidden="true"
+                >
+                  <div
+                    ref={progressRef}
+                    className="h-full w-1/3 rounded-full bg-ink/70 will-change-transform"
+                  />
                 </div>
-              </>
-            )}
+              ) : (
+                <div className="flex-1" />
+              )}
+
+              <Link to={viewAllHref} className={VIEW_ALL}>
+                View all journeys
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
           </div>
         </div>
       </div>
     </section>
   );
 }
-
-
 
 
 

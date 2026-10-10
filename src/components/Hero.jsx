@@ -1,7 +1,5 @@
 
 
-
-
 import {
   Fragment,
   useCallback,
@@ -46,7 +44,7 @@ import { getHero, getPackages, getSiteSettings } from "../api/content";
 import { useQuery } from "../hooks/useQuery";
 import { getHeroLayout } from "../utils/heroLayout";
 
-import {cld,cldSrcSet} from "../utils/cloudinary";
+import { cld, cldSrcSet } from "../utils/cloudinary";
 
 /* ============================================================
    BRAND
@@ -154,13 +152,20 @@ const PAUSE_BUTTON =
   "-mr-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/15 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white sm:mr-0";
 
 /*
- * One button system for slide actions: same height, radius, type and
+ * One button system for slide actions: same min-height, radius, type and
  * focus ring everywhere.
+ *
+ * Mobile fix: the buttons used a fixed h-12 + truncate, so long labels
+ * ("Explore Mountains & Adventures", long package names) were clipped on
+ * narrow phones. They now use min-h-12 + padding so the label can wrap to a
+ * second line instead of being cut, fill the row on phones, and shrink back
+ * to their natural width from sm.
+ *
  *   BTN_PRIMARY - solid accent (main actions)
  *   BTN_GLASS   - translucent white (secondary actions)
  */
 const BTN =
-  "inline-flex h-12 items-center justify-center gap-2 rounded-full px-7 text-sm font-semibold tracking-wide transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink disabled:cursor-not-allowed disabled:opacity-70";
+  "inline-flex min-h-12 w-full max-w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-center text-sm font-semibold leading-snug tracking-wide transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:px-7";
 const BTN_PRIMARY = `${BTN} bg-accent text-white shadow-brand hover:bg-accent-hover`;
 const BTN_GLASS = `${BTN} border border-white/40 bg-white/10 text-white backdrop-blur hover:bg-white/20`;
 
@@ -339,6 +344,11 @@ function Skeleton({ className = "" }) {
  * Buttons configured in HeroManage:
  *   package_type -> "Explore <Category>" button (/packages?type=...)
  *   package_id   -> "View <Package>" button (specific package)
+ *
+ * On phones the category button uses the short label ("Explore Mountains")
+ * so it fits on one line; the full label is shown from sm. The package
+ * button shows up to two lines of the package name instead of one
+ * truncated line.
  */
 function SlideActions({ slide, packageById, packagesLoading, align }) {
   const config = PACKAGE_TYPE_CONFIG[slide.packageType];
@@ -353,7 +363,7 @@ function SlideActions({ slide, packageById, packagesLoading, align }) {
 
   return (
     <div
-      className={`flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center ${align}`}
+      className={`flex w-full min-w-0 flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center ${align}`}
     >
       {config && (
         <Link
@@ -361,7 +371,10 @@ function SlideActions({ slide, packageById, packagesLoading, align }) {
           className={BTN_PRIMARY}
         >
           <CategoryIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span className="truncate">Explore {config.label}</span>
+          <span className="min-w-0 break-words">
+            <span className="sm:hidden">Explore {config.short}</span>
+            <span className="hidden sm:inline">Explore {config.label}</span>
+          </span>
           <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
         </Link>
       )}
@@ -371,7 +384,7 @@ function SlideActions({ slide, packageById, packagesLoading, align }) {
           to={getPackageUrl(pkg, slide.packageId)}
           className={`${BTN_GLASS} sm:max-w-[18rem]`}
         >
-          <span className="truncate">
+          <span className="line-clamp-2 min-w-0 break-words">
             {pkg ? `View ${getPackageTitle(pkg) || "package"}` : "View package"}
           </span>
           <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -401,6 +414,12 @@ function renderHeadline(text) {
  * (top / middle / bottom x left / center / right) from the admin's
  * content position. Long text is clamped so one slide cannot make the
  * whole hero grow.
+ *
+ * Mobile fix: below sm the text block is forced to the full width of the
+ * cell (w-full) so every slide gets the same, predictable width no matter
+ * which side the admin positioned it on. Previously a right/center slide
+ * shrink-wrapped to its content, which let buttons and long words overflow
+ * or get clipped on narrow screens while sliding.
  */
 function SlideCopy({
   slide,
@@ -440,59 +459,64 @@ function SlideCopy({
       aria-hidden={!isActive}
       className={`col-start-1 row-start-1 flex min-w-0 flex-col transition-[opacity,transform,visibility] ease-out ${layout.wrapper} ${motion}`}
     >
-      <div className={`flex min-w-0 max-w-3xl flex-col ${layout.text}`}>
-        {/* Eyebrow */}
+      <div
+        className={`flex w-full min-w-0 max-w-3xl flex-col sm:w-auto ${layout.text}`}
+      >
+        {/* Eyebrow: wraps to two lines on small phones instead of being cut */}
         <div
-          className={`mb-5 flex max-w-full items-center gap-3 sm:mb-6 ${layout.actions}`}
+          className={`mb-4 flex max-w-full items-center gap-3 sm:mb-6 ${layout.actions}`}
         >
           {horizontal !== "right" && (
             <span
-              className="h-px w-8 shrink-0 bg-champagne/70"
+              className="h-px w-6 shrink-0 bg-champagne/70 sm:w-8"
               aria-hidden="true"
             />
           )}
 
-          <span className="truncate text-[11px] font-medium uppercase tracking-[0.28em] text-champagne sm:text-xs">
+          <span className="line-clamp-2 min-w-0 text-[11px] font-medium uppercase leading-snug tracking-[0.2em] text-champagne sm:text-xs sm:tracking-[0.28em]">
             {slide.badge || DEFAULT_BADGE}
           </span>
 
           {horizontal !== "left" && (
             <span
-              className="h-px w-8 shrink-0 bg-champagne/70"
+              className="h-px w-6 shrink-0 bg-champagne/70 sm:w-8"
               aria-hidden="true"
             />
           )}
         </div>
 
-        <Heading className="line-clamp-3 max-w-3xl font-display text-[2.5rem] font-medium leading-[1.05] tracking-[-0.01em] text-white [text-wrap:balance] sm:text-6xl lg:text-[4.25rem]">
+        <Heading className="line-clamp-3 max-w-3xl break-words font-display text-[2rem] font-medium leading-[1.08] tracking-[-0.01em] text-white [text-wrap:balance] [@media(min-width:380px)]:text-[2.5rem] [@media(min-width:380px)]:leading-[1.05] sm:text-6xl lg:text-[4.25rem]">
           {renderHeadline(slide.headline)}
         </Heading>
 
         {/* Subtext: max 2 lines on phones, 3 from sm */}
         {slide.subtext && (
-          <p className="mt-4 line-clamp-2 max-w-xl text-[15px] leading-relaxed text-white/85 [text-wrap:pretty] sm:mt-5 sm:line-clamp-3 sm:max-w-2xl sm:text-lg sm:leading-8">
+          <p className="mt-3 line-clamp-2 max-w-xl break-words text-[15px] leading-relaxed text-white/85 [text-wrap:pretty] sm:mt-5 sm:line-clamp-3 sm:max-w-2xl sm:text-lg sm:leading-8">
             {slide.subtext}
           </p>
         )}
 
-        {/* Offer chip + validity */}
+        {/* Offer chip + validity (chip now wraps instead of overflowing) */}
         {hasMeta && (
           <div
-            className={`mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 ${layout.actions}`}
+            className={`mt-4 flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 ${layout.actions}`}
           >
             {slide.offerText && (
-              <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-white px-3.5 text-xs font-semibold text-primary-dark shadow-travel-card">
+              <span className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold leading-snug text-primary-dark shadow-travel-card">
                 <Sparkles
-                  className="h-3.5 w-3.5 text-accent"
+                  className="h-3.5 w-3.5 shrink-0 text-accent"
                   aria-hidden="true"
                 />
-                {slide.offerText}
+                <span className="min-w-0 break-words">{slide.offerText}</span>
               </span>
             )}
 
             {slide.endsAt !== null && (
               <span className="inline-flex items-center gap-1.5 text-xs text-white/85 sm:text-[13px]">
-                <CalendarClock className="h-4 w-4" aria-hidden="true" />
+                <CalendarClock
+                  className="h-4 w-4 shrink-0"
+                  aria-hidden="true"
+                />
                 Offer valid till {formatShortDate(slide.endsAt)}
               </span>
             )}
@@ -501,7 +525,7 @@ function SlideCopy({
 
         {/* Actions: stacked full-width on mobile, side by side from sm */}
         {hasActions && (
-          <div className={`mt-6 flex w-full ${layout.actions}`}>
+          <div className={`mt-5 flex w-full min-w-0 sm:mt-6 ${layout.actions}`}>
             <SlideActions
               slide={slide}
               packageById={packageById}
@@ -556,7 +580,7 @@ function SlideBackgrounds({ slides, currentId, leavingId, reducedMotion }) {
         return (
           <Fragment key={slide.id}>
             <picture>
-            {slide.imageMobile && (
+              {slide.imageMobile && (
                 <source
                   media="(max-width: 767px)"
                   srcSet={cldSrcSet(slide.imageMobile, [480, 768])}
@@ -1525,9 +1549,14 @@ export default function Hero({ onPlanTrip }) {
         theme="light"
       />
 
+      {/*
+        Side padding on phones respects the device safe area (notches /
+        landscape) with a 1.25rem minimum; sm and up keep the original
+        padding.
+      */}
       <section
         ref={sectionRef}
-        className="relative isolate flex min-h-[640px] flex-col overflow-hidden bg-ink px-5 pb-10 pt-12 sm:px-20 sm:py-16 lg:min-h-[740px] lg:px-24 lg:py-20"
+        className="relative isolate flex min-h-[640px] flex-col overflow-hidden bg-ink pb-10 pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))] pt-12 sm:px-20 sm:py-16 lg:min-h-[740px] lg:px-24 lg:py-20"
         aria-roledescription={isCarousel ? "carousel" : undefined}
         aria-label={
           isCarousel ? `${BRAND_NAME} featured holidays and offers` : undefined
@@ -1588,19 +1617,25 @@ export default function Hero({ onPlanTrip }) {
           {/* ---------- Slide copy region: text is placed per slide ---------- */}
           {copyLoading ? (
             <div
-              className="flex min-h-[20rem] flex-1 flex-col items-start justify-center space-y-3 sm:items-center lg:min-h-[24rem]"
+              className="flex min-h-[18rem] flex-1 flex-col items-start justify-center space-y-3 sm:min-h-[20rem] sm:items-center lg:min-h-[24rem]"
               role="status"
               aria-label={`Loading ${BRAND_NAME} hero content`}
             >
-              <Skeleton className="mb-3 h-8 w-60 rounded-full" />
+              <Skeleton className="mb-3 h-8 w-60 max-w-full rounded-full" />
               <Skeleton className="h-10 w-[88%] max-w-3xl sm:h-12 md:h-14" />
               <Skeleton className="h-10 w-[65%] max-w-2xl sm:h-12 md:h-14" />
               <Skeleton className="mt-4 h-5 w-full max-w-xl" />
               <Skeleton className="h-5 w-3/4 max-w-lg" />
             </div>
           ) : (
+            /*
+              All slides share one grid cell, so the region is as tall as the
+              tallest slide and never jumps while sliding. grid-cols-[minmax(0,1fr)]
+              pins the column to the container width, so a long word or a wide
+              button can never stretch the column past the screen edge.
+            */
             <div
-              className="grid min-h-[20rem] flex-1 lg:min-h-[24rem]"
+              className="grid min-h-[18rem] flex-1 grid-cols-[minmax(0,1fr)] sm:min-h-[20rem] lg:min-h-[24rem]"
               aria-live={isPaused ? "polite" : "off"}
             >
               {slides.map((slide, index) => (
@@ -1751,8 +1786,8 @@ export default function Hero({ onPlanTrip }) {
                           <MapPin className="h-4 w-4" aria-hidden="true" />
                         </span>
 
-                        <div>
-                          <p className="text-sm font-semibold text-text-dark">
+                        <div className="min-w-0">
+                          <p className="break-words text-sm font-semibold text-text-dark">
                             No package found for "{destination}"
                           </p>
                           <p className="mt-1 text-xs leading-relaxed text-muted">
@@ -1762,10 +1797,10 @@ export default function Hero({ onPlanTrip }) {
                           <button
                             type="button"
                             onClick={openCustomPackageRequest}
-                            className="mt-3 inline-flex h-10 items-center gap-2 rounded-lg bg-accent px-3.5 text-xs font-semibold text-white transition hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                            className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                           >
                             <MessageCircle
-                              className="h-3.5 w-3.5"
+                              className="h-3.5 w-3.5 shrink-0"
                               aria-hidden="true"
                             />
                             Request custom package
@@ -1788,7 +1823,7 @@ export default function Hero({ onPlanTrip }) {
 
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold">Destination unavailable</p>
-                      <p className="mt-1 text-xs leading-relaxed text-white/80">
+                      <p className="mt-1 break-words text-xs leading-relaxed text-white/80">
                         We don't currently have a package for{" "}
                         <span className="font-semibold text-white">
                           "{destination.trim()}"
@@ -1798,10 +1833,10 @@ export default function Hero({ onPlanTrip }) {
                       <button
                         type="button"
                         onClick={openCustomPackageRequest}
-                        className="mt-3 inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-3.5 text-xs font-semibold text-white transition hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                        className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl bg-accent px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
                       >
                         <MessageCircle
-                          className="h-3.5 w-3.5"
+                          className="h-3.5 w-3.5 shrink-0"
                           aria-hidden="true"
                         />
                         Request a custom package
@@ -1835,21 +1870,21 @@ export default function Hero({ onPlanTrip }) {
 
             {/* Plan button */}
             <div className="mt-6 flex flex-col items-stretch gap-2 sm:items-center">
-                        <button
-            type="button"
-            onClick={handlePlanTrip}
-            className="group inline-flex h-12 w-full items-center justify-center gap-3 rounded-full bg-white px-8 text-sm font-semibold tracking-wide text-rose-dark shadow-brand transition-all duration-300 hover:bg-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink sm:w-auto sm:min-w-[18rem]"
-          >
-            <Plane
-              className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-              aria-hidden="true"
-            />
-            Tell us your plan
-            <ArrowRight
-              className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
-              aria-hidden="true"
-            />
-          </button>
+              <button
+                type="button"
+                onClick={handlePlanTrip}
+                className="group inline-flex h-12 w-full items-center justify-center gap-3 rounded-full bg-white px-8 text-sm font-semibold tracking-wide text-rose-dark shadow-brand transition-all duration-300 hover:bg-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink sm:w-auto sm:min-w-[18rem]"
+              >
+                <Plane
+                  className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
+                Tell us your plan
+                <ArrowRight
+                  className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+                  aria-hidden="true"
+                />
+              </button>
               <p className="text-xs text-white/80 sm:text-center">
                 A journey designed around you
               </p>
@@ -1860,7 +1895,7 @@ export default function Hero({ onPlanTrip }) {
               {HIGHLIGHTS.map(({ icon: Icon, label }, index) => (
                 <li
                   key={label}
-                  className={`flex flex-col items-start gap-2 px-2 first:pl-0 sm:flex-row sm:items-center sm:justify-center sm:gap-2.5 ${
+                  className={`flex min-w-0 flex-col items-start gap-2 px-2 first:pl-0 sm:flex-row sm:items-center sm:justify-center sm:gap-2.5 ${
                     index > 0 ? "sm:border-l sm:border-champagne/25" : ""
                   }`}
                 >
@@ -1868,7 +1903,7 @@ export default function Hero({ onPlanTrip }) {
                     className="h-5 w-5 shrink-0 text-champagne"
                     aria-hidden="true"
                   />
-                  <span className="text-[11px] font-medium uppercase leading-snug tracking-[0.14em] text-white/90 sm:text-xs">
+                  <span className="break-words text-[11px] font-medium uppercase leading-snug tracking-[0.14em] text-white/90 sm:text-xs">
                     {label}
                   </span>
                 </li>
@@ -1887,46 +1922,4 @@ export default function Hero({ onPlanTrip }) {
     </>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

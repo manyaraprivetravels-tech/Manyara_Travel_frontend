@@ -1,6 +1,5 @@
 
 
-
 import {
   memo,
   useCallback,
@@ -23,30 +22,6 @@ import { cld, cldSrcSet } from "../utils/cloudinary";
 import { getMostVisited, getPackages } from "../api/content";
 import { useQuery } from "../hooks/useQuery";
 import { Reveal, useInView } from "./Reveal";
-
-/* =========================================================
-   MOST VISITED: "THE ATLAS"
-
-   Each destination card now shows a "Starts from" price so people
-   can judge a destination at a glance.
-
-   Where the price comes from (first match wins):
-     1. A price field on the destination itself
-        (starting_price, starts_from, starting_from, min_price,
-         price_from, price).
-     2. The lowest price among the published packages that belong to
-        that destination (matched by destination_id, destination_slug
-        or the destination name). Packages come from the same cached
-        useQuery(getPackages) the Packages section uses, so there is
-        no extra request when both are on the home page.
-     3. Neither found -> "Price on request".
-
-   Interaction behaviour:
-   - Desktop: pointer enters card -> active, leaves -> inactive.
-   - Touch: pressing a card makes it active; it settles back shortly
-     after release or when the browser takes over to scroll.
-   - No IntersectionObserver is used for hover state.
-========================================================= */
 
 const ARCH_OUTER = "rounded-t-[999px] rounded-b-[1.75rem]";
 const ARCH_INNER = "rounded-t-[999px] rounded-b-[1.4rem]";
@@ -195,9 +170,7 @@ function AtlasSkeleton() {
         className={`aspect-[3/4] w-full animate-pulse border border-champagne/50 bg-surface-strong ${ARCH_OUTER}`}
       />
 
-      <div className="mt-5 h-3 w-16 animate-pulse rounded bg-surface-strong" />
-
-      <div className="mt-3 h-7 w-3/4 animate-pulse rounded bg-surface-strong" />
+      <div className="mt-5 h-7 w-3/4 animate-pulse rounded bg-surface-strong" />
 
       <div className="mt-5 h-8 w-1/2 animate-pulse rounded bg-surface-strong" />
     </div>
@@ -220,7 +193,6 @@ const AtlasCard = memo(function AtlasCard({
 
   const imageUrl = getPlaceImage(place);
   const name = place?.place_name || "Destination";
-  const number = String(index + 1).padStart(2, "0");
   const priceText = formatPrice(price);
 
   const clearReleaseTimer = useCallback(() => {
@@ -277,9 +249,7 @@ const AtlasCard = memo(function AtlasCard({
     <div
       data-active={active ? "true" : "false"}
       data-destination-card
-      className={`${CARD_BASIS} reveal-item group ${
-        index % 2 === 1 ? "lg:mt-12" : ""
-      }`}
+      className={`${CARD_BASIS} reveal-item group`}
       style={{ "--i": Math.min(index, 6) }}
       onPointerEnter={handlePointerEnter}
       onPointerLeave={handlePointerLeave}
@@ -331,9 +301,9 @@ const AtlasCard = memo(function AtlasCard({
           >
             {imageUrl ? (
               <img
-                src={cld(imageUrl,700)}
+                src={cld(imageUrl, 700)}
                 srcSet={cldSrcSet(imageUrl, [400, 700, 1000])}
-                 sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 25vw"
+                sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 25vw"
                 alt={`${name}, popular travel destination`}
                 loading="lazy"
                 decoding="async"
@@ -413,26 +383,8 @@ const AtlasCard = memo(function AtlasCard({
         ===================================================== */}
 
         <div className="px-1 pt-5 antialiased">
-          {/* NUMBER */}
-          <div className="flex items-center gap-3 text-primary">
-            <span className="font-display text-lg font-medium italic leading-none">
-              N° {number}
-            </span>
-
-            <span
-              className={`
-                h-px
-                flex-1
-                transition-colors
-                duration-500
-                ${active ? "bg-primary/60" : "bg-champagne"}
-              `}
-              aria-hidden="true"
-            />
-          </div>
-
           {/* NAME */}
-          <h3 className="mt-3 font-display text-[1.85rem] font-medium leading-[1.05] tracking-[-0.01em] text-text-display [text-wrap:balance] sm:text-[2rem]">
+          <h3 className="font-display text-[1.85rem] font-medium leading-[1.05] tracking-[-0.01em] text-text-display [text-wrap:balance] sm:text-[2rem]">
             {name}
           </h3>
 
@@ -881,14 +833,13 @@ export default function DestinationSection() {
             data-inview={inView}
             className="relative w-full"
           >
-            {/* CAROUSEL */}
+
             <div
               ref={carouselRef}
               onScroll={handleScroll}
               className="
                 -mx-4
                 flex
-                w-full
                 snap-x
                 snap-mandatory
                 scroll-pl-4
@@ -899,10 +850,11 @@ export default function DestinationSection() {
                 pb-10
                 pt-3
                 sm:mx-0
+                sm:w-full
                 sm:scroll-pl-0
                 sm:gap-7
                 sm:px-1
-                lg:pb-16
+                lg:pb-12
                 [&::-webkit-scrollbar]:hidden
                 [-ms-overflow-style:none]
                 [scrollbar-width:none]
@@ -955,3 +907,8 @@ export default function DestinationSection() {
     </section>
   );
 }
+
+
+
+
+

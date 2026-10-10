@@ -142,7 +142,8 @@ const normalizeResponse = (data) => {
   return [];
 };
 
-/* Last word of the title is italicised. */
+/* Last word of the title is italicised. Uses weight 500 so it matches
+   the Playfair Display weights loaded in index.html. */
 function renderTitle(text) {
   const words = String(text).trim().split(/\s+/);
 
@@ -153,22 +154,8 @@ function renderTitle(text) {
   return (
     <>
       {words.join(" ")}{" "}
-      <em className="font-normal italic text-primary">{last}</em>
+      <em className="font-medium italic text-primary">{last}</em>
     </>
-  );
-}
-
-/* =========================================================
-   SKELETON
-========================================================= */
-
-function SeasonalSkeleton() {
-  return (
-    <div className={CARD_BASIS} aria-hidden="true">
-      <div
-        className={`${CARD_HEIGHT} w-full animate-pulse rounded-3xl bg-surface-strong`}
-      />
-    </div>
   );
 }
 
@@ -289,7 +276,7 @@ const SeasonalCard = memo(function SeasonalCard({
           <div className="absolute inset-0 -z-20" aria-hidden="true">
             {image ? (
               <img
-                 src={cld(image, 700)}
+                src={cld(image, 700)}
                 srcSet={cldSrcSet(image, [400, 700, 1000])}
                 sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw"
                 alt=""
@@ -317,9 +304,21 @@ const SeasonalCard = memo(function SeasonalCard({
             aria-hidden="true"
           />
 
-          {/* Season label */}
+          {/*
+            Season label.
+            Mobile fix: it used a fixed max-w-[62%], which could run into the
+            "In season" chip on the right when the label was long. When the
+            chip is shown, the label now stops short of it:
+            100% minus both side insets, the chip (~7rem) and a small gap.
+          */}
           {seasonLabel && (
-            <span className="absolute left-4 top-4 z-20 inline-flex h-8 max-w-[62%] items-center gap-2 rounded-full border border-white/30 bg-ink/50 px-3 text-[11px] font-medium uppercase tracking-[0.18em] text-white sm:bg-ink/35 sm:backdrop-blur-md">
+            <span
+              className={`absolute left-4 top-4 z-20 inline-flex h-8 items-center gap-2 rounded-full border border-white/30 bg-ink/50 px-3 text-[11px] font-medium uppercase tracking-[0.18em] text-white sm:bg-ink/35 sm:backdrop-blur-md ${
+                inSeason
+                  ? "max-w-[calc(100%-9.5rem)]"
+                  : "max-w-[calc(100%-2rem)]"
+              }`}
+            >
               <Sun
                 className="h-3.5 w-3.5 shrink-0 text-champagne transition-transform duration-700 group-data-[active=true]:rotate-45"
                 aria-hidden="true"
@@ -371,6 +370,9 @@ const SeasonalCard = memo(function SeasonalCard({
 
         {/* =================================================
             FOOTER — STARTING PRICE + CTA
+            Mobile fix: smaller price and tighter Explore pill on phones so
+            six-digit prices (e.g. ₹1,25,000) are not truncated. lining-nums
+            keeps the digits level with the baseline in Playfair Display.
         ================================================= */}
 
         <div className="flex shrink-0 items-center justify-between gap-3 border-t border-champagne/60 bg-card px-5 py-4 sm:px-6">
@@ -381,7 +383,7 @@ const SeasonalCard = memo(function SeasonalCard({
                   Starts from
                 </p>
 
-                <p className="mt-0.5 truncate font-display text-[1.65rem] font-semibold leading-none text-primary">
+                <p className="mt-0.5 truncate font-display text-[1.45rem] font-semibold leading-none tracking-tight text-primary lining-nums sm:text-[1.65rem]">
                   {price}
                 </p>
               </>
@@ -392,7 +394,7 @@ const SeasonalCard = memo(function SeasonalCard({
             )}
           </div>
 
-          <span className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-primary/30 bg-primary-lighter px-4 text-[13px] font-medium tracking-[0.06em] text-primary transition-all duration-300 group-data-[active=true]:border-primary group-data-[active=true]:bg-primary group-data-[active=true]:text-white">
+          <span className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-primary/30 bg-primary-lighter px-3.5 text-[13px] font-medium tracking-[0.06em] text-primary transition-all duration-300 group-data-[active=true]:border-primary group-data-[active=true]:bg-primary group-data-[active=true]:text-white sm:px-4">
             Explore
             <ArrowRight
               className="h-4 w-4 transition-transform duration-300 group-data-[active=true]:translate-x-1"
@@ -569,12 +571,20 @@ export default function SeasonalSection() {
      EMPTY / ERROR — section stays hidden
   ------------------------------------------------------- */
 
-  if (error && !loading && places.length === 0) {
+  /* The section only exists when there is at least one published seasonal
+     destination. Nothing is drawn (no heading, no skeleton) while the first
+     load is pending, when the request fails, or when the list is empty.
+     A background refresh keeps showing the current cards. */
+  const initialLoading = loading && data == null;
+
+  if (initialLoading) return null;
+
+  if (error && places.length === 0) {
     console.error("Seasonal destinations loading failed:", error);
     return null;
   }
 
-  if (!loading && places.length === 0) return null;
+  if (places.length === 0) return null;
 
   const canScroll = canScrollLeft || canScrollRight;
 
@@ -675,54 +685,50 @@ export default function SeasonalSection() {
           </div>
         </div>
 
-        {/* LOADING / CAROUSEL */}
-        {loading ? (
+        {/* CAROUSEL */}
+        <div
+          ref={revealRef}
+          data-inview={inView}
+          className="relative w-full"
+        >
+          {/*
+            Mobile fix: this scroller had `w-full` together with `-mx-4`.
+            A fixed width of 100% ignores the negative margins, so the
+            scroller never reached the right screen edge. The peeking next
+            card was cut off 1rem early with a blank strip of background.
+            On phones the width is now automatic so the negative margins
+            stretch it edge to edge; from sm it is w-full again.
+          */}
           <div
-            className="-mx-4 flex gap-4 overflow-hidden px-4 sm:mx-0 sm:gap-5 sm:px-0 lg:gap-6"
-            role="status"
-            aria-label="Loading seasonal destinations"
+            ref={carouselRef}
+            onScroll={handleScroll}
+            className="-mx-4 flex snap-x snap-mandatory scroll-pl-4 gap-4 overflow-x-auto scroll-smooth px-4 pb-8 pt-2 sm:mx-0 sm:w-full sm:scroll-pl-0 sm:gap-5 sm:px-1 lg:gap-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
           >
-            {[1, 2, 3, 4].map((n) => (
-              <SeasonalSkeleton key={n} />
+            {places.map(({ item, inSeason }, index) => (
+              <SeasonalCard
+                key={item?.id ?? item?.slug}
+                item={item}
+                index={index}
+                inSeason={inSeason}
+              />
             ))}
+
+            <ViewAllTile />
           </div>
-        ) : (
-          <div
-            ref={revealRef}
-            data-inview={inView}
-            className="relative w-full"
-          >
+
+          {/* Mobile swipe progress */}
+          {canScroll && (
             <div
-              ref={carouselRef}
-              onScroll={handleScroll}
-              className="-mx-4 flex w-full snap-x snap-mandatory scroll-pl-4 gap-4 overflow-x-auto scroll-smooth px-4 pb-8 pt-2 sm:mx-0 sm:scroll-pl-0 sm:gap-5 sm:px-1 lg:gap-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+              className="mt-1 h-0.5 overflow-hidden rounded-full bg-champagne/50 sm:hidden"
+              aria-hidden="true"
             >
-              {places.map(({ item, inSeason }, index) => (
-                <SeasonalCard
-                  key={item?.id ?? item?.slug}
-                  item={item}
-                  index={index}
-                  inSeason={inSeason}
-                />
-              ))}
-
-              <ViewAllTile />
-            </div>
-
-            {/* Mobile swipe progress */}
-            {canScroll && (
               <div
-                className="mt-1 h-0.5 overflow-hidden rounded-full bg-champagne/50 sm:hidden"
-                aria-hidden="true"
-              >
-                <div
-                  ref={progressRef}
-                  className="h-full w-1/3 rounded-full bg-primary/70 will-change-transform"
-                />
-              </div>
-            )}
-          </div>
-        )}
+                ref={progressRef}
+                className="h-full w-1/3 rounded-full bg-primary/70 will-change-transform"
+              />
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

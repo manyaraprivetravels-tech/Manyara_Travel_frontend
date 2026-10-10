@@ -1,47 +1,175 @@
 
 
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-
 import {
   Mail,
   Phone,
   MapPin,
+  ExternalLink,
 } from "lucide-react";
-
 import {
   FaInstagram,
   FaFacebookF,
   FaYoutube,
   FaWhatsapp,
-  FaTwitter
+  FaTwitter,
 } from "react-icons/fa";
 
-import { useSettings } from "../hooks/useSettings";
+import { getSiteSettings } from "../api/content";
 
-
+const BRAND_NAME = "Manyara Privé Vacations";
+const COMPANY_EMAIL = "Travel@manyaraprive.com";
+const DEFAULT_ADDRESS = "India";
 const SOCIAL_SLOTS = [1, 2, 3, 4];
 
-const DEFAULT_SOCIALS = [
-  { name: "Instagram", url: "https://www.instagram.com/manyaraprivevacations" },
-  { name: "Facebook", url: "https://www.facebook.com/manyaraprivevacations" },
-  { name: "YouTube", url: "https://www.youtube.com/@manyaraprivevacations" },
-];
+const EMPTY_SETTINGS = {
+  phone_number: "",
+  whatsapp_number: "",
+  company_address: DEFAULT_ADDRESS,
+  address_url: "",
+};
 
-const getSocialIcon = (name = "", url = "") => {
+function getMapsLink(rawUrl, address) {
+  const value = String(rawUrl || "").trim();
+
+  if (!value) return "";
+
+  let parsed;
+
+  try {
+    parsed = new URL(value);
+  } catch {
+    return "";
+  }
+
+  if (parsed.protocol !== "https:") return "";
+
+  const host = parsed.hostname.toLowerCase();
+  const path = parsed.pathname.toLowerCase();
+
+  const isShortLink =
+    host === "maps.app.goo.gl" ||
+    (host === "goo.gl" && path.startsWith("/maps"));
+
+  const isGoogleMaps =
+    isShortLink ||
+    host === "maps.google.com" ||
+    (
+      [
+        "www.google.com",
+        "google.com",
+        "www.google.co.in",
+        "google.co.in",
+      ].includes(host) &&
+      path.startsWith("/maps")
+    );
+
+  if (!isGoogleMaps) return "";
+
+  const output = (
+    parsed.searchParams.get("output") || ""
+  ).toLowerCase();
+
+  const isEmbed =
+    path.includes("/maps/embed") ||
+    output === "embed" ||
+    output === "svembed";
+
+  if (isEmbed) {
+    // Recover the Google Maps place CID when present.
+    const cidMatch = value.match(
+      /!1s0x[0-9a-f]+(?::|%3A)0x([0-9a-f]+)/i
+    );
+
+    if (cidMatch) {
+      try {
+        return `https://www.google.com/maps?cid=${BigInt(
+          `0x${cidMatch[1]}`
+        ).toString()}`;
+      } catch {
+        // Fall through to coordinate or address handling.
+      }
+    }
+
+    // Recover coordinates from an embedded Maps URL.
+    const coordMatch = value.match(
+      /!2d(-?\d+(?:\.\d+)?)!3d(-?\d+(?:\.\d+)?)/i
+    );
+
+    if (coordMatch) {
+      return (
+        "https://www.google.com/maps/search/?api=1&query=" +
+        `${coordMatch[2]},${coordMatch[1]}`
+      );
+    }
+
+    const fromLink = (
+      parsed.searchParams.get("q") ||
+      parsed.searchParams.get("destination") ||
+      ""
+    ).trim();
+
+    const cleanAddress = String(address || "").trim();
+
+    const query =
+      fromLink ||
+      (
+        cleanAddress && cleanAddress !== DEFAULT_ADDRESS
+          ? cleanAddress
+          : ""
+      );
+
+    if (!query) return "";
+
+    return (
+      "https://www.google.com/maps/search/?api=1&query=" +
+      encodeURIComponent(query)
+    );
+  }
+
+  return parsed.href;
+}
+
+/**
+ * Generate a map preview from the address configured in Admin Settings.
+ * The preview URL is separate from the external Maps link.
+ */
+function getMapsEmbedUrl(address) {
+  const cleanAddress = String(address || "").trim();
+
+  if (!cleanAddress) return "";
+
+  return (
+    "https://www.google.com/maps?q=" +
+    encodeURIComponent(cleanAddress) +
+    "&output=embed"
+  );
+}
+
+function getSocialIcon(name = "", url = "") {
   const value = `${name} ${url}`.toLowerCase();
 
   if (value.includes("instagram")) return FaInstagram;
   if (value.includes("facebook")) return FaFacebookF;
-  if (value.includes("youtube") || value.includes("youtu.be")) return FaYoutube;
+
+  if (
+    value.includes("youtube") ||
+    value.includes("youtu.be")
+  ) {
+    return FaYoutube;
+  }
+
   if (
     value.includes("twitter") ||
     value.includes("x.com") ||
-    name.toLowerCase().trim() === "x"
+    name.trim().toLowerCase() === "x"
   ) {
     return FaTwitter;
   }
+
   return null;
-};
+}
 
 function SocialLink({ name, url }) {
   const Icon = getSocialIcon(name, url);
@@ -53,7 +181,7 @@ function SocialLink({ name, url }) {
       rel="noopener noreferrer"
       aria-label={name}
       title={name}
-      className="flex h-9 w-9 items-center justify-center rounded-full border border-ivory/15 transition-all hover:border-accent hover:bg-accent hover:text-white"
+      className="flex h-9 w-9 items-center justify-center rounded-full border border-ivory/15 text-ivory/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-accent hover:bg-accent hover:text-white focus:outline-none focus:ring-2 focus:ring-accent/50"
     >
       {Icon ? (
         <Icon className="h-4 w-4" aria-hidden="true" />
@@ -66,286 +194,276 @@ function SocialLink({ name, url }) {
   );
 }
 
-
-// ============================================================
-// FOOTER
-// ============================================================
+function FooterLink({ to, children }) {
+  return (
+    <Link
+      to={to}
+      className="transition-colors duration-200 hover:text-accent focus:outline-none focus:text-accent"
+    >
+      {children}
+    </Link>
+  );
+}
 
 export default function Footer() {
-  // Settings from the shared cache
-  const { settings, loading } = useSettings();
+  const [settings, setSettings] = useState(EMPTY_SETTINGS);
+  const [loading, setLoading] = useState(true);
 
-  // ============================================================
-  // SETTINGS VALUES
-  // ============================================================
+  useEffect(() => {
+    let mounted = true;
 
-  const phoneNumber = settings?.phone_number || "";
-  const whatsappNumber = settings?.whatsapp_number || "";
-  const addressUrl = settings?.address_url || "";
+    const loadSettings = async () => {
+      try {
+        // Same API used by the Contact page.
+        const data = await getSiteSettings();
 
-  // ============================================================
-  // SOCIAL LINKS (up to 4, from settings)
-  // ============================================================
+        if (!mounted) return;
 
-  const adminSocials = SOCIAL_SLOTS.map((n) => ({
-    name: settings?.[`top_bar_social_${n}_name`]?.trim() || "",
-    url: settings?.[`top_bar_social_${n}_url`]?.trim() || "",
-  }))
-    .filter((item) => /^https?:\/\//i.test(item.url))
-    .map((item, index) => ({
-      ...item,
-      name: item.name || `Social ${index + 1}`,
-    }));
+        setSettings({
+          phone_number: data?.phone_number || "",
+          whatsapp_number: data?.whatsapp_number || "",
+          company_address:
+            data?.company_address || DEFAULT_ADDRESS,
+          address_url: data?.address_url || "",
+        });
+      } catch (error) {
+        console.error(
+          "Failed to load footer settings:",
+          error
+        );
 
-  // Defaults only when the admin has not added any link
-  const socials = adminSocials.length > 0 ? adminSocials : DEFAULT_SOCIALS;
+        if (mounted) {
+          setSettings(EMPTY_SETTINGS);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
 
-  // ============================================================
-  // WHATSAPP FORMAT
-  // ============================================================
+    loadSettings();
 
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // These keys intentionally match Contact.jsx.
+  const phoneNumber = String(
+    settings?.phone_number || ""
+  ).trim();
+
+  const whatsappNumber = String(
+    settings?.whatsapp_number || ""
+  ).trim();
+
+  const companyAddress =
+    String(
+      settings?.company_address || DEFAULT_ADDRESS
+    ).trim() || DEFAULT_ADDRESS;
+
+  const addressUrl = String(
+    settings?.address_url || ""
+  ).trim();
+
+  // Use the same Google Maps conversion logic as Contact.jsx.
+  const mapsHref = getMapsLink(
+    addressUrl,
+    companyAddress
+  );
+
+  // The map preview is based on the same displayed admin address.
+  const mapsEmbedUrl = getMapsEmbedUrl(companyAddress);
+
+  const phoneDigits = phoneNumber.replace(/\D/g, "");
   const whatsappDigits = whatsappNumber.replace(/\D/g, "");
 
-  // ============================================================
-  // GOOGLE MAP VALIDATION
-  // ============================================================
+  const phoneHref = phoneDigits
+    ? `tel:+${phoneDigits}`
+    : "";
 
-  const isGoogleMapsUrl =
-    addressUrl.startsWith("https://www.google.com/maps/") ||
-    addressUrl.startsWith("https://maps.google.com/") ||
-    addressUrl.startsWith("https://www.google.co.in/maps/");
+  const whatsappHref = whatsappDigits
+    ? `https://wa.me/${whatsappDigits}?text=${encodeURIComponent(
+        `Hello ${BRAND_NAME}, I would like to know more about your travel packages.`
+      )}`
+    : "";
 
-  // ============================================================
-  // LOADING SKELETON
-  // ============================================================
+  // Social links are loaded from the existing admin settings keys.
+  const socials = SOCIAL_SLOTS.map((number) => ({
+    name: String(
+      settings?.[`top_bar_social_${number}_name`] || ""
+    ).trim(),
+    url: String(
+      settings?.[`top_bar_social_${number}_url`] || ""
+    ).trim(),
+  })).filter((item) => {
+    try {
+      const parsed = new URL(item.url);
 
-  if (loading) {
-    return (
-      <footer className="bg-navy-dark text-ivory/70">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-10">
-            {/* Brand */}
-            <div className="sm:col-span-2 lg:col-span-1">
-              <div className="mb-3 inline-flex items-center rounded-xl bg-[#EEF1F5] px-3 py-2 sm:px-4 sm:py-2.5">
-                <img
-                  src="/images/Manyara_2.webp"
-                  alt="Manyara Prive Vacations"
-                  className="h-auto w-40 object-contain sm:w-48 md:w-52"
-                />
-              </div>
-
-              <div className="h-4 w-64 max-w-full animate-pulse rounded bg-white/10" />
-              <div className="mt-2 h-4 w-48 max-w-full animate-pulse rounded bg-white/10" />
-            </div>
-
-            {/* Explore */}
-            <div className="space-y-3">
-              <div className="h-4 w-20 animate-pulse rounded bg-white/10" />
-              <div className="h-3 w-24 animate-pulse rounded bg-white/10" />
-              <div className="h-3 w-28 animate-pulse rounded bg-white/10" />
-              <div className="h-3 w-20 animate-pulse rounded bg-white/10" />
-            </div>
-
-            {/* Company */}
-            <div className="space-y-3">
-              <div className="h-4 w-20 animate-pulse rounded bg-white/10" />
-              <div className="h-3 w-24 animate-pulse rounded bg-white/10" />
-              <div className="h-3 w-28 animate-pulse rounded bg-white/10" />
-            </div>
-
-            {/* Contact */}
-            <div className="space-y-3">
-              <div className="h-4 w-24 animate-pulse rounded bg-white/10" />
-              <div className="h-3 w-40 max-w-full animate-pulse rounded bg-white/10" />
-            </div>
-          </div>
-        </div>
-      </footer>
-    );
-  }
-
-  // ============================================================
-  // FOOTER
-  // ============================================================
+      return (
+        Boolean(item.url) &&
+        ["https:", "http:"].includes(parsed.protocol)
+      );
+    } catch {
+      return false;
+    }
+  });
 
   return (
-    <footer className="relative bg-navy-dark text-ivory/70">
-      {/* ======================================================
-          MAIN FOOTER
-      ======================================================= */}
-
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-10">
-          {/* ==================================================
-              BRAND
-          ================================================== */}
-
+    <footer className="relative overflow-hidden bg-navy-dark text-ivory/70">
+      {/* Main footer content */}
+      <div className="mx-auto w-full max-w-7xl px-4 py-9 sm:px-6 sm:py-11 lg:px-8 lg:py-14">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-x-8 sm:gap-y-10 lg:grid-cols-4 lg:gap-10">
+          {/* Brand */}
           <div className="sm:col-span-2 lg:col-span-1">
-            <div className="mb-3 inline-flex items-center rounded-xl border border-white/20 bg-[#EEF1F5] px-3 py-2 shadow-[0_6px_20px_rgba(0,0,0,0.18)] sm:px-4 sm:py-2.5">
+            <Link
+              to="/"
+              aria-label={`${BRAND_NAME} home`}
+              className="mb-4 inline-flex max-w-full items-center rounded-xl border border-white/15 bg-[#EEF1F5] px-3 py-2 shadow-[0_6px_20px_rgba(0,0,0,0.16)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-4 sm:py-2.5"
+            >
               <img
                 src="/images/Manyara_2.webp"
-                alt="Manyara Prive Vacations"
-                className="h-auto w-40 object-contain opacity-90 brightness-[0.92] contrast-[1.04] sm:w-48 md:w-52"
+                alt={BRAND_NAME}
+                loading="lazy"
+                className="h-auto w-40 object-contain sm:w-44 md:w-48"
               />
-            </div>
+            </Link>
 
-            <p className="max-w-sm text-sm leading-6">
-              Luxury journeys and curated vacations, crafted with
-              comfort, elegance, and unforgettable experiences.
+            <p className="max-w-sm text-sm leading-6 text-ivory/65">
+              Discover exceptional destinations and thoughtfully
+              curated vacations designed to make every journey
+              memorable.
             </p>
 
-            {/* Social links: whatever the admin set (1 to 4) */}
-            <div className="mt-4 flex flex-wrap items-center gap-2.5">
-              {socials.map((item) => (
-                <SocialLink
-                  key={item.url}
-                  name={item.name}
-                  url={item.url}
-                />
-              ))}
-            </div>
+            {/* Social links configured through Admin Settings */}
+            {socials.length > 0 && (
+              <div className="mt-5">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-ivory/80">
+                  Follow Us
+                </p>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {socials.map((item) => (
+                    <SocialLink
+                      key={`${item.name}-${item.url}`}
+                      name={item.name || "Social media"}
+                      url={item.url}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* ==================================================
-              EXPLORE
-          ================================================== */}
-
+          {/* Explore */}
           <div>
-            <p className="mb-3 text-sm font-semibold text-ivory">
+            <h2 className="mb-4 text-sm font-semibold text-ivory">
               Explore
-            </p>
+            </h2>
 
-            <ul className="space-y-2 text-sm">
-
+            <ul className="space-y-3 text-sm">
               <li>
-                <Link
-                  to="/destinations"
-                  className="transition-colors hover:text-accent"
-                >
+                <FooterLink to="/destinations">
                   Destinations
-                </Link>
+                </FooterLink>
               </li>
-
-                 <li>
-                <Link
-                  to="/seasoned-destinations"
-                  className="transition-colors hover:text-accent"
-                >
-                  Seasonal Views
-                </Link>
-              </li>
-
               <li>
-                <Link
-                  to="/packages"
-                  className="transition-colors hover:text-accent"
-                >
-                  Packages
-                </Link>
+                <FooterLink to="/seasoned-destinations">
+                  Travel by Season
+                </FooterLink>
               </li>
-
-              
-
-           
-
               <li>
-                <Link
-                  to="/happy-moments"
-                  className="transition-colors hover:text-accent"
-                >
+                <FooterLink to="/packages">
+                  Explore Packages
+                </FooterLink>
+              </li>
+              <li>
+                <FooterLink to="/happy-moments">
                   Happy Moments
-                </Link>
+                </FooterLink>
               </li>
-
               <li>
-                <Link
-                  to="/blog"
-                  className="transition-colors hover:text-accent"
-                >
+                <FooterLink to="/blog">
                   Travel Blog
-                </Link>
+                </FooterLink>
               </li>
             </ul>
           </div>
 
-          {/* ==================================================
-              COMPANY
-          ================================================== */}
-
+          {/* Company */}
           <div>
-            <p className="mb-3 text-sm font-semibold text-ivory">
+            <h2 className="mb-4 text-sm font-semibold text-ivory">
               Company
-            </p>
+            </h2>
 
-            <ul className="space-y-2 text-sm">
+            <ul className="space-y-3 text-sm">
               <li>
-                <Link
-                  to="/about"
-                  className="transition-colors hover:text-accent"
-                >
+                <FooterLink to="/about">
                   About Us
-                </Link>
+                </FooterLink>
               </li>
-
               <li>
-                <Link
-                  to="/contact"
-                  className="transition-colors hover:text-accent"
-                >
-                  Contact
-                </Link>
+                <FooterLink to="/contact">
+                  Contact Us
+                </FooterLink>
               </li>
-
               <li>
-                <Link
-                  to="/reviews"
-                  className="transition-colors hover:text-accent"
-                >
+                <FooterLink to="/reviews">
                   Reviews
-                </Link>
+                </FooterLink>
               </li>
-
-              {/* <li>
-                <Link
-                  to="/#faqs"
-                  className="transition-colors hover:text-accent"
-                >
-                  FAQs
-                </Link>
-              </li> */}
+              <li>
+                <FooterLink to="/terms-and-conditions">
+                  Terms &amp; Conditions
+                </FooterLink>
+              </li>
+                  <li>
+                  <FooterLink to="/bookings">
+                    Booking Policy
+                  </FooterLink>
+                </li>
+              <li>
+                <FooterLink to="/cancellation">
+                  Cancellation Policy
+                </FooterLink>
+              </li>
             </ul>
           </div>
 
-          {/* ==================================================
-              GET IN TOUCH
-          ================================================== */}
-
+          {/* Contact details */}
           <div>
-            <p className="mb-3 text-sm font-semibold text-ivory">
-              Get in touch
-            </p>
+            <h2 className="mb-4 text-sm font-semibold text-ivory">
+              Get in Touch
+            </h2>
 
-            <ul className="space-y-2.5 text-sm">
+            <ul className="space-y-4 text-sm">
               {/* Email */}
-              <li className="flex items-start gap-2">
-                <Mail className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
+              <li className="flex items-start gap-3">
+                <Mail
+                  className="mt-0.5 h-4 w-4 shrink-0 text-accent"
+                  aria-hidden="true"
+                />
 
                 <a
-                  href="mailto:hello@manyaraprivevacations.com"
+                  href={`mailto:${COMPANY_EMAIL}`}
                   className="break-all transition-colors hover:text-accent"
                 >
-                  hello@manyaraprivevacations.com
+                  {COMPANY_EMAIL}
                 </a>
               </li>
 
               {/* Phone */}
               {phoneNumber && (
-                <li className="flex items-start gap-2">
-                  <Phone className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
+                <li className="flex items-start gap-3">
+                  <Phone
+                    className="mt-0.5 h-4 w-4 shrink-0 text-accent"
+                    aria-hidden="true"
+                  />
 
                   <a
-                    href={`tel:${phoneNumber}`}
-                    className="break-all transition-colors hover:text-accent"
+                    href={phoneHref}
+                    className="break-words transition-colors hover:text-accent"
                   >
                     {phoneNumber}
                   </a>
@@ -353,122 +471,88 @@ export default function Footer() {
               )}
 
               {/* WhatsApp */}
-              {whatsappDigits && (
-                <li className="flex items-center gap-2">
-                  <FaWhatsapp className="h-5 w-5 shrink-0 text-accent" />
+              {whatsappDigits > 0 && whatsappHref && (
+                <li className="flex items-start gap-3">
+                  <FaWhatsapp
+                    className="mt-0.5 h-4 w-4 shrink-0 text-accent"
+                    aria-hidden="true"
+                  />
 
                   <a
-                    href={`https://wa.me/${whatsappDigits}`}
+                    href={whatsappHref}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="transition-colors hover:text-accent"
                   >
-                    WhatsApp
+                    Chat on WhatsApp
                   </a>
                 </li>
               )}
+
+
             </ul>
           </div>
         </div>
 
-        {/* ======================================================
-            SECOND ROW
-        ======================================================= */}
-
-        <div className="mt-8 border-t border-ivory/10 pt-7 sm:mt-10 sm:pt-8">
+        {/* Policies and location map */}
+        <div className="mt-9 border-t border-ivory/10 pt-7 sm:mt-11 sm:pt-9">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-10">
-            {/* Policies */}
-            <div>
-              <p className="mb-3 text-sm font-semibold text-ivory">
-                Company Policies
-              </p>
 
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link
-                    to="/terms-and-conditions"
-                    className="transition-colors hover:text-accent"
-                  >
-                    Terms &amp; Conditions
-                  </Link>
-                </li>
 
-                <li>
-                  <Link
-                    to="/bookings"
-                    className="transition-colors hover:text-accent"
-                  >
-                    Booking Policy
-                  </Link>
-                </li>
+            {/* Google Maps preview */}
+            <div className="min-w-0">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <h2 className="text-base font-semibold text-ivory sm:text-lg">
+                    Find Our Location
+                  </h2>
 
-                <li>
-                  <Link
-                    to="/cancellation"
-                    className="transition-colors hover:text-accent"
-                  >
-                    Cancellation Policy
-                  </Link>
-                </li>
-              </ul>
-            </div>
+                </div>
 
-            {/* Google Maps */}
-            {isGoogleMapsUrl && (
-              <div>
-                <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <p className="text-base font-semibold text-ivory sm:text-lg">
-                      Find Us
-                    </p>
-
-                    <p className="mt-1 text-xs leading-5 text-ivory/50 sm:text-sm">
-                      Visit our location or open it directly in
-                      Google Maps.
-                    </p>
-                  </div>
-
+                {!loading && mapsHref && (
                   <a
-                    href={addressUrl}
+                    href={mapsHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex w-fit items-center gap-2 rounded-lg border border-ivory/15 px-3 py-2 text-xs text-ivory transition-all hover:border-accent hover:bg-accent sm:text-sm"
+                    className="inline-flex min-h-10 w-fit shrink-0 items-center justify-center gap-2 rounded-full border border-ivory/15 px-4 py-2 text-xs font-semibold text-ivory transition-all duration-200 hover:border-accent hover:bg-accent sm:text-sm"
                   >
-                    <MapPin className="h-4 w-4" />
-                    Open Maps
+                    <MapPin
+                      className="h-4 w-4"
+                      aria-hidden="true"
+                    />
+                   View On Google Maps
+                    <ExternalLink
+                      className="h-3.5 w-3.5"
+                      aria-hidden="true"
+                    />
                   </a>
-                </div>
-
-                <div className="overflow-hidden rounded-xl border border-ivory/10">
-                  <iframe
-                    src={addressUrl}
-                    title="Manyara Prive Vacations Location"
-                    loading="lazy"
-                    className="block h-52 w-full border-0 sm:h-60 md:h-64 lg:h-72"
-                  />
-                </div>
+                )}
               </div>
-            )}
+
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ========================================================
-          COPYRIGHT
-      ======================================================== */}
 
+{/* Copyright */}
       <div className="border-t border-ivory/10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-1.5 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-          <p className="text-xs text-ivory/50">
-            © {new Date().getFullYear()} Manyara Prive Vacations. All
-            rights reserved.
+        <div className="mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 py-4 text-center sm:flex-row sm:justify-between sm:px-6 sm:text-left lg:px-8">
+          <p className="text-xs leading-5 text-ivory/50">
+            © {new Date().getFullYear()} {BRAND_NAME}. All rights reserved.
           </p>
 
-          <p className="text-xs text-ivory/40">
+          <p className="text-xs leading-5 text-ivory/40">
             Travel. Explore. Create memories.
           </p>
         </div>
       </div>
+
     </footer>
   );
 }
+
+
+
+
+

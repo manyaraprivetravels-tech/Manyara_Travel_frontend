@@ -1,10 +1,10 @@
 
+
 import { useEffect, useState } from "react";
 import {
   Mail,
   PhoneCall,
   MapPin,
-  MessageCircle,
   Plane,
   ExternalLink,
   ArrowRight,
@@ -31,6 +31,90 @@ const EMPTY_SETTINGS = {
   company_address: DEFAULT_ADDRESS,
   address_url: "",
 };
+
+
+function getMapsLink(rawUrl, address) {
+  const value = String(rawUrl || "").trim();
+  if (!value) return "";
+
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return "";
+  }
+
+  if (parsed.protocol !== "https:") return "";
+
+  const host = parsed.hostname.toLowerCase();
+  const path = parsed.pathname.toLowerCase();
+
+  const isShortLink =
+    host === "maps.app.goo.gl" ||
+    (host === "goo.gl" && path.startsWith("/maps"));
+
+  const isGoogleMaps =
+    isShortLink ||
+    host === "maps.google.com" ||
+    ((host === "www.google.com" ||
+      host === "google.com" ||
+      host === "www.google.co.in" ||
+      host === "google.co.in") &&
+      path.startsWith("/maps"));
+
+  if (!isGoogleMaps) return "";
+
+  // Embed links cannot be opened in a tab. Covers /maps/embed?pb=...,
+  // /maps/embed/v1/... and the older ...?output=embed form. Use the place
+  // name inside the link when it has one, else the company address.
+  const output = (parsed.searchParams.get("output") || "").toLowerCase();
+  const isEmbed =
+    path.includes("/maps/embed") || output === "embed" || output === "svembed";
+
+  if (isEmbed) {
+    // Embed ?pb=... links carry the place's ID and coordinates, so the exact
+    // business listing can be rebuilt from them. The ID's second half (after
+    // the colon, which may be written as %3A) is the Google Maps CID.
+    const cidMatch = value.match(/!1s0x[0-9a-f]+(?::|%3A)0x([0-9a-f]+)/i);
+
+    if (cidMatch) {
+      try {
+        return `https://www.google.com/maps?cid=${BigInt(
+          `0x${cidMatch[1]}`
+        ).toString()}`;
+      } catch {
+        /* fall through to coordinates */
+      }
+    }
+
+    const coordMatch = value.match(
+      /!2d(-?\d+(?:\.\d+)?)!3d(-?\d+(?:\.\d+)?)/
+    );
+
+    if (coordMatch) {
+      return `https://www.google.com/maps/search/?api=1&query=${coordMatch[2]},${coordMatch[1]}`;
+    }
+
+    const fromLink = (
+      parsed.searchParams.get("q") ||
+      parsed.searchParams.get("destination") ||
+      ""
+    ).trim();
+    const cleanAddress = String(address || "").trim();
+
+    const query =
+      fromLink ||
+      (cleanAddress && cleanAddress !== DEFAULT_ADDRESS ? cleanAddress : "");
+
+    if (!query) return "";
+
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      query
+    )}`;
+  }
+
+  return parsed.href;
+}
 
 const Contact = () => {
   const [settings, setSettings] = useState(EMPTY_SETTINGS);
@@ -119,13 +203,10 @@ const Contact = () => {
   const emailHref = `mailto:${COMPANY_EMAIL}`;
 
   // ============================================================
-  // GOOGLE MAPS URL CHECK
+  // GOOGLE MAPS LINK (embed links are converted, see getMapsLink)
   // ============================================================
 
-  const isGoogleMapsUrl =
-    addressUrl.startsWith("https://www.google.com/maps/") ||
-    addressUrl.startsWith("https://maps.google.com/") ||
-    addressUrl.startsWith("https://www.google.co.in/maps/");
+  const mapsHref = getMapsLink(addressUrl, companyAddress);
 
   return (
     <div className="min-h-screen w-full overflow-x-clip bg-background text-text-dark">
@@ -371,9 +452,9 @@ const Contact = () => {
                             {companyAddress}
                           </p>
 
-                          {isGoogleMapsUrl && (
+                          {mapsHref && (
                             <a
-                              href={addressUrl}
+                              href={mapsHref}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-accent-hover transition-colors hover:text-text-dark sm:text-sm"
@@ -531,8 +612,6 @@ const Contact = () => {
 };
 
 export default Contact;
-
-
 
 
 
