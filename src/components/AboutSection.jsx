@@ -1,19 +1,9 @@
 
 
-
-
-
-
-
-
-
-
 import { memo, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   Compass,
-  Users,
-  Star,
   ArrowRight,
   CalendarDays,
 } from "lucide-react";
@@ -172,23 +162,6 @@ export default function AboutSection() {
         icon: Compass,
         value: `${about.years_experience}+`,
         label: "Years of experience",
-      });
-    }
-
-    if (teamCount > 0) {
-      items.push({
-        icon: Users,
-        value: teamCount,
-        label: teamCount === 1 ? "Team member" : "Team members",
-      });
-    }
-
-    if (leadershipCount > 0) {
-      items.push({
-        icon: Star,
-        value: leadershipCount,
-        label:
-          leadershipCount === 1 ? "Leadership member" : "Leadership members",
       });
     }
 

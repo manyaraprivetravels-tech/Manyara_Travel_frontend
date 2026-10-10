@@ -1,5 +1,3 @@
-
-
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -19,11 +17,12 @@ import {
 import { getSiteSettings } from "../api/content";
 
 const BRAND_NAME = "Manyara Privé Vacations";
-const COMPANY_EMAIL = "Travel@manyaraprive.com";
+
 const DEFAULT_ADDRESS = "India";
 const SOCIAL_SLOTS = [1, 2, 3, 4];
 
 const EMPTY_SETTINGS = {
+  email_address: "",
   phone_number: "",
   whatsapp_number: "",
   company_address: DEFAULT_ADDRESS,
@@ -220,6 +219,7 @@ export default function Footer() {
         if (!mounted) return;
 
         setSettings({
+          email_address: data?.email_address || "",
           phone_number: data?.phone_number || "",
           whatsapp_number: data?.whatsapp_number || "",
           company_address:
@@ -250,6 +250,12 @@ export default function Footer() {
   }, []);
 
   // These keys intentionally match Contact.jsx.
+
+  // Email comes only from Admin → Website Settings
+  const companyEmail = String(
+    settings?.email_address || ""
+  ).trim();
+
   const phoneNumber = String(
     settings?.phone_number || ""
   ).trim();
@@ -323,7 +329,7 @@ export default function Footer() {
               className="mb-4 inline-flex max-w-full items-center rounded-xl border border-white/15 bg-[#EEF1F5] px-3 py-2 shadow-[0_6px_20px_rgba(0,0,0,0.16)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-4 sm:py-2.5"
             >
               <img
-                src="/images/Manyara_2.webp"
+                src="/images/Manyara_3.webp"
                 alt={BRAND_NAME}
                 loading="lazy"
                 className="h-auto w-40 object-contain sm:w-44 md:w-48"
@@ -418,11 +424,11 @@ export default function Footer() {
                   Terms &amp; Conditions
                 </FooterLink>
               </li>
-                  <li>
-                  <FooterLink to="/bookings">
-                    Booking Policy
-                  </FooterLink>
-                </li>
+              <li>
+                <FooterLink to="/bookings">
+                  Booking Policy
+                </FooterLink>
+              </li>
               <li>
                 <FooterLink to="/cancellation">
                   Cancellation Policy
@@ -439,19 +445,21 @@ export default function Footer() {
 
             <ul className="space-y-4 text-sm">
               {/* Email */}
-              <li className="flex items-start gap-3">
-                <Mail
-                  className="mt-0.5 h-4 w-4 shrink-0 text-accent"
-                  aria-hidden="true"
-                />
+              {companyEmail && (
+                <li className="flex items-start gap-3">
+                  <Mail
+                    className="mt-0.5 h-4 w-4 shrink-0 text-accent"
+                    aria-hidden="true"
+                  />
 
-                <a
-                  href={`mailto:${COMPANY_EMAIL}`}
-                  className="break-all transition-colors hover:text-accent"
-                >
-                  {COMPANY_EMAIL}
-                </a>
-              </li>
+                  <a
+                    href={`mailto:${companyEmail}`}
+                    className="break-all transition-colors hover:text-accent"
+                  >
+                    {companyEmail}
+                  </a>
+                </li>
+              )}
 
               {/* Phone */}
               {phoneNumber && (
@@ -471,7 +479,7 @@ export default function Footer() {
               )}
 
               {/* WhatsApp */}
-              {whatsappDigits > 0 && whatsappHref && (
+              {whatsappHref && (
                 <li className="flex items-start gap-3">
                   <FaWhatsapp
                     className="mt-0.5 h-4 w-4 shrink-0 text-accent"
@@ -488,8 +496,6 @@ export default function Footer() {
                   </a>
                 </li>
               )}
-
-
             </ul>
           </div>
         </div>
@@ -497,8 +503,6 @@ export default function Footer() {
         {/* Policies and location map */}
         <div className="mt-9 border-t border-ivory/10 pt-7 sm:mt-11 sm:pt-9">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-10">
-
-
             {/* Google Maps preview */}
             <div className="min-w-0">
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -506,7 +510,6 @@ export default function Footer() {
                   <h2 className="text-base font-semibold text-ivory sm:text-lg">
                     Find Our Location
                   </h2>
-
                 </div>
 
                 {!loading && mapsHref && (
@@ -520,7 +523,7 @@ export default function Footer() {
                       className="h-4 w-4"
                       aria-hidden="true"
                     />
-                   View On Google Maps
+                    View On Google Maps
                     <ExternalLink
                       className="h-3.5 w-3.5"
                       aria-hidden="true"
@@ -528,14 +531,12 @@ export default function Footer() {
                   </a>
                 )}
               </div>
-
             </div>
           </div>
         </div>
       </div>
 
-
-{/* Copyright */}
+      {/* Copyright */}
       <div className="border-t border-ivory/10">
         <div className="mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 py-4 text-center sm:flex-row sm:justify-between sm:px-6 sm:text-left lg:px-8">
           <p className="text-xs leading-5 text-ivory/50">
@@ -547,12 +548,6 @@ export default function Footer() {
           </p>
         </div>
       </div>
-
     </footer>
   );
 }
-
-
-
-
-

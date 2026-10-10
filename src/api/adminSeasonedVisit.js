@@ -3,21 +3,7 @@
 
 import api from "./axios";
 
-/* =========================================================
-   PUBLIC
-   Used by SeasonedPage.jsx and SeasonedDetail.jsx
-========================================================= */
- 
-// export const getSeasonedDestinations = () =>
-//   api
-//     .get("/seasoned-destinations")
-//     .then((res) => res.data);
- 
-// export const getSeasonedDestinationBySlug = (slug) =>
-//   api
-//     .get(`/seasoned-destinations/${encodeURIComponent(slug)}`)
-//     .then((res) => res.data);
- 
+
 
 export const getAllSeasonedDestinations = () =>
   api

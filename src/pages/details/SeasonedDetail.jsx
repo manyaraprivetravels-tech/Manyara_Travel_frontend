@@ -887,7 +887,7 @@ export default function SeasonedDetail() {
 
       {/* FAQ */}
       <section className="w-full">
-        <FAQSection category="seasoned_destinations" />
+        <FAQSection category="seasonal" />
       </section>
 
       <Footer />

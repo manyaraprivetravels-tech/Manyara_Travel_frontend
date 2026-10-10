@@ -23,19 +23,19 @@ const FAQ_CATEGORIES = [
     description: "Homepage and site-wide questions",
   },
   {
-    value: "packages",
-    label: "Packages",
-    description: "Questions about travel packages",
-  },
-  {
     value: "most_visited",
     label: "Most Visited",
     description: "Questions about destinations",
   },
   {
-    value: "batches",
-    label: "Batches",
-    description: "Questions about upcoming batches",
+    value: "seasonal",
+    label: "Seasonal Views",
+    description: "Questions about seasonal destinations",
+  },
+  {
+    value: "packages",
+    label: "Packages",
+    description: "Questions about travel packages",
   },
 ];
 

@@ -58,7 +58,7 @@ export default function Login() {
         {/* Brand */}
         <div className="text-center mb-6 sm:mb-8">
           <p className="font-display text-3xl sm:text-4xl font-semibold text-text-display leading-tight">
-            Manya Privé Vacations
+            Manyara Privé Vacations
           </p>
 
           <p className="text-muted text-xs sm:text-sm mt-1.5">

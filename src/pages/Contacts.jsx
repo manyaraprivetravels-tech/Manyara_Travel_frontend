@@ -1,5 +1,3 @@
-
-
 import { useEffect, useState } from "react";
 import {
   Mail,
@@ -21,11 +19,11 @@ import FAQSection from "../components/FAQSection";
 import EnquiryForm from "./EnquiryForm";
 
 const BRAND_NAME = "Manyara Privé Vacations";
-const COMPANY_EMAIL = "Travel@manyaraprive.com";
 
 const DEFAULT_ADDRESS = "India";
 
 const EMPTY_SETTINGS = {
+  email_address: "",
   phone_number: "",
   whatsapp_number: "",
   company_address: DEFAULT_ADDRESS,
@@ -135,6 +133,7 @@ const Contact = () => {
         if (!mounted) return;
 
         setSettings({
+          email_address: data?.email_address || "",
           phone_number: data?.phone_number || "",
           whatsapp_number: data?.whatsapp_number || "",
           company_address:
@@ -164,6 +163,10 @@ const Contact = () => {
   // ============================================================
   // SETTINGS
   // ============================================================
+
+  // Email comes only from Admin → Website Settings
+  const companyEmail =
+    settings?.email_address?.trim() || "";
 
   const phoneNumber =
     settings?.phone_number?.trim() || "";
@@ -200,7 +203,7 @@ const Contact = () => {
       )}`
     : "#";
 
-  const emailHref = `mailto:${COMPANY_EMAIL}`;
+  const emailHref = companyEmail ? `mailto:${companyEmail}` : "#";
 
   // ============================================================
   // GOOGLE MAPS LINK (embed links are converted, see getMapsLink)
@@ -421,12 +424,18 @@ const Contact = () => {
                             Email
                           </p>
 
-                          <a
-                            href={emailHref}
-                            className="mt-1 inline-block break-words text-sm font-semibold text-text-dark transition-colors hover:text-accent-hover sm:text-base"
-                          >
-                            {COMPANY_EMAIL}
-                          </a>
+                          {companyEmail ? (
+                            <a
+                              href={emailHref}
+                              className="mt-1 inline-block break-words text-sm font-semibold text-text-dark transition-colors hover:text-accent-hover sm:text-base"
+                            >
+                              {companyEmail}
+                            </a>
+                          ) : (
+                            <p className="mt-1 text-sm text-muted">
+                              Email unavailable
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -612,37 +621,3 @@ const Contact = () => {
 };
 
 export default Contact;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
