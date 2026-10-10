@@ -50,9 +50,11 @@ export default function PublicSite({onPlanTrip}) {
 <Hero onPlanTrip={onPlanTrip} />
 
 
-<OfferBanner />
+
 
 <DestinationSection />
+
+<OfferBanner />
 
 <SeasonalSection />
 
