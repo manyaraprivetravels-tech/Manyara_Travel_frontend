@@ -1,8 +1,6 @@
 
 
 
-
-
 import {
   Fragment,
   useCallback,
@@ -488,7 +486,7 @@ function SlideCopy({
         {/* Subtext: max 2 lines so it never grows the hero */}
         {slide.subtext && (
           <p
-            className={`line-clamp-2 max-w-xl break-words text-white/85 [text-wrap:pretty] sm:max-w-2xl ${SUBTEXT_SIZE}`}
+            className={`line-clamp-2 max-w-xl break-words text-white/85 [text-wrap:pretty] sm:max-w-2xl [@media(max-height:700px)]:hidden ${SUBTEXT_SIZE}`}
             style={{ marginTop: GAP_SM }}
           >
             {slide.subtext}
@@ -557,7 +555,10 @@ function SlideCopy({
  */
 function SlideBackgrounds({ slides, currentId, leavingId, reducedMotion }) {
   return (
-    <div className="absolute inset-0 -z-20 bg-ink" aria-hidden="true">
+    <div
+      className="absolute inset-x-0 top-0 -z-20 h-[min(56.25vw,30svh)] overflow-hidden bg-ink sm:inset-0 sm:h-auto"
+      aria-hidden="true"
+    >
       {slides.map((slide, index) => {
         const isActive = slide.id === currentId;
         const isLeaving = slide.id === leavingId;
@@ -623,13 +624,16 @@ function SlideBackgrounds({ slides, currentId, leavingId, reducedMotion }) {
 
             {overlayClass && (
               <div
-                className={`absolute inset-0 ${overlayLayer} ${overlayClass}`}
+                className={`absolute inset-0 max-sm:hidden ${overlayLayer} ${overlayClass}`}
                 style={{ transition }}
               />
             )}
           </Fragment>
         );
       })}
+
+      {/* Phones only: the photo band fades into the dark content panel */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-1/3 bg-gradient-to-t from-ink to-transparent sm:hidden" />
     </div>
   );
 }
@@ -1569,7 +1573,7 @@ export default function Hero({ onPlanTrip }) {
       */}
       <section
         ref={sectionRef}
-        className="relative isolate flex min-h-[calc(100svh_-_var(--top-info-height,0px)_-_58px)] w-full max-w-full touch-pan-y flex-col overflow-hidden bg-ink py-[clamp(1rem,4svh,3rem)] pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))] sm:min-h-[calc(100svh_-_var(--top-info-height,0px)_-_62px)] sm:px-16 md:px-20 lg:min-h-[calc(100svh_-_var(--top-info-height,0px)_-_66px)] lg:px-24"
+        className="relative isolate flex min-h-[calc(100svh_-_var(--top-info-height,0px)_-_58px)] w-full max-w-full touch-pan-y flex-col overflow-hidden bg-ink pb-[clamp(1rem,4svh,3rem)] pt-[calc(min(56.25vw,30svh)+0.75rem)] pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))] sm:pt-[clamp(1rem,4svh,3rem)] sm:min-h-[calc(100svh_-_var(--top-info-height,0px)_-_62px)] sm:px-16 md:px-20 lg:min-h-[calc(100svh_-_var(--top-info-height,0px)_-_66px)] lg:px-24"
         aria-roledescription={isCarousel ? "carousel" : undefined}
         aria-label={
           isCarousel ? `${BRAND_NAME} featured holidays and offers` : undefined
@@ -1596,7 +1600,7 @@ export default function Hero({ onPlanTrip }) {
         />
 
         <div
-          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_30%_20%,rgba(200,19,94,0.14)_0%,transparent_60%)]"
+          className="pointer-events-none absolute inset-0 -z-10 max-sm:hidden bg-[radial-gradient(ellipse_at_30%_20%,rgba(200,19,94,0.14)_0%,transparent_60%)]"
           aria-hidden="true"
         />
 
@@ -1893,7 +1897,7 @@ export default function Hero({ onPlanTrip }) {
             {/* Why book with us: hidden on short screens so the main
                 content always fits without scrolling */}
             <ul
-              className="grid grid-cols-3 border-t border-champagne/25 pt-5 [@media(max-height:820px)]:hidden"
+              className="grid grid-cols-3 border-t border-champagne/25 pt-5 max-sm:hidden [@media(max-height:820px)]:hidden"
               style={{ marginTop: GAP_MD }}
             >
               {HIGHLIGHTS.map(({ icon: Icon, label }, index) => (
@@ -1926,6 +1930,8 @@ export default function Hero({ onPlanTrip }) {
     </>
   );
 }
+
+
 
 
 
