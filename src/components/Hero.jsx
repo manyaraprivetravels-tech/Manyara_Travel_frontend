@@ -244,6 +244,9 @@ function normalizeSlides(data, now) {
         active: item?.is_active !== false,
         image: getImageUrl(item?.image),
         imageMobile: getImageUrl(item?.image_mobile),
+        position: /^[a-z0-9% ]{1,30}$/i.test(cleanText(item?.image_position))
+          ? cleanText(item.image_position)
+          : "center",
         contentPosition: cleanText(item?.content_position),
         overlayStrength: cleanText(item?.overlay_strength),
         badge: cleanText(item?.badge),
@@ -270,6 +273,7 @@ function buildFallbackSlide(settings) {
     id: "default",
     image: FALLBACK_IMAGE,
     imageMobile: "",
+    position: "center",
     contentPosition: "middle-center",
     overlayStrength: "medium",
     badge: DEFAULT_BADGE,
@@ -544,21 +548,19 @@ function SlideCopy({
  * Backgrounds: each slide has its image and its own readability overlay.
  * Both cross-fade together, so the shade always sits behind the slide's text.
  *
- * The photo is shown WHOLE, exactly as it was uploaded: object-contain scales
- * it to fit inside the hero without cropping, zooming or stretching, so it
- * looks the same on every screen size. Where the screen shape differs from
- * the photo shape, the empty sides are filled by a heavily blurred copy of
- * the same photo (not a hard black bar), so the hero still looks seamless.
+ * The photo fills the whole hero edge to edge (object-cover) at its natural
+ * scale: there is NO zoom animation and no extra scaling, only the single
+ * crop that is needed to fill the screen shape. The focal point set in
+ * HeroManage ("image position") decides which part stays visible when the
+ * screen is a different shape from the photo, so keep the subject there.
  *
- * For the cleanest result upload a wide image for desktop (about 16:9) and
- * a portrait image for phones in the "mobile image" field of HeroManage.
+ * For phones, upload a portrait image in the "mobile image" field of
+ * HeroManage: it replaces the photo below 768px so nothing important is
+ * cropped away on a tall screen.
  */
 function SlideBackgrounds({ slides, currentId, leavingId, reducedMotion }) {
   return (
-    <div
-      className="absolute inset-x-0 top-0 -z-20 h-[min(56.25vw,30svh)] overflow-hidden bg-ink sm:inset-0 sm:h-auto"
-      aria-hidden="true"
-    >
+    <div className="absolute inset-0 -z-20 bg-ink" aria-hidden="true">
       {slides.map((slide, index) => {
         const isActive = slide.id === currentId;
         const isLeaving = slide.id === leavingId;
@@ -585,55 +587,37 @@ function SlideBackgrounds({ slides, currentId, leavingId, reducedMotion }) {
 
         return (
           <Fragment key={slide.id}>
-            <div
-              className={`absolute inset-0 overflow-hidden ${layer}`}
-              style={{ transition }}
-            >
-              {/* Blurred fill for any space around the photo */}
+            <picture>
+              {slide.imageMobile && (
+                <source
+                  media="(max-width: 767px)"
+                  srcSet={cldSrcSet(slide.imageMobile, [480, 768])}
+                  sizes="100vw"
+                />
+              )}
               <img
-                src={cld(slide.image, 480)}
+                src={cld(slide.image, 1920)}
+                srcSet={cldSrcSet(slide.image, [768, 1280, 1920, 2560])}
+                sizes="100vw"
                 alt=""
                 loading={index === 0 ? "eager" : "lazy"}
+                fetchPriority={index === 0 ? "high" : undefined}
                 decoding="async"
                 draggable={false}
-                className="absolute inset-0 h-full w-full scale-110 object-cover opacity-80 blur-2xl"
+                style={{ objectPosition: slide.position, transition }}
+                className={`absolute inset-0 h-full w-full object-cover ${layer}`}
               />
-
-              {/* The photo itself: whole, uncropped, not enlarged past fit */}
-              <picture className="contents">
-                {slide.imageMobile && (
-                  <source
-                    media="(max-width: 767px)"
-                    srcSet={cldSrcSet(slide.imageMobile, [480, 768])}
-                    sizes="100vw"
-                  />
-                )}
-                <img
-                  src={cld(slide.image, 1920)}
-                  srcSet={cldSrcSet(slide.image, [768, 1280, 1920, 2560])}
-                  sizes="100vw"
-                  alt=""
-                  loading={index === 0 ? "eager" : "lazy"}
-                  fetchPriority={index === 0 ? "high" : undefined}
-                  decoding="async"
-                  draggable={false}
-                  className="absolute inset-0 h-full w-full object-contain object-center"
-                />
-              </picture>
-            </div>
+            </picture>
 
             {overlayClass && (
               <div
-                className={`absolute inset-0 max-sm:hidden ${overlayLayer} ${overlayClass}`}
+                className={`absolute inset-0 ${overlayLayer} ${overlayClass}`}
                 style={{ transition }}
               />
             )}
           </Fragment>
         );
       })}
-
-      {/* Phones only: the photo band fades into the dark content panel */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-1/3 bg-gradient-to-t from-ink to-transparent sm:hidden" />
     </div>
   );
 }
@@ -1573,7 +1557,7 @@ export default function Hero({ onPlanTrip }) {
       */}
       <section
         ref={sectionRef}
-        className="relative isolate flex min-h-[calc(100svh_-_var(--top-info-height,0px)_-_58px)] w-full max-w-full touch-pan-y flex-col overflow-hidden bg-ink pb-[clamp(1rem,4svh,3rem)] pt-[calc(min(56.25vw,30svh)+0.75rem)] pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))] sm:pt-[clamp(1rem,4svh,3rem)] sm:min-h-[calc(100svh_-_var(--top-info-height,0px)_-_62px)] sm:px-16 md:px-20 lg:min-h-[calc(100svh_-_var(--top-info-height,0px)_-_66px)] lg:px-24"
+        className="relative isolate flex min-h-[calc(100svh_-_var(--top-info-height,0px)_-_58px)] w-full max-w-full touch-pan-y flex-col overflow-hidden bg-ink py-[clamp(1rem,4svh,3rem)] pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))] sm:min-h-[calc(100svh_-_var(--top-info-height,0px)_-_62px)] sm:px-16 md:px-20 lg:min-h-[calc(100svh_-_var(--top-info-height,0px)_-_66px)] lg:px-24"
         aria-roledescription={isCarousel ? "carousel" : undefined}
         aria-label={
           isCarousel ? `${BRAND_NAME} featured holidays and offers` : undefined
@@ -1600,7 +1584,7 @@ export default function Hero({ onPlanTrip }) {
         />
 
         <div
-          className="pointer-events-none absolute inset-0 -z-10 max-sm:hidden bg-[radial-gradient(ellipse_at_30%_20%,rgba(200,19,94,0.14)_0%,transparent_60%)]"
+          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_30%_20%,rgba(200,19,94,0.14)_0%,transparent_60%)]"
           aria-hidden="true"
         />
 
@@ -1897,7 +1881,7 @@ export default function Hero({ onPlanTrip }) {
             {/* Why book with us: hidden on short screens so the main
                 content always fits without scrolling */}
             <ul
-              className="grid grid-cols-3 border-t border-champagne/25 pt-5 max-sm:hidden [@media(max-height:820px)]:hidden"
+              className="grid grid-cols-3 border-t border-champagne/25 pt-5 [@media(max-height:820px)]:hidden"
               style={{ marginTop: GAP_MD }}
             >
               {HIGHLIGHTS.map(({ icon: Icon, label }, index) => (
