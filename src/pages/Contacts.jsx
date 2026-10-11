@@ -13,6 +13,8 @@ import {
 import { FaWhatsapp } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
+
+import { ADDRESS_LANDMARK_PARTS } from "../utils/Address";
 import { getSiteSettings } from "../api/content";
 import Footer from "../components/Footer";
 import FAQSection from "../components/FAQSection";
@@ -27,9 +29,9 @@ const EMPTY_SETTINGS = {
   phone_number: "",
   whatsapp_number: "",
   company_address: DEFAULT_ADDRESS,
+  show_address_landmark:false,
   address_url: "",
 };
-
 
 function getMapsLink(rawUrl, address) {
   const value = String(rawUrl || "").trim();
@@ -138,6 +140,7 @@ const Contact = () => {
           whatsapp_number: data?.whatsapp_number || "",
           company_address:
             data?.company_address || DEFAULT_ADDRESS,
+          show_address_landmark: data?.show_address_landmark === true,
           address_url: data?.address_url || "",
         });
       } catch (error) {
@@ -176,6 +179,10 @@ const Contact = () => {
 
   const companyAddress =
     settings?.company_address?.trim() || DEFAULT_ADDRESS;
+
+  const addressNotes = settings.show_address_landmark
+  ? ADDRESS_LANDMARK_PARTS
+  : [];
 
   const addressUrl =
     settings?.address_url?.trim() || "";
@@ -460,6 +467,19 @@ const Contact = () => {
                           <p className="mt-1 text-sm font-semibold leading-6 text-text-dark sm:text-base">
                             {companyAddress}
                           </p>
+
+                           {addressNotes.length > 0 && (
+                                <ul className="mt-2 flex flex-wrap gap-2">
+                                  {addressNotes.map((note) => (
+                                    <li
+                                      key={note}
+                                      className="inline-flex max-w-full items-center rounded-full bg-surface-strong px-3 py-1 text-xs font-medium leading-snug text-text-dark"
+                                    >
+                                      <span className="min-w-0 break-words">{note}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
 
                           {mapsHref && (
                             <a

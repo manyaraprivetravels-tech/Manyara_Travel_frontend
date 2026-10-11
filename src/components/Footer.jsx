@@ -15,6 +15,8 @@ import {
 } from "react-icons/fa";
 
 import { getSiteSettings } from "../api/content";
+import {ADDRESS_LANDMARK_PARTS} from "../utils/Address";
+
 
 const BRAND_NAME = "Manyara Privé Vacations";
 
@@ -26,8 +28,10 @@ const EMPTY_SETTINGS = {
   phone_number: "",
   whatsapp_number: "",
   company_address: DEFAULT_ADDRESS,
+  show_address_landmark:false,
   address_url: "",
 };
+
 
 function getMapsLink(rawUrl, address) {
   const value = String(rawUrl || "").trim();
@@ -224,6 +228,7 @@ export default function Footer() {
           whatsapp_number: data?.whatsapp_number || "",
           company_address:
             data?.company_address || DEFAULT_ADDRESS,
+          show_address_landmark: data?.show_address_landmark === true,
           address_url: data?.address_url || "",
         });
       } catch (error) {
@@ -268,6 +273,10 @@ export default function Footer() {
     String(
       settings?.company_address || DEFAULT_ADDRESS
     ).trim() || DEFAULT_ADDRESS;
+
+  const addressNotes = settings.show_address_landmark
+  ? ADDRESS_LANDMARK_PARTS
+  : [];
 
   const addressUrl = String(
     settings?.address_url || ""
@@ -510,6 +519,31 @@ export default function Footer() {
                   <h2 className="text-base font-semibold text-ivory sm:text-lg">
                     Find Our Location
                   </h2>
+
+                   <address className="mt-3 flex items-start gap-2.5 text-sm not-italic leading-relaxed text-ivory/75">
+                  <MapPin
+                    className="mt-0.5 h-4 w-4 shrink-0 text-accent"
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0">
+                      <p className="break-words">{companyAddress}</p>
+
+                      {addressNotes.length > 0 && (
+                        <ul className="mt-2 flex flex-wrap gap-2">
+                          {addressNotes.map((note) => (
+                            <li
+                              key={note}
+                              className="inline-flex max-w-full items-center rounded-full border border-ivory/15 bg-ivory/5 px-3 py-1 text-xs font-medium leading-snug text-ivory/80"
+                            >
+                              <span className="min-w-0 break-words">{note}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                    
+                </address>
+
                 </div>
 
                 {!loading && mapsHref && (
