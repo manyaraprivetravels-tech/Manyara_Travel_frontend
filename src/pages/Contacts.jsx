@@ -468,18 +468,21 @@ const Contact = () => {
                             {companyAddress}
                           </p>
 
-                           {addressNotes.length > 0 && (
-                                <ul className="mt-2 flex flex-wrap gap-2">
-                                  {addressNotes.map((note) => (
-                                    <li
-                                      key={note}
-                                      className="inline-flex max-w-full items-center rounded-full bg-surface-strong px-3 py-1 text-xs font-medium leading-snug text-text-dark"
-                                    >
-                                      <span className="min-w-0 break-words">{note}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
+                          {addressNotes.length > 0 && (
+                              <ul className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-snug text-text-secondary">
+                                {addressNotes.map((note, index) => (
+                                  <li key={note} className="inline-flex items-center gap-2">
+                                    {index > 0 && (
+                                      <span
+                                        className="h-1 w-1 shrink-0 rounded-full bg-accent/50"
+                                        aria-hidden="true"
+                                      />
+                                    )}
+                                    <span className="break-words">{note}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
 
                           {mapsHref && (
                             <a

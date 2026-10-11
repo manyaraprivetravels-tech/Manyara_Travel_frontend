@@ -526,22 +526,27 @@ export default function Footer() {
                     aria-hidden="true"
                   />
                   <div className="min-w-0">
-                      <p className="break-words">{companyAddress}</p>
+                    <p className="break-words font-medium text-ivory/85">
+                      {companyAddress}
+                    </p>
 
-                      {addressNotes.length > 0 && (
-                        <ul className="mt-2 flex flex-wrap gap-2">
-                          {addressNotes.map((note) => (
-                            <li
-                              key={note}
-                              className="inline-flex max-w-full items-center rounded-full border border-ivory/15 bg-ivory/5 px-3 py-1 text-xs font-medium leading-snug text-ivory/80"
-                            >
-                              <span className="min-w-0 break-words">{note}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                    
+                    {addressNotes.length > 0 && (
+                      <ul className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-snug text-ivory/55">
+                        {addressNotes.map((note, index) => (
+                          <li key={note} className="inline-flex items-center gap-2">
+                            {index > 0 && (
+                              <span
+                                className="h-1 w-1 shrink-0 rounded-full bg-accent/60"
+                                aria-hidden="true"
+                              />
+                            )}
+                            <span className="break-words">{note}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
                 </address>
 
                 </div>
