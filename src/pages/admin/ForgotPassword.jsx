@@ -12,7 +12,7 @@ import {
 } from "../../api/passwordReset";
 
 // Change this if your login route is different (e.g. "/admin/login").
-const LOGIN_PATH = "/login";
+const LOGIN_PATH = "/admin/login";
 
 const OTP_LENGTH = 6;
 const MIN_PASSWORD_LENGTH = 6;
@@ -362,7 +362,7 @@ export default function ForgotPassword() {
         {/* Brand */}
         <div className="text-center mb-6 sm:mb-8">
           <p className="font-display text-3xl sm:text-4xl font-semibold text-text-display leading-tight">
-            Manya Privé Vacations
+            Manyara Privé Vacations
           </p>
 
           <p className="text-muted text-xs sm:text-sm mt-1.5">
@@ -536,7 +536,7 @@ export default function ForgotPassword() {
 
         {/* Footer */}
         <p className="text-center text-[10px] sm:text-xs text-muted mt-5">
-          © Manya Privé Vacations
+          © Manyara Privé Vacations
         </p>
       </div>
     </div>

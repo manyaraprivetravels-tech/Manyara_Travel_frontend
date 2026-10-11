@@ -1,6 +1,4 @@
 
-
-
 import {
   Fragment,
   useCallback,
@@ -62,6 +60,10 @@ const REFRESH_MS = 60000;
 const CLOCK_MS = 30000;
 const MAX_SLIDES = 6;
 const FALLBACK_IMAGE = "/images/view1.webp";
+
+/* Space kept free above the search bar when the page auto-scrolls so the
+   suggestion list stays visible (fixed header + info bar). */
+const HEADER_CLEARANCE_PX = 96;
 
 /* Written by HeroManage after every save so other tabs revalidate. */
 const HERO_UPDATED_KEY = "manyara:hero-updated";
@@ -360,7 +362,7 @@ function SlideActions({ slide, packageById, packagesLoading, align }) {
 
   return (
     <div
-      className={`flex w-full min-w-0 flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center ${align}`}
+      className={`flex w-full min-w-0 flex-col items-stretch gap-3 sm:w-auto sm:max-w-full sm:flex-row sm:flex-wrap sm:items-center ${align}`}
     >
       {config && (
         <Link
@@ -391,6 +393,11 @@ function SlideActions({ slide, packageById, packagesLoading, align }) {
   );
 }
 
+/*
+ * The last word is italic. Italic letters lean past their box, and the
+ * headline uses line-clamp (overflow hidden), so without a little right
+ * padding the final letter can be shaved off at the edge. pr keeps it whole.
+ */
 function renderHeadline(text) {
   const words = text.trim().split(/\s+/);
   if (words.length < 3) return text;
@@ -398,7 +405,9 @@ function renderHeadline(text) {
   return (
     <>
       {words.join(" ")}{" "}
-      <em className="font-medium italic text-champagne-light">{last}</em>
+      <em className="pr-[0.1em] font-medium italic text-champagne-light">
+        {last}
+      </em>
     </>
   );
 }
@@ -414,6 +423,11 @@ function renderHeadline(text) {
  * Below sm the text block is the full width of the cell, so every slide
  * gets the same predictable width. Sizes and gaps follow the viewport
  * (see HEADLINE_SIZE, SUBTEXT_SIZE, GAP_SM, GAP_MD).
+ *
+ * Edge safety (left / right slides): every block is min-w-0 and max-w-full,
+ * long words wrap, the headline has a small inner gutter (-mx-1 px-1) so
+ * clamped italic letters are never clipped, and the eyebrow / chips wrap
+ * instead of overflowing.
  */
 function SlideCopy({
   slide,
@@ -451,10 +465,10 @@ function SlideCopy({
       aria-roledescription={count > 1 ? "slide" : undefined}
       aria-label={count > 1 ? `${index + 1} of ${count}` : undefined}
       aria-hidden={!isActive}
-      className={`col-start-1 row-start-1 flex min-w-0 flex-col transition-[opacity,transform,visibility] ease-out ${layout.wrapper} ${motion}`}
+      className={`col-start-1 row-start-1 flex min-w-0 max-w-full flex-col transition-[opacity,transform,visibility] ease-out ${layout.wrapper} ${motion}`}
     >
       <div
-        className={`flex w-full min-w-0 max-w-3xl flex-col sm:w-auto ${layout.text}`}
+        className={`flex w-full min-w-0 max-w-full flex-col sm:w-auto sm:max-w-3xl ${layout.text}`}
       >
         {/* Eyebrow: wraps to two lines on small phones instead of being cut */}
         <div
@@ -468,7 +482,7 @@ function SlideCopy({
             />
           )}
 
-          <span className="line-clamp-2 min-w-0 text-[11px] font-medium uppercase leading-snug tracking-[0.2em] text-champagne sm:text-xs sm:tracking-[0.28em]">
+          <span className="line-clamp-2 min-w-0 break-words text-[11px] font-medium uppercase leading-snug tracking-[0.2em] text-champagne sm:text-xs sm:tracking-[0.28em]">
             {slide.badge || DEFAULT_BADGE}
           </span>
 
@@ -480,9 +494,11 @@ function SlideCopy({
           )}
         </div>
 
-        {/* pb-1 stops line-clamp (overflow hidden) from clipping descenders */}
+        {/* pb keeps descenders from being clipped by line-clamp (overflow
+            hidden); -mx-1 px-1 gives italic letters room at both edges
+            without moving the text. */}
         <Heading
-          className={`line-clamp-3 max-w-3xl break-words pb-1 font-display font-medium tracking-[-0.01em] text-white [text-wrap:balance] ${HEADLINE_SIZE}`}
+          className={`-mx-1 line-clamp-3 min-w-0 max-w-[calc(100%+0.5rem)] break-words px-1 pb-1.5 font-display font-medium tracking-[-0.01em] text-white [text-wrap:balance] ${HEADLINE_SIZE}`}
         >
           {renderHeadline(slide.headline)}
         </Heading>
@@ -490,7 +506,7 @@ function SlideCopy({
         {/* Subtext: max 2 lines so it never grows the hero */}
         {slide.subtext && (
           <p
-            className={`line-clamp-2 max-w-xl break-words text-white/85 [text-wrap:pretty] sm:max-w-2xl [@media(max-height:700px)]:hidden ${SUBTEXT_SIZE}`}
+            className={`line-clamp-2 min-w-0 max-w-xl break-words pb-0.5 text-white/85 [text-wrap:pretty] sm:max-w-2xl [@media(max-height:700px)]:hidden ${SUBTEXT_SIZE}`}
             style={{ marginTop: GAP_SM }}
           >
             {slide.subtext}
@@ -514,12 +530,14 @@ function SlideCopy({
             )}
 
             {slide.endsAt !== null && (
-              <span className="inline-flex items-center gap-1.5 text-xs text-white/85 sm:text-[13px]">
+              <span className="inline-flex max-w-full items-center gap-1.5 text-xs text-white/85 sm:text-[13px]">
                 <CalendarClock
                   className="h-4 w-4 shrink-0"
                   aria-hidden="true"
                 />
-                Offer valid till {formatShortDate(slide.endsAt)}
+                <span className="min-w-0 break-words">
+                  Offer valid till {formatShortDate(slide.endsAt)}
+                </span>
               </span>
             )}
           </div>
@@ -528,7 +546,7 @@ function SlideCopy({
         {/* Actions: stacked full-width on mobile, side by side from sm */}
         {hasActions && (
           <div
-            className={`flex w-full min-w-0 ${layout.actions}`}
+            className={`flex w-full min-w-0 max-w-full ${layout.actions}`}
             style={{ marginTop: GAP_MD }}
           >
             <SlideActions
@@ -918,8 +936,9 @@ function CustomPackageModal({
         if (event.target === event.currentTarget && !submitting) onClose();
       }}
     >
-      {/* Bottom sheet on phones, centred card from sm */}
-      <div className="relative max-h-[92svh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border bg-card p-5 shadow-brand sm:max-h-[90svh] sm:rounded-3xl sm:p-7">
+      {/* Bottom sheet on phones, centred card from sm. The bottom padding
+          respects the phone's home-indicator safe area. */}
+      <div className="relative max-h-[92svh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border bg-card p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-brand sm:max-h-[90svh] sm:rounded-3xl sm:p-7">
         <button
           type="button"
           onClick={onClose}
@@ -1262,6 +1281,9 @@ export default function Hero({ onPlanTrip }) {
   const [touchPaused, setTouchPaused] = useState(false);
 
   const canAutoplay = isCarousel && !reducedMotion;
+
+  /* The slideshow also holds still while the search list is open, so the
+     background does not change while someone is choosing a package. */
   const isPaused =
     !canAutoplay ||
     userPaused ||
@@ -1269,7 +1291,8 @@ export default function Hero({ onPlanTrip }) {
     focusPaused ||
     pageHidden ||
     offscreen ||
-    touchPaused;
+    touchPaused ||
+    showSuggestions;
 
   const barRefs = useRef([]);
   const elapsedRef = useRef(0);
@@ -1444,8 +1467,54 @@ export default function Hero({ onPlanTrip }) {
     };
 
     document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick, {
+      passive: true,
+    });
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+    };
   }, []);
+
+  /*
+   * The suggestion list is part of the page flow, so opening it makes the
+   * hero taller (it is never clipped by the hero's overflow-hidden). Scroll
+   * just enough to bring the whole list on screen, but never so far that the
+   * search bar slides under the fixed header. visualViewport accounts for
+   * the on-screen keyboard on phones.
+   */
+  useEffect(() => {
+    if (!showSuggestions || packagesLoading) return undefined;
+
+    const timer = setTimeout(() => {
+      const element = searchContainerRef.current;
+      if (!element) return;
+
+      const rect = element.getBoundingClientRect();
+      const viewportHeight =
+        window.visualViewport?.height ?? window.innerHeight;
+
+      const overflow = rect.bottom - (viewportHeight - 16);
+      if (overflow <= 0) return;
+
+      const room = rect.top - HEADER_CLEARANCE_PX;
+      const delta = Math.min(overflow, Math.max(room, 0));
+
+      if (delta > 0) {
+        window.scrollBy({
+          top: delta,
+          behavior: reducedMotion ? "auto" : "smooth",
+        });
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [
+    showSuggestions,
+    packagesLoading,
+    filteredPackageOptions.length,
+    reducedMotion,
+  ]);
 
   /* Picking a package from the dropdown opens it directly. */
   const handlePackageSelect = (pkg) => {
@@ -1545,8 +1614,8 @@ export default function Hero({ onPlanTrip }) {
       {/*
         Height: exactly one screen minus the fixed header (58 / 62 / 66px,
         matching Header.jsx) and the info bar (--top-info-height). min-h, not
-        h, so the hero can still grow if a very small window needs it, and
-        content is never clipped.
+        h, so the hero grows when it needs to (for example when the search
+        suggestions open) and content is never clipped.
 
         Padding: vertical padding follows the screen height (svh); side
         padding respects the device safe area on phones and leaves room for
@@ -1637,7 +1706,7 @@ export default function Hero({ onPlanTrip }) {
               button can never stretch the column past the screen edge.
             */
             <div
-              className="grid min-h-[clamp(9rem,26svh,17rem)] flex-1 grid-cols-[minmax(0,1fr)]"
+              className="grid min-h-[clamp(9rem,26svh,17rem)] min-w-0 flex-1 grid-cols-[minmax(0,1fr)]"
               aria-live={isPaused ? "polite" : "off"}
             >
               {slides.map((slide, index) => (
@@ -1676,10 +1745,16 @@ export default function Hero({ onPlanTrip }) {
               </div>
             )}
 
-            {/* Search (z-30 keeps the dropdown above everything below it) */}
+            {/*
+              Search. The form and its suggestion list are siblings inside
+              this container, and the list sits in normal page flow (not
+              absolutely positioned). The hero's overflow-hidden therefore
+              can never cut it off: opening the list makes the hero taller
+              and pushes "Tell us your plan" and the highlights down.
+            */}
             <div
               ref={searchContainerRef}
-              className="relative z-30 mt-2 w-full text-left"
+              className="relative z-30 mt-2 w-full scroll-mt-28 text-left"
             >
               <form
                 onSubmit={handleSearch}
@@ -1727,95 +1802,95 @@ export default function Hero({ onPlanTrip }) {
                     {searching ? "Searching..." : "Explore Packages"}
                   </button>
                 </div>
-
-                {/* Package suggestions: click to open that package.
-                    The list height follows the screen so it never runs off it. */}
-                {showSuggestions &&
-                  !packagesLoading &&
-                  filteredPackageOptions.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-border bg-card shadow-travel-hover">
-                      <div className="border-b border-border px-4 py-3">
-                        <p className="text-xs font-semibold text-muted">
-                          Explore Journeys
-                        </p>
-                      </div>
-
-                      <div className="max-h-[min(16rem,32svh)] overflow-y-auto p-2">
-                        {filteredPackageOptions.map((pkg) => (
-                          <button
-                            key={pkg.id}
-                            type="button"
-                            onClick={() => handlePackageSelect(pkg)}
-                            className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-surface-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                          >
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-lighter text-primary">
-                              <MapPin className="h-4 w-4" aria-hidden="true" />
-                            </span>
-
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm font-semibold text-text-dark group-hover:text-primary">
-                                {getPackageTitle(pkg) || "Package"}
-                              </span>
-                              <span className="mt-0.5 block truncate text-xs text-muted">
-                                {[
-                                  pkg?.destination,
-                                  pkg?.duration_days
-                                    ? `${pkg.duration_days} ${
-                                        Number(pkg.duration_days) === 1
-                                          ? "day"
-                                          : "days"
-                                      }`
-                                    : "",
-                                ]
-                                  .filter(Boolean)
-                                  .join(" · ")}
-                              </span>
-                            </span>
-
-                            <ChevronRight
-                              className="h-4 w-4 shrink-0 text-ink-300 transition group-hover:translate-x-1 group-hover:text-primary"
-                              aria-hidden="true"
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                {showSuggestions &&
-                  !packagesLoading &&
-                  destination.trim() &&
-                  filteredPackageOptions.length === 0 && (
-                    <div className="absolute left-0 right-0 top-full z-50 mt-2 rounded-2xl border border-border bg-card p-4 shadow-travel-hover">
-                      <div className="flex gap-3">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-lighter text-primary">
-                          <MapPin className="h-4 w-4" aria-hidden="true" />
-                        </span>
-
-                        <div className="min-w-0">
-                          <p className="break-words text-sm font-semibold text-text-dark">
-                            No package found for "{destination}"
-                          </p>
-                          <p className="mt-1 text-xs leading-relaxed text-muted">
-                            You can still request a customized package for this
-                            destination.
-                          </p>
-                          <button
-                            type="button"
-                            onClick={openCustomPackageRequest}
-                            className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                          >
-                            <MessageCircle
-                              className="h-3.5 w-3.5 shrink-0"
-                              aria-hidden="true"
-                            />
-                            Request custom package
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
               </form>
+
+              {/* Package suggestions: click to open that package. The list
+                  height follows the screen and scrolls inside itself. */}
+              {showSuggestions &&
+                !packagesLoading &&
+                filteredPackageOptions.length > 0 && (
+                  <div className="mt-2 overflow-hidden rounded-2xl border border-border bg-card shadow-travel-hover">
+                    <div className="border-b border-border px-4 py-3">
+                      <p className="text-xs font-semibold text-muted">
+                        Explore Journeys
+                      </p>
+                    </div>
+
+                    <div className="max-h-[min(18rem,40svh)] overflow-y-auto overscroll-contain p-2">
+                      {filteredPackageOptions.map((pkg) => (
+                        <button
+                          key={pkg.id}
+                          type="button"
+                          onClick={() => handlePackageSelect(pkg)}
+                          className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-surface-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        >
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-lighter text-primary">
+                            <MapPin className="h-4 w-4" aria-hidden="true" />
+                          </span>
+
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold text-text-dark group-hover:text-primary">
+                              {getPackageTitle(pkg) || "Package"}
+                            </span>
+                            <span className="mt-0.5 block truncate text-xs text-muted">
+                              {[
+                                pkg?.destination,
+                                pkg?.duration_days
+                                  ? `${pkg.duration_days} ${
+                                      Number(pkg.duration_days) === 1
+                                        ? "day"
+                                        : "days"
+                                    }`
+                                  : "",
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </span>
+                          </span>
+
+                          <ChevronRight
+                            className="h-4 w-4 shrink-0 text-ink-300 transition group-hover:translate-x-1 group-hover:text-primary"
+                            aria-hidden="true"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              {showSuggestions &&
+                !packagesLoading &&
+                destination.trim() &&
+                filteredPackageOptions.length === 0 && (
+                  <div className="mt-2 rounded-2xl border border-border bg-card p-4 shadow-travel-hover">
+                    <div className="flex gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-lighter text-primary">
+                        <MapPin className="h-4 w-4" aria-hidden="true" />
+                      </span>
+
+                      <div className="min-w-0">
+                        <p className="break-words text-sm font-semibold text-text-dark">
+                          No package found for "{destination}"
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-muted">
+                          You can still request a customized package for this
+                          destination.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={openCustomPackageRequest}
+                          className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        >
+                          <MessageCircle
+                            className="h-3.5 w-3.5 shrink-0"
+                            aria-hidden="true"
+                          />
+                          Request custom package
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
               {searchError && (
                 <div
@@ -2112,29 +2187,31 @@ export default function Hero({ onPlanTrip }) {
 
 // /*
 //  * One button system for slide actions: same min-height, radius, type and
-//  * focus ring everywhere.
-//  *
-//  * Buttons use min-h-12 + padding so long labels wrap to a second line
-//  * instead of being clipped, fill the row on phones, and shrink back to
-//  * their natural width from sm.
-//  *
-//  *   BTN_PRIMARY - solid accent (main actions)
-//  *   BTN_GLASS   - translucent white (secondary actions)
+//  * focus ring everywhere. Long labels wrap to a second line instead of being
+//  * clipped, buttons fill the row on phones and shrink back to their natural
+//  * width from sm.
 //  */
 // const BTN =
 //   "inline-flex min-h-12 w-full max-w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-center text-sm font-semibold leading-snug tracking-wide transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:px-7";
 // const BTN_PRIMARY = `${BTN} bg-accent text-white shadow-brand hover:bg-accent-hover`;
 // const BTN_GLASS = `${BTN} border border-white/40 bg-white/10 text-white backdrop-blur hover:bg-white/20`;
 
-// /* Hides the scrollbar on the swipeable chip row. */
-// const NO_SCROLLBAR =
-//   "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
-
 // /*
-//  * Layout, top to bottom:
-//  *   copy region (slide text, placed by the admin's content position)
-//  *   -> centred block: pager, search, category chips, plan button, highlights
+//  * Viewport-fluid sizing. Every size below follows the screen (vw = width,
+//  * svh = visible height), so nothing relies on fixed pixel sizes and the
+//  * whole hero stays inside one screen:
+//  *
+//  *   - phones are limited by width (vw), laptops by height (svh)
+//  *   - clamp(min, fluid, max) keeps text readable at the extremes
+//  *
+//  * "length:" tells Tailwind the arbitrary value is a font-size, not a colour.
 //  */
+// const HEADLINE_SIZE =
+//   "text-[length:clamp(1.65rem,min(8.5vw,6.4svh),4.25rem)] leading-[1.08]";
+// const SUBTEXT_SIZE =
+//   "text-[length:clamp(0.875rem,min(3.6vw,2.3svh),1.125rem)] leading-relaxed";
+// const GAP_SM = "clamp(0.5rem,1.6svh,1.25rem)";
+// const GAP_MD = "clamp(0.75rem,2.5svh,2rem)";
 
 // /* ============================================================
 //    HELPERS
@@ -2302,8 +2379,7 @@ export default function Hero({ onPlanTrip }) {
 //  *
 //  * On phones the category button uses the short label ("Explore Mountains")
 //  * so it fits on one line; the full label is shown from sm. The package
-//  * button shows up to two lines of the package name instead of one
-//  * truncated line.
+//  * button shows up to two lines of the package name.
 //  */
 // function SlideActions({ slide, packageById, packagesLoading, align }) {
 //   const config = PACKAGE_TYPE_CONFIG[slide.packageType];
@@ -2366,13 +2442,12 @@ export default function Hero({ onPlanTrip }) {
 //  * incoming text fades in with a small upward drift.
 //  *
 //  * Every slide shares one grid cell. Each slide places its own text block
-//  * (top / middle / bottom x left / center / right) from the admin's
-//  * content position. Long text is clamped so one slide cannot make the
-//  * whole hero grow.
+//  * (top / middle / bottom x left / center / right) from the admin's content
+//  * position. Long text is clamped so one slide cannot make the hero grow.
 //  *
-//  * Below sm the text block is forced to the full width of the cell (w-full)
-//  * so every slide gets the same, predictable width no matter which side the
-//  * admin positioned it on.
+//  * Below sm the text block is the full width of the cell, so every slide
+//  * gets the same predictable width. Sizes and gaps follow the viewport
+//  * (see HEADLINE_SIZE, SUBTEXT_SIZE, GAP_SM, GAP_MD).
 //  */
 // function SlideCopy({
 //   slide,
@@ -2417,7 +2492,8 @@ export default function Hero({ onPlanTrip }) {
 //       >
 //         {/* Eyebrow: wraps to two lines on small phones instead of being cut */}
 //         <div
-//           className={`mb-4 flex max-w-full items-center gap-3 sm:mb-6 ${layout.actions}`}
+//           className={`flex max-w-full items-center gap-3 ${layout.actions}`}
+//           style={{ marginBottom: GAP_SM }}
 //         >
 //           {horizontal !== "right" && (
 //             <span
@@ -2439,13 +2515,18 @@ export default function Hero({ onPlanTrip }) {
 //         </div>
 
 //         {/* pb-1 stops line-clamp (overflow hidden) from clipping descenders */}
-//         <Heading className="line-clamp-3 max-w-3xl break-words pb-1 font-display text-[2rem] font-medium leading-[1.08] tracking-[-0.01em] text-white [text-wrap:balance] [@media(min-width:380px)]:text-[2.5rem] [@media(min-width:380px)]:leading-[1.05] sm:text-6xl lg:text-[4.25rem]">
+//         <Heading
+//           className={`line-clamp-3 max-w-3xl break-words pb-1 font-display font-medium tracking-[-0.01em] text-white [text-wrap:balance] ${HEADLINE_SIZE}`}
+//         >
 //           {renderHeadline(slide.headline)}
 //         </Heading>
 
-//         {/* Subtext: max 2 lines on phones, 3 from sm */}
+//         {/* Subtext: max 2 lines so it never grows the hero */}
 //         {slide.subtext && (
-//           <p className="mt-3 line-clamp-2 max-w-xl break-words text-[15px] leading-relaxed text-white/85 [text-wrap:pretty] sm:mt-5 sm:line-clamp-3 sm:max-w-2xl sm:text-lg sm:leading-8">
+//           <p
+//             className={`line-clamp-2 max-w-xl break-words text-white/85 [text-wrap:pretty] sm:max-w-2xl [@media(max-height:700px)]:hidden ${SUBTEXT_SIZE}`}
+//             style={{ marginTop: GAP_SM }}
+//           >
 //             {slide.subtext}
 //           </p>
 //         )}
@@ -2453,7 +2534,8 @@ export default function Hero({ onPlanTrip }) {
 //         {/* Offer chip + validity (chip wraps instead of overflowing) */}
 //         {hasMeta && (
 //           <div
-//             className={`mt-4 flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 ${layout.actions}`}
+//             className={`flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 ${layout.actions}`}
+//             style={{ marginTop: GAP_SM }}
 //           >
 //             {slide.offerText && (
 //               <span className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold leading-snug text-primary-dark shadow-travel-card">
@@ -2479,7 +2561,10 @@ export default function Hero({ onPlanTrip }) {
 
 //         {/* Actions: stacked full-width on mobile, side by side from sm */}
 //         {hasActions && (
-//           <div className={`mt-5 flex w-full min-w-0 sm:mt-6 ${layout.actions}`}>
+//           <div
+//             className={`flex w-full min-w-0 ${layout.actions}`}
+//             style={{ marginTop: GAP_MD }}
+//           >
 //             <SlideActions
 //               slide={slide}
 //               packageById={packageById}
@@ -2495,13 +2580,17 @@ export default function Hero({ onPlanTrip }) {
 
 // /*
 //  * Backgrounds: each slide has its image and its own readability overlay.
-//  * Both cross-fade together, so the shade always sits behind the slide's
-//  * text.
+//  * Both cross-fade together, so the shade always sits behind the slide's text.
 //  *
-//  * The image is NOT scaled or zoomed. It is drawn at 100% with object-cover
-//  * (fills the hero without distortion) and only its opacity animates, so it
-//  * looks identical on mobile and desktop. A larger source size is requested
-//  * for wide screens so the picture stays sharp instead of looking stretched.
+//  * The photo fills the whole hero edge to edge (object-cover) at its natural
+//  * scale: there is NO zoom animation and no extra scaling, only the single
+//  * crop that is needed to fill the screen shape. The focal point set in
+//  * HeroManage ("image position") decides which part stays visible when the
+//  * screen is a different shape from the photo, so keep the subject there.
+//  *
+//  * For phones, upload a portrait image in the "mobile image" field of
+//  * HeroManage: it replaces the photo below 768px so nothing important is
+//  * cropped away on a tall screen.
 //  */
 // function SlideBackgrounds({ slides, currentId, leavingId, reducedMotion }) {
 //   return (
@@ -2569,8 +2658,8 @@ export default function Hero({ onPlanTrip }) {
 
 // /*
 //  * Pager: progress segments and a quiet pause button (no slide numbers).
-//  * Phones change slides by swiping or tapping a segment (no arrow buttons,
-//  * so the segments get the room); the side arrows (>= sm) live in the hero.
+//  * Phones change slides by swiping or tapping a segment; the side arrows
+//  * (>= sm) live in the hero.
 //  */
 // function SlidePager({
 //   slides,
@@ -2601,7 +2690,7 @@ export default function Hero({ onPlanTrip }) {
 //               onClick={() => onSelect(index)}
 //               aria-label={`Show slide ${index + 1} of ${count}: ${slide.headline}`}
 //               aria-current={isActive ? "true" : undefined}
-//               className="group flex-1 rounded-md py-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+//               className="group flex-1 rounded-md py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
 //             >
 //               <span className="block h-1 overflow-hidden rounded-full bg-white/30 transition-colors group-hover:bg-white/45">
 //                 <span
@@ -2864,7 +2953,7 @@ export default function Hero({ onPlanTrip }) {
 //       }}
 //     >
 //       {/* Bottom sheet on phones, centred card from sm */}
-//       <div className="relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border bg-card p-5 shadow-brand sm:max-h-[90vh] sm:rounded-3xl sm:p-7">
+//       <div className="relative max-h-[92svh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border bg-card p-5 shadow-brand sm:max-h-[90svh] sm:rounded-3xl sm:p-7">
 //         <button
 //           type="button"
 //           onClick={onClose}
@@ -3363,8 +3452,7 @@ export default function Hero({ onPlanTrip }) {
 //     const dx = touch.clientX - start.x;
 //     const dy = touch.clientY - start.y;
 
-//     // Lighter threshold so a normal thumb swipe always registers.
-//     // The slide then changes with the same cross-fade as autoplay.
+//     // Light threshold so a normal thumb swipe always registers.
 //     if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.3) {
 //       if (dx < 0) goNext();
 //       else goPrev();
@@ -3374,13 +3462,6 @@ export default function Hero({ onPlanTrip }) {
 //   const handleTouchCancel = () => {
 //     swipeRef.current = null;
 //     setTouchPaused(false);
-//   };
-
-//   /* The chip row scrolls sideways itself, so it must not change slides. */
-//   // eslint-disable-next-line no-unused-vars
-//   const stopSwipe = {
-//     onTouchStart: (e) => e.stopPropagation(),
-//     onTouchEnd: (e) => e.stopPropagation(),
 //   };
 
 //   /* ==========================================================
@@ -3496,15 +3577,21 @@ export default function Hero({ onPlanTrip }) {
 //       />
 
 //       {/*
-//         Side padding on phones respects the device safe area (notches /
-//         landscape) with a 1.25rem minimum. From sm the padding is wider so
-//         the side arrows sit in the gutter and never overlap the content.
+//         Height: exactly one screen minus the fixed header (58 / 62 / 66px,
+//         matching Header.jsx) and the info bar (--top-info-height). min-h, not
+//         h, so the hero can still grow if a very small window needs it, and
+//         content is never clipped.
+
+//         Padding: vertical padding follows the screen height (svh); side
+//         padding respects the device safe area on phones and leaves room for
+//         the side arrows from sm.
+
 //         touch-pan-y: vertical scrolling stays native, while horizontal
 //         swipes are handed to the slide swipe handler.
 //       */}
 //       <section
 //         ref={sectionRef}
-//         className="relative isolate flex min-h-[640px] touch-pan-y flex-col overflow-hidden bg-ink pb-10 pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))] pt-12 sm:px-24 sm:py-16 lg:min-h-[740px] lg:px-28 lg:py-20"
+//         className="relative isolate flex min-h-[calc(100svh_-_var(--top-info-height,0px)_-_58px)] w-full max-w-full touch-pan-y flex-col overflow-hidden bg-ink py-[clamp(1rem,4svh,3rem)] pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))] sm:min-h-[calc(100svh_-_var(--top-info-height,0px)_-_62px)] sm:px-16 md:px-20 lg:min-h-[calc(100svh_-_var(--top-info-height,0px)_-_66px)] lg:px-24"
 //         aria-roledescription={isCarousel ? "carousel" : undefined}
 //         aria-label={
 //           isCarousel ? `${BRAND_NAME} featured holidays and offers` : undefined
@@ -3566,7 +3653,7 @@ export default function Hero({ onPlanTrip }) {
 //           {/* ---------- Slide copy region: text is placed per slide ---------- */}
 //           {copyLoading ? (
 //             <div
-//               className="flex min-h-[18rem] flex-1 flex-col items-start justify-center space-y-3 sm:min-h-[20rem] sm:items-center lg:min-h-[24rem]"
+//               className="flex min-h-[clamp(9rem,26svh,17rem)] flex-1 flex-col items-start justify-center space-y-3 sm:items-center"
 //               role="status"
 //               aria-label={`Loading ${BRAND_NAME} hero content`}
 //             >
@@ -3584,7 +3671,7 @@ export default function Hero({ onPlanTrip }) {
 //               button can never stretch the column past the screen edge.
 //             */
 //             <div
-//               className="grid min-h-[18rem] flex-1 grid-cols-[minmax(0,1fr)] sm:min-h-[20rem] lg:min-h-[24rem]"
+//               className="grid min-h-[clamp(9rem,26svh,17rem)] flex-1 grid-cols-[minmax(0,1fr)]"
 //               aria-live={isPaused ? "polite" : "off"}
 //             >
 //               {slides.map((slide, index) => (
@@ -3603,7 +3690,10 @@ export default function Hero({ onPlanTrip }) {
 //           )}
 
 //           {/* ---------- Centred block: pager, search, plan, highlights ---------- */}
-//           <div className="mx-auto mt-6 w-full max-w-3xl sm:mt-8">
+//           <div
+//             className="mx-auto w-full max-w-3xl"
+//             style={{ marginTop: GAP_MD }}
+//           >
 //             {/* Pager (progress bars only, no numbers) */}
 //             {isCarousel && !copyLoading && (
 //               <div className="min-w-0" {...hoverPauseProps}>
@@ -3620,16 +3710,16 @@ export default function Hero({ onPlanTrip }) {
 //               </div>
 //             )}
 
-//             {/* Search (z-30 keeps the dropdown above the chips) */}
+//             {/* Search (z-30 keeps the dropdown above everything below it) */}
 //             <div
 //               ref={searchContainerRef}
-//               className="relative z-30 mt-3 w-full text-left sm:mt-4"
+//               className="relative z-30 mt-2 w-full text-left"
 //             >
 //               <form
 //                 onSubmit={handleSearch}
 //                 className="relative flex w-full flex-col overflow-visible rounded-3xl bg-white/95 text-text-dark shadow-2xl ring-1 ring-champagne/50 backdrop-blur sm:flex-row sm:rounded-full"
 //               >
-//                 <div className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 sm:px-5 sm:py-3.5">
+//                 <div className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2.5 sm:px-5 sm:py-3">
 //                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-lighter text-primary">
 //                     <MapPin className="h-5 w-5" aria-hidden="true" />
 //                   </span>
@@ -3672,7 +3762,8 @@ export default function Hero({ onPlanTrip }) {
 //                   </button>
 //                 </div>
 
-//                 {/* Package suggestions: click to open that package */}
+//                 {/* Package suggestions: click to open that package.
+//                     The list height follows the screen so it never runs off it. */}
 //                 {showSuggestions &&
 //                   !packagesLoading &&
 //                   filteredPackageOptions.length > 0 && (
@@ -3683,7 +3774,7 @@ export default function Hero({ onPlanTrip }) {
 //                         </p>
 //                       </div>
 
-//                       <div className="max-h-64 overflow-y-auto p-2">
+//                       <div className="max-h-[min(16rem,32svh)] overflow-y-auto p-2">
 //                         {filteredPackageOptions.map((pkg) => (
 //                           <button
 //                             key={pkg.id}
@@ -3796,29 +3887,11 @@ export default function Hero({ onPlanTrip }) {
 //               )}
 //             </div>
 
-//             {/* Browse by trip type (solid chips, swipeable on phones) */}
-//             {/* <div
-//               className={`-mx-5 mt-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0 ${NO_SCROLLBAR}`}
-//               aria-label="Browse by trip type"
-//               {...stopSwipe}
-//             >
-//               {Object.entries(PACKAGE_TYPE_CONFIG).map(([type, config]) => {
-//                 const Icon = config.icon;
-//                 return (
-//                   <Link
-//                     key={type}
-//                     to={`/packages?type=${encodeURIComponent(type)}`}
-//                     className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-champagne/50 bg-white/90 px-4 text-[13px] font-medium tracking-wide text-text-dark transition-colors hover:border-champagne hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
-//                   >
-//                     <Icon className="h-4 w-4 text-primary" aria-hidden="true" />
-//                     {config.short}
-//                   </Link>
-//                 );
-//               })}
-//             </div> */}
-
 //             {/* Plan button */}
-//             <div className="mt-6 flex flex-col items-stretch gap-2 sm:items-center">
+//             <div
+//               className="flex flex-col items-stretch gap-2 sm:items-center"
+//               style={{ marginTop: GAP_MD }}
+//             >
 //               <button
 //                 type="button"
 //                 onClick={handlePlanTrip}
@@ -3834,13 +3907,17 @@ export default function Hero({ onPlanTrip }) {
 //                   aria-hidden="true"
 //                 />
 //               </button>
-//               <p className="text-xs text-white/80 sm:text-center">
+//               <p className="text-xs text-white/80 sm:text-center [@media(max-height:760px)]:hidden">
 //                 A journey designed around you
 //               </p>
 //             </div>
 
-//             {/* Why book with us */}
-//             <ul className="mt-8 grid grid-cols-3 border-t border-champagne/25 pt-6 [@media(max-height:700px)]:hidden">
+//             {/* Why book with us: hidden on short screens so the main
+//                 content always fits without scrolling */}
+//             <ul
+//               className="grid grid-cols-3 border-t border-champagne/25 pt-5 [@media(max-height:820px)]:hidden"
+//               style={{ marginTop: GAP_MD }}
+//             >
 //               {HIGHLIGHTS.map(({ icon: Icon, label }, index) => (
 //                 <li
 //                   key={label}
@@ -3871,4 +3948,5 @@ export default function Hero({ onPlanTrip }) {
 //     </>
 //   );
 // }
+
 
