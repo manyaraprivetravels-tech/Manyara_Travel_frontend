@@ -193,10 +193,10 @@ export default function BlogDetail() {
   }, [post]);
 
   const blogSlug = post?.slug || slug;
-  const blogTitle = post?.title || "On a Trip Holiday Blog";
+  const blogTitle = post?.title || "Manyara Prive Vacations Blog";
   const blogExcerpt =
     post?.excerpt ||
-    "Travel inspiration, destination guides and holiday ideas from OnaTrip Holiday.";
+    "Travel inspiration, destination guides and holiday ideas from Manyara Prive VacationsaTrip Holiday.";
   const blogContent = post?.content || "";
 
   // Parsed once, used by the renderer and by the video structured data.
@@ -269,7 +269,7 @@ export default function BlogDetail() {
                 >
                   <img
                     src={imageUrl}
-                    alt={caption || post?.title || "OnaTrip Holiday travel image"}
+                    alt={caption || post?.title || "Manyara Prive VacationsaTrip Holiday travel image"}
                     className="h-auto w-full object-cover"
                     loading="lazy"
                     decoding="async"
@@ -346,15 +346,15 @@ export default function BlogDetail() {
       description: blogExcerpt,
       datePublished: post.published_at || undefined,
       dateModified: post.updated_at || post.published_at || undefined,
-      author: { "@type": "Organization", name: "OnaTrip Holiday" },
-      publisher: { "@type": "Organization", name: "OnaTrip Holiday" },
+      author: { "@type": "Organization", name: "Manyara Prive VacationsaTrip Holiday" },
+      publisher: { "@type": "Organization", name: "Manyara Prive VacationsaTrip Holiday" },
       mainEntityOfPage: { "@type": "WebPage", "@id": blogUrl },
       url: blogUrl,
     };
 
     if (coverImageUrl) blogPosting.image = [coverImageUrl];
 
-    // One VideoObject per YouTube video in the post (helps video results in search)
+    // Manyara Prive Vacationse VideoObject per YouTube video in the post (helps video results in search)
     const videoIds = [
       ...new Set(
         blocks
@@ -602,7 +602,7 @@ export default function BlogDetail() {
 
               <p className="mt-3 max-w-2xl text-sm leading-7 text-text sm:text-base">
                 Discover beautiful destinations and carefully planned holiday
-                packages with OnaTrip Holiday.
+                packages with Manyara Prive VacationsaTrip Holiday.
               </p>
 
               <Link

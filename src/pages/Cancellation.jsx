@@ -79,19 +79,19 @@ export default function Cancellation() {
   };
 
   const pageDescription =
-    "Read On a Trip Holiday's booking and cancellation policy, including applicable cancellation terms, conditions and booking requirements.";
+    "Read Manyara Prive Vacations  booking and cancellation policy, including applicable cancellation terms, conditions and booking requirements.";
 
   const jsonLd = useMemo(
     () => [
       {
         "@context": "https://schema.org",
         "@type": "WebPage",
-        name: "Booking & Cancellation Policy | On a Trip Holiday",
+        name: "Booking & Cancellation Policy | Manyara Prive Vacations",
         url: `${SITE_URL}${CANCELLATION_PATH}`,
         description: pageDescription,
         isPartOf: {
           "@type": "WebSite",
-          name: "On a Trip Holiday",
+          name: "Manyara Prive Vacations",
           url: SITE_URL,
         },
         about: {
@@ -190,7 +190,7 @@ export default function Cancellation() {
 
                 <p className="mt-5 max-w-2xl text-sm leading-7 text-navy/65 sm:text-base sm:leading-8">
                   Please review our booking and cancellation terms
-                  before confirming your travel plans with On a Trip
+                  before confirming your travel plans with Manyara Prive Vacations a Trip
                   Holiday.
                 </p>
               </div>
@@ -618,19 +618,19 @@ export default function Cancellation() {
 //   };
 
 //   const pageDescription =
-//     "Read On a Trip Holiday's booking and cancellation policy, including applicable cancellation terms, conditions and booking requirements.";
+//     "Read Manyara Prive Vacations a Trip Holiday's booking and cancellation policy, including applicable cancellation terms, conditions and booking requirements.";
 
 //   const jsonLd = useMemo(
 //     () => [
 //       {
 //         "@context": "https://schema.org",
 //         "@type": "WebPage",
-//         name: "Booking & Cancellation Policy | On a Trip Holiday",
+//         name: "Booking & Cancellation Policy | Manyara Prive Vacations a Trip Holiday",
 //         url: `${SITE_URL}${CANCELLATION_PATH}`,
 //         description: pageDescription,
 //         isPartOf: {
 //           "@type": "WebSite",
-//           name: "On a Trip Holiday",
+//           name: "Manyara Prive Vacations a Trip Holiday",
 //           url: SITE_URL,
 //         },
 //         about: {
@@ -701,7 +701,7 @@ export default function Cancellation() {
 //               <p className="mt-4 max-w-2xl text-sm leading-7 text-ivory/65 sm:text-base">
 //                 Please review our booking and cancellation terms and
 //                 applicable conditions before confirming your travel booking
-//                 with On a Trip Holiday.
+//                 with Manyara Prive Vacations a Trip Holiday.
 //               </p>
 //             </div>
 //           </div>

@@ -252,11 +252,11 @@ export default function HappyMomentDetail() {
           moment.created_at || undefined,
         author: {
           "@type": "Organization",
-          name: "On a Trip Holiday",
+          name: "Manyara Prive Vacations",
         },
         publisher: {
           "@type": "Organization",
-          name: "On a Trip Holiday",
+          name: "Manyara Prive Vacations",
         },
       },
       {
@@ -483,7 +483,7 @@ export default function HappyMomentDetail() {
 
       <Helmet>
         <title>
-          {title} | On a Trip Holiday
+          {title} | Manyara Prive Vacations a Trip Holiday
         </title>
 
         <meta
@@ -824,7 +824,7 @@ export default function HappyMomentDetail() {
               </p>
 
               <p className="mt-0.5 text-xs text-ink-500">
-                Memories with On a Trip Holiday
+                Memories with Manyara Prive Vacations a Trip Holiday
               </p>
             </div>
           </div>
@@ -1202,7 +1202,7 @@ export default function HappyMomentDetail() {
                   </h2>
 
                   <p className="mt-3 max-w-2xl text-sm leading-6 text-ink-600 sm:text-base">
-                    Let On a Trip Holiday help you
+                    Let Manyara Prive Vacations a Trip Holiday help you
                     plan a memorable journey tailored
                     to your travel preferences.
                   </p>
@@ -1778,11 +1778,11 @@ export default function HappyMomentDetail() {
 //           moment.created_at || undefined,
 //         author: {
 //           "@type": "Organization",
-//           name: "On a Trip Holiday",
+//           name: "Manyara Prive Vacations a Trip Holiday",
 //         },
 //         publisher: {
 //           "@type": "Organization",
-//           name: "On a Trip Holiday",
+//           name: "Manyara Prive Vacations a Trip Holiday",
 //         },
 //       },
 
@@ -1998,7 +1998,7 @@ export default function HappyMomentDetail() {
 
 //       <Helmet>
 //         <title>
-//           {title} | On a Trip Holiday
+//           {title} | Manyara Prive Vacations a Trip Holiday
 //         </title>
 
 //         <meta
@@ -2298,7 +2298,7 @@ export default function HappyMomentDetail() {
 //               </p>
 
 //               <p className="text-xs text-gray-500">
-//                 Memories with On a Trip Holiday
+//                 Memories with Manyara Prive Vacations a Trip Holiday
 //               </p>
 //             </div>
 //           </div>
@@ -2636,7 +2636,7 @@ export default function HappyMomentDetail() {
 //                   </h2>
 
 //                   <p className="mt-3 max-w-2xl text-sm sm:text-base leading-6 text-white/70">
-//                     Let On a Trip Holiday help you
+//                     Let Manyara Prive Vacations a Trip Holiday help you
 //                     plan a memorable journey tailored
 //                     to your travel preferences.
 //                   </p>
