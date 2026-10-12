@@ -2,16 +2,8 @@
 import { useEffect, useState } from "react";
 import { peekCache, subscribe } from "../api/content";
 
-/*
- * Reads a cached API function (anything made with query() in content.js).
- *
- *   const { data, loading, error } = useQuery(getFaqs);
- *   const { data } = useQuery(getPackageBySlug, slug);
- *
- * - Cached data is there on the FIRST render, so there is no loader flash.
- * - `loading` is true only when there is nothing cached yet.
- * - When a background refresh brings newer data, `data` updates by itself.
- */
+
+
 export function useQuery(query, ...args) {
   const key = query.key(...args);
 

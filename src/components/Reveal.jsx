@@ -53,12 +53,6 @@ export function useInView({
   return [ref, inView];
 }
 
-/* ==========================================================
-   <Reveal>
-   Single element (section heading, intro paragraph, one image).
-   variant: "up" (default) | "fade" | "scale"
-   delay:   step index, 1 step = 90ms (see index CSS)
-========================================================== */
 export function Reveal({
   as: Tag = "div",
   variant = "up",
@@ -84,16 +78,7 @@ export function Reveal({
   );
 }
 
-/* ==========================================================
-   <RevealGroup>
-   ONE observer for a whole grid / list. Each direct child is
-   revealed with a stagger (max 8 steps so long lists never
-   feel slow).
 
-   Direct children must accept `className` and `style`
-   (plain DOM elements, or components that forward them).
-   Don't pass a <Fragment> as a child.
-========================================================== */
 export function RevealGroup({
   as: Tag = "div",
   variant = "up",

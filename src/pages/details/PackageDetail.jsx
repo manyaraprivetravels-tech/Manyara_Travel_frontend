@@ -1,7 +1,6 @@
 
 
 
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -50,8 +49,6 @@ const PRIMARY_BUTTON =
 
 /* =========================================================
    HELPERS
-   (outside the component so they are stable and can be
-   used inside useMemo without dependency warnings)
 ========================================================= */
 
 const getImageUrl = (image) => {
@@ -112,6 +109,37 @@ const formatDuration = (days, nights) => {
 /* =========================================================
    SMALL COMPONENTS
 ========================================================= */
+
+/*
+  FullImage
+  Shows the WHOLE image (object-contain, never cropped).
+  A blurred, dimmed copy of the same image fills any empty
+  space so portrait / odd-ratio photos still look polished.
+*/
+function FullImage({ src, alt, eager = false, imgClassName = "" }) {
+  return (
+    <>
+      <img
+        src={src}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full scale-110 object-cover opacity-50 blur-2xl"
+        loading={eager ? "eager" : "lazy"}
+        decoding="async"
+      />
+
+      <img
+        src={src}
+        alt={alt}
+        className={`relative mx-auto block ${imgClassName}`}
+        {...(eager
+          ? { fetchPriority: "high", loading: "eager" }
+          : { loading: "lazy" })}
+        decoding="async"
+      />
+    </>
+  );
+}
 
 function InfoCard({ icon, label, value }) {
   return (
@@ -194,7 +222,7 @@ function DetailSkeleton() {
         <div className="h-4 w-48 rounded bg-primary/10" />
         <div className="mt-8 h-5 w-40 rounded bg-primary/10" />
         <div className="mt-4 h-12 w-3/4 rounded bg-primary/10" />
-        <div className="mt-8 aspect-[4/3] rounded-3xl bg-primary/10 sm:aspect-[16/9] lg:aspect-[21/9]" />
+        <div className="mt-8 aspect-[4/3] rounded-3xl bg-primary/10 sm:aspect-[16/9]" />
 
         <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-4">
@@ -634,39 +662,18 @@ export default function PackageDetail() {
 
         {/* ==================================================
             HERO IMAGE
+            Full image, never cropped (object-contain). A blurred
+            copy fills any empty space. No 21:9 breakpoint.
         ================================================== */}
         <section className="mb-8 sm:mb-10 lg:mb-14">
-          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-surface-strong shadow-travel-card sm:aspect-[16/9] sm:rounded-3xl lg:aspect-[21/9]">
+          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-surface-strong shadow-travel-card sm:aspect-[16/9] sm:rounded-3xl">
             {coverImage ? (
-              <>
-                <img
-                  src={coverImage}
-                  alt={pkg.title}
-                  className="h-full w-full object-cover"
-                  fetchPriority="high"
-                  decoding="async"
-                  width="1400"
-                  height="600"
-                />
-
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-900/65 via-ink-900/5 to-transparent" />
-
-                <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7 lg:p-10">
-                  {pkg.destination && (
-                    <div className="flex items-center gap-2 text-sm font-medium text-white/90 sm:text-base">
-                      <MapPin
-                        className="h-[18px] w-[18px] text-accent-bright"
-                        aria-hidden="true"
-                      />
-                      <span>{pkg.destination}</span>
-                    </div>
-                  )}
-
-                  <p className="mt-1 font-display text-2xl font-semibold text-white sm:text-3xl lg:text-4xl">
-                    Your journey starts here
-                  </p>
-                </div>
-              </>
+              <FullImage
+                src={coverImage}
+                alt={pkg.title}
+                eager
+                imgClassName="h-full w-full object-contain"
+              />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-surface-soft">
                 <MapPin
@@ -742,7 +749,10 @@ export default function PackageDetail() {
               </RevealGroup>
             </section>
 
-            {/* ITINERARY */}
+            {/* ITINERARY
+                Uses a plain div instead of RevealGroup so the days are
+                always visible immediately (RevealGroup was leaving this
+                tall section hidden until a scroll/re-render). */}
             {itinerary.length > 0 && (
               <section id="itinerary">
                 <div className="mb-5 flex items-end justify-between gap-4 sm:mb-6">
@@ -753,7 +763,7 @@ export default function PackageDetail() {
                   <span className="text-sm text-muted">{itineraryDaysLabel}</span>
                 </div>
 
-                <RevealGroup className="space-y-5 sm:space-y-6">
+                <div className="space-y-5 sm:space-y-6">
                   {itinerary.map((item, index) => (
                     <article
                       key={`${item.day}-${index}`}
@@ -773,16 +783,13 @@ export default function PackageDetail() {
                         </div>
                       )}
 
+                      {/* Image height follows the image: nothing is cropped */}
                       {item.image && (
-                        <div className="img-zoom mt-5 aspect-[16/9] overflow-hidden bg-surface-strong sm:aspect-[2/1]">
-                          <img
+                        <div className="relative mt-5 overflow-hidden bg-surface-strong">
+                          <FullImage
                             src={item.image}
                             alt={`${pkg.title} - Day ${item.day}`}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                            decoding="async"
-                            width="1200"
-                            height="600"
+                            imgClassName="h-auto max-h-[32rem] w-full object-contain"
                           />
                         </div>
                       )}
@@ -796,7 +803,7 @@ export default function PackageDetail() {
                       )}
                     </article>
                   ))}
-                </RevealGroup>
+                </div>
               </section>
             )}
 
@@ -1170,16 +1177,6 @@ export default function PackageDetail() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
 
 
 

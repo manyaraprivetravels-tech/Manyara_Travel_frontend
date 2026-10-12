@@ -221,10 +221,12 @@ export const getPackagesByCollection = query(
   SHORT_FRESH_FOR
 );
 
-/* Call after any admin create / update / delete of a package.
-   Matches "packages:", "package:", "package-slug:" and
-   "packages-collection:" in one go. */
-export const invalidatePackages = () => clearCacheByPrefix("package");
+
+export const invalidatePackages = () => {
+  clearCacheByPrefix("packages:");
+  clearCacheByPrefix("package:");
+  clearCacheByPrefix("packages-collection:");
+};
 
 /* ============================================================
    TESTIMONIALS
