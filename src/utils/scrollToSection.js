@@ -1,77 +1,144 @@
 
+
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const easeInOutCubic = (t) =>
+  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+// Only one scroll animation may run at a time (double taps, repeat clicks).
+let cancelActiveScroll = null;
+
 export function scrollToSection(id, { gap = 20, minOffset = 64 } = {}) {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+
   const target = document.getElementById(id);
   if (!target) return;
 
-  // Space covered by whatever is pinned to the top RIGHT NOW.
-  // Called every frame, so it follows the info bar hiding or showing.
+  if (cancelActiveScroll) cancelActiveScroll();
+
+  const root = document.documentElement;
+
+  // Find the pinned bars once. Re-measuring them every frame is still done
+  // below (so an info bar hiding or showing is followed), but searching the
+  // whole page for them on every frame is wasted work.
+  const pinned = Array.from(
+    document.querySelectorAll("header, nav, [data-site-header]")
+  ).filter((el) => {
+    const { position } = window.getComputedStyle(el);
+    return position === "fixed" || position === "sticky";
+  });
+
+  // Space covered by whatever is pinned to the top right now.
   const getOffset = () => {
     let measured = 0;
-    document.querySelectorAll("header, nav, [data-site-header]").forEach((el) => {
-      const { position } = getComputedStyle(el);
-      if (position !== "fixed" && position !== "sticky") return;
 
+    pinned.forEach((el) => {
       const rect = el.getBoundingClientRect();
-      if (rect.top <= 0 && rect.bottom > 0) measured = Math.max(measured, rect.bottom);
+      if (rect.top <= 0 && rect.bottom > 0) {
+        measured = Math.max(measured, rect.bottom);
+      }
     });
+
     return Math.max(measured, minOffset);
   };
 
-  // Where the page should be scrolled to, based on the current layout.
-  const getTargetTop = () =>
-    Math.max(
-      0,
-      target.getBoundingClientRect().top + window.scrollY - getOffset() - gap,
-    );
+  // Where the page should end up. Clamped to the real scroll range: a
+  // section near the bottom of the page can never reach an unreachable
+  // position, so the animation can always finish.
+  const getTargetTop = () => {
+    const maxScroll = Math.max(root.scrollHeight - root.clientHeight, 0);
+    const top =
+      target.getBoundingClientRect().top + window.scrollY - getOffset() - gap;
 
-  const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    return clamp(top, 0, maxScroll);
+  };
 
-  target.setAttribute("tabindex", "-1");
+  // Keyboard and screen-reader users land on the section too.
+  if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
   target.focus({ preventScroll: true });
 
+  // IMPORTANT: if the site CSS has `html { scroll-behavior: smooth }`, every
+  // window.scrollTo() below would be smoothed again by the browser. That is
+  // what made the scroll stop and then crawl. Turn it off while animating.
+  const previousBehavior = root.style.scrollBehavior;
+  root.style.scrollBehavior = "auto";
+
+  const reduce = Boolean(
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+  );
+
+  const interruptEvents = ["wheel", "touchstart", "keydown"];
+  let frame = 0;
+  let timer = 0;
+  let finished = false;
+
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+
+    cancelAnimationFrame(frame);
+    clearTimeout(timer);
+    interruptEvents.forEach((type) => window.removeEventListener(type, finish));
+
+    root.style.scrollBehavior = previousBehavior;
+    cancelActiveScroll = null;
+  };
+
+  cancelActiveScroll = finish;
+
   if (reduce) {
-    window.scrollTo({ top: getTargetTop() });
+    window.scrollTo(0, getTargetTop());
     // Layout can still shift after the jump, so correct once more.
-    setTimeout(() => window.scrollTo({ top: getTargetTop() }), 150);
+    timer = setTimeout(() => {
+      if (finished) return;
+      window.scrollTo(0, getTargetTop());
+      finish();
+    }, 150);
     return;
   }
 
   const start = window.scrollY;
-  const duration = 600;
+  const distance = getTargetTop() - start;
+
+  if (Math.abs(distance) < 2) {
+    finish();
+    return;
+  }
+
+  // Short hops are quick, long distances take longer (never more than 1s).
+  const duration = clamp(Math.abs(distance) * 0.35, 450, 1000);
   const startTime = performance.now();
-  let frame = 0;
   let settled = 0;
 
-  const cancel = () => {
-    cancelAnimationFrame(frame);
-    ["wheel", "touchstart", "keydown"].forEach((type) =>
-      window.removeEventListener(type, cancel),
-    );
-  };
-
   // Let the user take over at any time.
-  ["wheel", "touchstart", "keydown"].forEach((type) =>
-    window.addEventListener(type, cancel, { passive: true }),
+  interruptEvents.forEach((type) =>
+    window.addEventListener(type, finish, { passive: true })
   );
 
   const tick = (now) => {
-    const progress = Math.min((now - startTime) / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 3); // ease-out
+    if (finished) return;
+
+    const progress = clamp((now - startTime) / duration, 0, 1);
+    const eased = easeInOutCubic(progress);
+
+    // Re-measured each frame, so lazy images and a hiding info bar above the
+    // section never make the scroll land short.
     const goal = getTargetTop();
 
-    window.scrollTo({ top: start + (goal - start) * eased });
+    window.scrollTo(0, start + (goal - start) * eased);
 
     if (progress < 1) {
       frame = requestAnimationFrame(tick);
       return;
     }
 
-    // Animation is done, but keep correcting until the layout stops moving.
-    if (Math.abs(window.scrollY - goal) < 1) settled += 1;
+    // Animation is done: keep correcting briefly until the layout is still.
+    if (Math.abs(window.scrollY - goal) < 1.5) settled += 1;
     else settled = 0;
 
-    if (settled >= 5 || now - startTime > duration + 1500) {
-      cancel();
+    if (settled >= 4 || now - startTime > duration + 800) {
+      finish();
       return;
     }
 
@@ -113,27 +180,96 @@ export function scrollToSection(id, { gap = 20, minOffset = 64 } = {}) {
 
 
 
-// export function scrollToSection(id, gap = 16) {
+
+
+
+
+
+
+
+// export function scrollToSection(id, { gap = 20, minOffset = 64 } = {}) {
 //   const target = document.getElementById(id);
 //   if (!target) return;
 
-//   // Measure whatever is currently pinned to the top (navbar, info bar).
-//   // A header that has hidden itself on scroll is ignored automatically.
-//   let offset = 0;
-//   document.querySelectorAll("header, nav").forEach((el) => {
-//     const { position } = getComputedStyle(el);
-//     if (position !== "fixed" && position !== "sticky") return;
+//   // Space covered by whatever is pinned to the top RIGHT NOW.
+//   // Called every frame, so it follows the info bar hiding or showing.
+//   const getOffset = () => {
+//     let measured = 0;
+//     document.querySelectorAll("header, nav, [data-site-header]").forEach((el) => {
+//       const { position } = getComputedStyle(el);
+//       if (position !== "fixed" && position !== "sticky") return;
 
-//     const rect = el.getBoundingClientRect();
-//     if (rect.top <= 0 && rect.bottom > 0) offset = Math.max(offset, rect.bottom);
-//   });
+//       const rect = el.getBoundingClientRect();
+//       if (rect.top <= 0 && rect.bottom > 0) measured = Math.max(measured, rect.bottom);
+//     });
+//     return Math.max(measured, minOffset);
+//   };
 
-//   const top = target.getBoundingClientRect().top + window.scrollY - offset - gap;
+//   // Where the page should be scrolled to, based on the current layout.
+//   const getTargetTop = () =>
+//     Math.max(
+//       0,
+//       target.getBoundingClientRect().top + window.scrollY - getOffset() - gap,
+//     );
+
 //   const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-//   window.scrollTo({ top: Math.max(0, top), behavior: reduce ? "auto" : "smooth" });
-
-//   // Move keyboard focus to the form section without scrolling again.
 //   target.setAttribute("tabindex", "-1");
 //   target.focus({ preventScroll: true });
+
+//   if (reduce) {
+//     window.scrollTo({ top: getTargetTop() });
+//     // Layout can still shift after the jump, so correct once more.
+//     setTimeout(() => window.scrollTo({ top: getTargetTop() }), 150);
+//     return;
+//   }
+
+//   const start = window.scrollY;
+//   const duration = 600;
+//   const startTime = performance.now();
+//   let frame = 0;
+//   let settled = 0;
+
+//   const cancel = () => {
+//     cancelAnimationFrame(frame);
+//     ["wheel", "touchstart", "keydown"].forEach((type) =>
+//       window.removeEventListener(type, cancel),
+//     );
+//   };
+
+//   // Let the user take over at any time.
+//   ["wheel", "touchstart", "keydown"].forEach((type) =>
+//     window.addEventListener(type, cancel, { passive: true }),
+//   );
+
+//   const tick = (now) => {
+//     const progress = Math.min((now - startTime) / duration, 1);
+//     const eased = 1 - Math.pow(1 - progress, 3); // ease-out
+//     const goal = getTargetTop();
+
+//     window.scrollTo({ top: start + (goal - start) * eased });
+
+//     if (progress < 1) {
+//       frame = requestAnimationFrame(tick);
+//       return;
+//     }
+
+//     // Animation is done, but keep correcting until the layout stops moving.
+//     if (Math.abs(window.scrollY - goal) < 1) settled += 1;
+//     else settled = 0;
+
+//     if (settled >= 5 || now - startTime > duration + 1500) {
+//       cancel();
+//       return;
+//     }
+
+//     frame = requestAnimationFrame(tick);
+//   };
+
+//   frame = requestAnimationFrame(tick);
 // }
+
+
+
+
+

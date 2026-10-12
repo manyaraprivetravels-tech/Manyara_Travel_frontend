@@ -15,7 +15,6 @@ import {
 } from "react-icons/fa";
 
 import { getSiteSettings } from "../api/content";
-import {ADDRESS_LANDMARK_PARTS} from "../utils/Address";
 
 
 const BRAND_NAME = "Manyara Privé Vacations";
@@ -28,7 +27,8 @@ const EMPTY_SETTINGS = {
   phone_number: "",
   whatsapp_number: "",
   company_address: DEFAULT_ADDRESS,
-  show_address_landmark:false,
+  address_landmark: "",
+  show_address_landmark: false,
   address_url: "",
 };
 
@@ -228,6 +228,7 @@ export default function Footer() {
           whatsapp_number: data?.whatsapp_number || "",
           company_address:
             data?.company_address || DEFAULT_ADDRESS,
+          address_landmark: data?.address_landmark || "",
           show_address_landmark: data?.show_address_landmark === true,
           address_url: data?.address_url || "",
         });
@@ -274,9 +275,10 @@ export default function Footer() {
       settings?.company_address || DEFAULT_ADDRESS
     ).trim() || DEFAULT_ADDRESS;
 
-  const addressNotes = settings.show_address_landmark
-  ? ADDRESS_LANDMARK_PARTS
-  : [];
+  // Shown only when ticked in Admin and the text is not empty
+  const addressLandmark = settings.show_address_landmark
+    ? String(settings.address_landmark || "").trim()
+    : "";
 
   const addressUrl = String(
     settings?.address_url || ""
@@ -520,35 +522,24 @@ export default function Footer() {
                     Find Our Location
                   </h2>
 
-                   <address className="mt-3 flex items-start gap-2.5 text-sm not-italic leading-relaxed text-ivory/75">
-                  <MapPin
-                    className="mt-0.5 h-4 w-4 shrink-0 text-accent"
-                    aria-hidden="true"
-                  />
-                  <div className="min-w-0">
-                    <p className="break-words font-medium text-ivory/85">
-                      {companyAddress}
-                    </p>
+                  <address className="mt-3 flex items-start gap-2.5 text-sm not-italic leading-relaxed text-ivory/75">
+                    <MapPin
+                      className="mt-0.5 h-4 w-4 shrink-0 text-accent"
+                      aria-hidden="true"
+                    />
 
-                    {addressNotes.length > 0 && (
-                      <ul className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-snug text-ivory/55">
-                        {addressNotes.map((note, index) => (
-                          <li key={note} className="inline-flex items-center gap-2">
-                            {index > 0 && (
-                              <span
-                                className="h-1 w-1 shrink-0 rounded-full bg-accent/60"
-                                aria-hidden="true"
-                              />
-                            )}
-                            <span className="break-words">{note}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
+                    <div className="min-w-0">
+                      <p className="break-words font-medium text-ivory/85">
+                        {companyAddress}
+                      </p>
 
-                </address>
-
+                      {addressLandmark && (
+                        <p className="mt-1.5 break-words text-xs leading-snug text-ivory/55">
+                          {addressLandmark}
+                        </p>
+                      )}
+                    </div>
+                  </address>
                 </div>
 
                 {!loading && mapsHref && (
@@ -577,7 +568,7 @@ export default function Footer() {
 
       {/* Copyright */}
       <div className="border-t border-ivory/10">
-        <div className="mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 py-4 text-center sm:flex-row sm:justify-between sm:px-6 sm:text-left lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 py-4 text-center sm:flex-row sm:justify-between sm:text-left sm:px-6 lg:px-8">
           <p className="text-xs leading-5 text-ivory/50">
             © {new Date().getFullYear()} {BRAND_NAME}. All rights reserved.
           </p>

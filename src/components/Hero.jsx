@@ -609,7 +609,7 @@ function SlideBackgrounds({ slides, currentId, leavingId, reducedMotion }) {
               {slide.imageMobile && (
                 <source
                   media="(max-width: 767px)"
-                  srcSet={cldSrcSet(slide.imageMobile, [480, 768])}
+                  srcSet={cldSrcSet(slide.imageMobile, [480, 768,1080,1440])}
                   sizes="100vw"
                 />
               )}

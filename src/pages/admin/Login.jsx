@@ -203,7 +203,7 @@ export default function Login() {
 
         {/* Footer */}
         <p className="text-center text-[10px] sm:text-xs text-muted mt-5">
-          © Manya Privé Vacations
+          © Manyara Privé Vacations
         </p>
       </div>
     </div>

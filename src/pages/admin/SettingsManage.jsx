@@ -10,9 +10,6 @@ import api from "../../api/axios";
 // so the Top Info Bar updates immediately after saving.
 import { updateSiteSettings } from "../../api/content";
 
-// Landmark text shown when "Show landmark" is ticked (edit it in that file).
-import { ADDRESS_LANDMARK } from "../../utils/Address";
-
 import {
   MapPin,
   Phone,
@@ -35,13 +32,8 @@ import {
   FaTwitter,
 } from "react-icons/fa";
 
-// ============================================================
-// API
-// ============================================================
 
-// GET /settings
-// Public endpoint - no auth needed.
-// Called directly (not cached) so the admin form always loads fresh data.
+
 const getSettings = () =>
   api.get("/settings").then((res) => res.data);
 
@@ -132,6 +124,8 @@ export default function SettingsManage() {
         phone_number: s?.phone_number || "",
         whatsapp_number: s?.whatsapp_number || "",
         company_address: s?.company_address || "",
+        // Landmark text typed by the admin
+        address_landmark: s?.address_landmark || "",
         // Off unless the admin has ticked it
         show_address_landmark: s?.show_address_landmark === true,
         address_url: s?.address_url || "",
@@ -268,6 +262,8 @@ export default function SettingsManage() {
         whatsapp_number: form.whatsapp_number.trim() || null,
 
         company_address: form.company_address.trim() || null,
+
+        address_landmark: form.address_landmark.trim() || null,
 
         show_address_landmark: Boolean(form.show_address_landmark),
 
@@ -884,7 +880,7 @@ export default function SettingsManage() {
                 </p>
               </Field>
 
-              {/* Landmark tick option */}
+              {/* Landmark: typed by admin + tick to show/hide */}
               <div
                 className={`rounded-xl border px-4 py-3 transition-colors ${
                   form.show_address_landmark
@@ -892,9 +888,21 @@ export default function SettingsManage() {
                     : "border-navy/10 bg-navy/[0.025]"
                 }`}
               >
+                <Field label="Landmark note">
+                  <input
+                    type="text"
+                    name="address_landmark"
+                    value={form.address_landmark}
+                    onChange={handleChange}
+                    placeholder="Near Metro Station, opposite City Mall"
+                    maxLength={200}
+                    className={inputClass}
+                  />
+                </Field>
+
                 <label
                   htmlFor="show_address_landmark"
-                  className="flex cursor-pointer items-start gap-3"
+                  className="mt-3 flex cursor-pointer items-start gap-3"
                 >
                   <input
                     id="show_address_landmark"
@@ -906,8 +914,8 @@ export default function SettingsManage() {
                   />
 
                   <span className="min-w-0">
-                    <span className="block break-words text-sm font-semibold text-navy">
-                      {ADDRESS_LANDMARK}
+                    <span className="block text-sm font-semibold text-navy">
+                      Show landmark
                     </span>
 
                     <span className="mt-1 block text-xs text-navy/50">
@@ -918,9 +926,18 @@ export default function SettingsManage() {
                   </span>
                 </label>
 
+                {form.show_address_landmark &&
+                  !form.address_landmark.trim() && (
+                    <p className="mt-2 text-xs text-amber-700">
+                      Landmark is ticked but empty, so nothing
+                      will be shown.
+                    </p>
+                  )}
+
                 {/* Live preview of how the address will read */}
                 {(form.company_address.trim() ||
-                  form.show_address_landmark) && (
+                  (form.show_address_landmark &&
+                    form.address_landmark.trim())) && (
                   <div className="mt-3 rounded-lg border border-navy/10 bg-white px-3 py-2.5">
                     <p className="text-[11px] font-medium text-navy/40">
                       Address preview
@@ -932,11 +949,12 @@ export default function SettingsManage() {
                       </p>
                     )}
 
-                    {form.show_address_landmark && (
-                      <p className="mt-1 break-words text-sm font-medium text-navy">
-                        {ADDRESS_LANDMARK}
-                      </p>
-                    )}
+                    {form.show_address_landmark &&
+                      form.address_landmark.trim() && (
+                        <p className="mt-1 break-words text-sm font-medium text-navy">
+                          {form.address_landmark.trim()}
+                        </p>
+                      )}
                   </div>
                 )}
               </div>
@@ -1357,16 +1375,6 @@ const helpTextClass = "mt-1.5 break-words text-xs text-navy/40";
 
 
 
-
-
-
-
-
-
-
-
-
-
 // // src/pages/admin/SettingsManage.jsx
 
 // import { useEffect, useState } from "react";
@@ -1375,6 +1383,9 @@ const helpTextClass = "mt-1.5 break-words text-xs text-navy/40";
 // // Cached version: saving here also refreshes the cache the public site reads,
 // // so the Top Info Bar updates immediately after saving.
 // import { updateSiteSettings } from "../../api/content";
+
+// // Landmark text shown when "Show landmark" is ticked (edit it in that file).
+// import { ADDRESS_LANDMARK } from "../../utils/Address";
 
 // import {
 //   MapPin,
@@ -1495,16 +1506,9 @@ const helpTextClass = "mt-1.5 break-words text-xs text-navy/40";
 //         phone_number: s?.phone_number || "",
 //         whatsapp_number: s?.whatsapp_number || "",
 //         company_address: s?.company_address || "",
+//         // Off unless the admin has ticked it
+//         show_address_landmark: s?.show_address_landmark === true,
 //         address_url: s?.address_url || "",
-
-//         // Featured destinations
-//         featured_international: (
-//           s?.featured_international || []
-//         ).join(", "),
-
-//         featured_national: (
-//           s?.featured_national || []
-//         ).join(", "),
 //       });
 //     } catch (err) {
 //       console.error("Failed to load settings:", err);
@@ -1537,6 +1541,19 @@ const helpTextClass = "mt-1.5 break-words text-xs text-navy/40";
 //     }));
 
 //     // Remove old messages when user starts editing again
+//     setSaved(false);
+//     setError("");
+//   };
+
+//   // Checkbox change (true / false)
+//   const handleToggle = (e) => {
+//     const { name, checked } = e.target;
+
+//     setForm((previous) => ({
+//       ...previous,
+//       [name]: checked,
+//     }));
+
 //     setSaved(false);
 //     setError("");
 //   };
@@ -1626,21 +1643,9 @@ const helpTextClass = "mt-1.5 break-words text-xs text-navy/40";
 
 //         company_address: form.company_address.trim() || null,
 
+//         show_address_landmark: Boolean(form.show_address_landmark),
+
 //         address_url: form.address_url.trim() || null,
-
-//         // ======================================================
-//         // Featured destinations
-//         // ======================================================
-
-//         featured_international: form.featured_international
-//           .split(",")
-//           .map((s) => s.trim())
-//           .filter(Boolean),
-
-//         featured_national: form.featured_national
-//           .split(",")
-//           .map((s) => s.trim())
-//           .filter(Boolean),
 //       };
 
 //       // Send data to backend (also updates the public site's cache)
@@ -1659,9 +1664,13 @@ const helpTextClass = "mt-1.5 break-words text-xs text-navy/40";
 //     } catch (err) {
 //       console.error("Failed to save settings:", err);
 
+//       const detail = err?.response?.data?.detail;
+
 //       setError(
-//         err?.response?.data?.detail ||
-//           "Couldn't save settings. Please check your admin access and try again."
+//         Array.isArray(detail)
+//           ? detail.map((item) => item?.msg).filter(Boolean).join(", ")
+//           : detail ||
+//               "Couldn't save settings. Please check your admin access and try again."
 //       );
 
 //       setSaved(false);
@@ -1745,8 +1754,7 @@ const helpTextClass = "mt-1.5 break-words text-xs text-navy/40";
 
 //           <p className="mt-1 break-words text-sm text-navy/50">
 //             Manage the website-wide content, Top Info Bar,
-//             contact information, location and featured
-//             destinations.
+//             contact information and location.
 //           </p>
 //         </div>
 
@@ -1855,15 +1863,7 @@ const helpTextClass = "mt-1.5 break-words text-xs text-navy/40";
 //                         type="checkbox"
 //                         name="top_bar_enabled"
 //                         checked={Boolean(form.top_bar_enabled)}
-//                         onChange={(e) => {
-//                           setForm((previous) => ({
-//                             ...previous,
-//                             top_bar_enabled: e.target.checked,
-//                           }));
-
-//                           setSaved(false);
-//                           setError("");
-//                         }}
+//                         onChange={handleToggle}
 //                         className="h-4 w-4 rounded border-navy/20 text-navy focus:ring-navy/20"
 //                       />
 
@@ -2253,10 +2253,67 @@ const helpTextClass = "mt-1.5 break-words text-xs text-navy/40";
 //                 />
 
 //                 <p className={helpTextClass}>
-//                   This address will be displayed in the public
-//                   website footer.
+//                   This address will be displayed in the Contact
+//                   section and the public website footer.
 //                 </p>
 //               </Field>
+
+//               {/* Landmark tick option */}
+//               <div
+//                 className={`rounded-xl border px-4 py-3 transition-colors ${
+//                   form.show_address_landmark
+//                     ? "border-green-100 bg-green-50/70"
+//                     : "border-navy/10 bg-navy/[0.025]"
+//                 }`}
+//               >
+//                 <label
+//                   htmlFor="show_address_landmark"
+//                   className="flex cursor-pointer items-start gap-3"
+//                 >
+//                   <input
+//                     id="show_address_landmark"
+//                     type="checkbox"
+//                     name="show_address_landmark"
+//                     checked={Boolean(form.show_address_landmark)}
+//                     onChange={handleToggle}
+//                     className="mt-0.5 h-4 w-4 shrink-0 rounded border-navy/20 text-navy focus:ring-navy/20"
+//                   />
+
+//                   <span className="min-w-0">
+//                     <span className="block break-words text-sm font-semibold text-navy">
+//                       {ADDRESS_LANDMARK}
+//                     </span>
+
+//                     <span className="mt-1 block text-xs text-navy/50">
+//                       Tick to show this landmark note under the
+//                       address in the Contact section and the
+//                       footer. Untick to hide it.
+//                     </span>
+//                   </span>
+//                 </label>
+
+//                 {/* Live preview of how the address will read */}
+//                 {(form.company_address.trim() ||
+//                   form.show_address_landmark) && (
+//                   <div className="mt-3 rounded-lg border border-navy/10 bg-white px-3 py-2.5">
+//                     <p className="text-[11px] font-medium text-navy/40">
+//                       Address preview
+//                     </p>
+
+//                     {form.company_address.trim() && (
+//                       <p className="mt-1 whitespace-pre-line break-words text-sm text-navy">
+//                         {form.company_address.trim()}
+//                       </p>
+//                     )}
+
+//                     {form.show_address_landmark && (
+//                       <p className="mt-1 break-words text-sm font-medium text-navy">
+//                         {ADDRESS_LANDMARK}
+//                       </p>
+//                     )}
+//                   </div>
+//                 )}
+//               </div>
 //             </div>
 //           </div>
 
@@ -2432,48 +2489,6 @@ const helpTextClass = "mt-1.5 break-words text-xs text-navy/40";
 //           </div>
 
 //           {/* ====================================================
-//               FEATURED DESTINATIONS
-//           ==================================================== */}
-
-//           <div className="pt-2">
-//             <SectionTitle title="Featured Destinations" />
-
-//             <div className="mt-4 space-y-4">
-//               {/* International */}
-//               <Field label="Featured international destinations (comma-separated)">
-//                 <input
-//                   type="text"
-//                   name="featured_international"
-//                   value={form.featured_international}
-//                   onChange={handleChange}
-//                   placeholder="Dubai, Bali, Thailand, Singapore"
-//                   className={inputClass}
-//                 />
-
-//                 <p className={helpTextClass}>
-//                   Separate destinations using commas.
-//                 </p>
-//               </Field>
-
-//               {/* National */}
-//               <Field label="Featured national destinations (comma-separated)">
-//                 <input
-//                   type="text"
-//                   name="featured_national"
-//                   value={form.featured_national}
-//                   onChange={handleChange}
-//                   placeholder="Goa, Kerala, Manali, Kashmir"
-//                   className={inputClass}
-//                 />
-
-//                 <p className={helpTextClass}>
-//                   Separate destinations using commas.
-//                 </p>
-//               </Field>
-//             </div>
-//           </div>
-
-//           {/* ====================================================
 //               ERROR MESSAGE
 //           ==================================================== */}
 
@@ -2491,6 +2506,7 @@ const helpTextClass = "mt-1.5 break-words text-xs text-navy/40";
 //                 py-3
 //                 sm:px-4
 //               "
+//               role="alert"
 //             >
 //               <AlertCircle
 //                 className="mt-0.5 h-4 w-4 shrink-0 text-red-600"
@@ -2679,6 +2695,7 @@ const helpTextClass = "mt-1.5 break-words text-xs text-navy/40";
 // // ============================================================
 
 // const helpTextClass = "mt-1.5 break-words text-xs text-navy/40";
+
 
 
 

@@ -6,7 +6,7 @@ export function cld(url, width) {
   // only touch un-transformed Cloudinary URLs: .../upload/v123/...
   return url.replace(
     /\/upload\/(?=v\d+\/)/,
-    `/upload/f_auto,q_auto,c_limit,w_${width}/`
+    `/upload/f_auto,q_auto:best,c_limit,w_${width}/`
   );
 }
 

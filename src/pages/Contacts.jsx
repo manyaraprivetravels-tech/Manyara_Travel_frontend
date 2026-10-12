@@ -13,8 +13,6 @@ import {
 import { FaWhatsapp } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
-
-import { ADDRESS_LANDMARK_PARTS } from "../utils/Address";
 import { getSiteSettings } from "../api/content";
 import Footer from "../components/Footer";
 import FAQSection from "../components/FAQSection";
@@ -29,7 +27,8 @@ const EMPTY_SETTINGS = {
   phone_number: "",
   whatsapp_number: "",
   company_address: DEFAULT_ADDRESS,
-  show_address_landmark:false,
+  address_landmark: "",
+  show_address_landmark: false,
   address_url: "",
 };
 
@@ -140,6 +139,7 @@ const Contact = () => {
           whatsapp_number: data?.whatsapp_number || "",
           company_address:
             data?.company_address || DEFAULT_ADDRESS,
+          address_landmark: data?.address_landmark || "",
           show_address_landmark: data?.show_address_landmark === true,
           address_url: data?.address_url || "",
         });
@@ -180,9 +180,10 @@ const Contact = () => {
   const companyAddress =
     settings?.company_address?.trim() || DEFAULT_ADDRESS;
 
-  const addressNotes = settings.show_address_landmark
-  ? ADDRESS_LANDMARK_PARTS
-  : [];
+  // Shown only when ticked in Admin and the text is not empty
+  const addressLandmark = settings.show_address_landmark
+    ? String(settings.address_landmark || "").trim()
+    : "";
 
   const addressUrl =
     settings?.address_url?.trim() || "";
@@ -468,21 +469,11 @@ const Contact = () => {
                             {companyAddress}
                           </p>
 
-                          {addressNotes.length > 0 && (
-                              <ul className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-snug text-text-secondary">
-                                {addressNotes.map((note, index) => (
-                                  <li key={note} className="inline-flex items-center gap-2">
-                                    {index > 0 && (
-                                      <span
-                                        className="h-1 w-1 shrink-0 rounded-full bg-accent/50"
-                                        aria-hidden="true"
-                                      />
-                                    )}
-                                    <span className="break-words">{note}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
+                          {addressLandmark && (
+                            <p className="mt-1 break-words text-xs leading-snug text-text-secondary">
+                              {addressLandmark}
+                            </p>
+                          )}
 
                           {mapsHref && (
                             <a
