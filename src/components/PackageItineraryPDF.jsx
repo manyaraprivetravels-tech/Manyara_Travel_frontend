@@ -1,6 +1,3 @@
-
-
-
 const BRAND = "Manyara Prive Vacations";
 const TAGLINE = "Curated journeys. Effortless luxury.";
 
@@ -28,11 +25,28 @@ const FONT_URL =
 
 // ---- Page geometry (CSS px at 794px = A4 width) ----------------------
 const PAGE_W = 794;
-const SCALE = 1.5; // keeps the tall canvas under browser size limits
-// html2pdf slices the canvas at floor(canvasWidth * 297/210) canvas px.
-const PAGE_H = Math.floor((PAGE_W * SCALE * 297) / 210) / SCALE;
 const PAD_TOP = 40; // empty space at the top of pages 2+
 const PAD_BOTTOM = 46; // empty space at the bottom of every page
+const CONTENT_X = 48; // left/right page padding
+const DAY_BAR = 19; // 3px accent bar + 16px gap in the itinerary
+const IMG_BOX_W = PAGE_W - CONTENT_X * 2 - DAY_BAR; // width available to a day image
+const IMG_BOX_MAX_H = 360; // tallest a day image may be (no cropping, it is scaled to fit)
+
+/**
+ * Lower scale on phones: iOS Safari limits canvas area, and long
+ * packages (10-12 days with images) make a very tall canvas.
+ * html2pdf slices at floor(canvasWidth * 297/210) canvas px per page,
+ * so the CSS page height is derived from the same numbers.
+ */
+function getGeometry() {
+  const isMobile =
+    typeof navigator !== "undefined" &&
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const scale = isMobile ? 1.2 : 1.5;
+  const pageH = Math.floor((PAGE_W * scale * 297) / 210) / scale;
+
+  return { scale, pageH };
+}
 
 export const generatePackagePDF = async (pkg) => {
   if (!pkg) {
@@ -40,6 +54,7 @@ export const generatePackagePDF = async (pkg) => {
   }
 
   const { default: html2pdf } = await import("html2pdf.js");
+  const { scale: SCALE, pageH: PAGE_H } = getGeometry();
 
   // ---------------------------------------------------------
   // Normalize data
@@ -57,17 +72,31 @@ export const generatePackagePDF = async (pkg) => {
   const cancellation = normalizePolicy(pkg.cancellation_policy);
 
   const images = Array.isArray(pkg.images) ? pkg.images : [];
-  const coverImage = images.length ? getImageUrl(images[0]) : null;
+  const rawCover = images.length ? getImageUrl(images[0]) : null;
 
   const durationText = has(pkg.duration_days)
     ? `${pkg.duration_days} Days${has(pkg.duration_nights) ? ` / ${pkg.duration_nights} Nights` : ""}`
     : "";
 
   // ---------------------------------------------------------
+  // Fonts + images MUST be ready before building / measuring.
+  // preloadImages also returns each image's natural size so day
+  // images can be fitted without cropping.
+  // ---------------------------------------------------------
+  await ensureFonts();
+
+  const coverUrl = optimizeUrl(rawCover, 1400);
+  const dayUrls = itinerary.map((d) => optimizeUrl(getImageUrl(d?.image), 1200));
+  const sizes = await preloadImages([coverUrl, ...dayUrls]);
+
+  const coverImage = coverUrl && sizes.has(coverUrl) ? coverUrl : null;
+
+  // ---------------------------------------------------------
   // HTML builders
   // data-atom  = must not be split across pages
   // data-keep  = keep together with the next atom (headings)
   // data-lines = paragraph that is split into line atoms
+  // data-linestyle = extra inline style applied to every line atom
   // ---------------------------------------------------------
   const heading = (eyebrow, text) => `
     <div data-atom data-keep style="margin:0 0 12px;">
@@ -84,7 +113,7 @@ export const generatePackagePDF = async (pkg) => {
     </div>`;
 
   const paragraph = (text, size, color, lineHeight) =>
-    `<p data-lines style="font-family:${SANS};font-size:${size}px;line-height:${lineHeight};color:${color};margin:0 0 8px;white-space:pre-line;">${escapeHTML(text)}</p>`;
+    `<div data-lines style="font-family:${SANS};font-size:${size}px;line-height:${lineHeight};color:${color};margin:0 0 8px;white-space:pre-line;">${escapeHTML(text)}</div>`;
 
   const summaryCard = (label, value, accent = C.ink) => `
     <div style="flex:1;border:1px solid ${C.champagne};background:${C.champagneSoft};border-radius:12px;padding:14px 18px;text-align:center;">
@@ -122,7 +151,8 @@ export const generatePackagePDF = async (pkg) => {
     </div>`;
 
   // ---------------------------------------------------------
-  // COVER (page 1)
+  // COVER (page 1). A full-bleed hero has to fill its box, so
+  // this one image is allowed to crop (background-size: cover).
   // ---------------------------------------------------------
   const heroHTML = `
     <div data-atom style="position:relative;width:${PAGE_W}px;height:400px;overflow:hidden;background:linear-gradient(135deg,${C.roseDeep},${C.rose} 55%,#E8286F);${
@@ -149,7 +179,7 @@ export const generatePackagePDF = async (pkg) => {
     </div>`;
 
   const coverBodyHTML = `
-    <div style="padding:26px 48px 0;">
+    <div style="padding:26px ${CONTENT_X}px 0;">
       ${
         durationText || has(pkg.price)
           ? `<div data-atom style="display:flex;gap:14px;">
@@ -170,35 +200,57 @@ export const generatePackagePDF = async (pkg) => {
 
   // ---------------------------------------------------------
   // ITINERARY
+  // Each day = header block (number, title, image) + description
+  // lines. The header is one atom; the description is split into
+  // line atoms, so a page break can only fall BETWEEN lines and a
+  // long day can never be cut through. The rose bar is drawn on
+  // every atom so it stays continuous across a page break.
+  // Images are scaled to fit (contain), never cropped.
   // ---------------------------------------------------------
+  const BAR = `border-left:3px solid ${C.rose};padding-left:16px;`;
+
   const dayCard = (day, index) => {
-    const img = getImageUrl(day?.image);
     const n = has(day?.day) ? day.day : index + 1;
     const label = String(n).padStart(2, "0");
 
+    const url = dayUrls[index];
+    const size = url ? sizes.get(url) : null;
+    const description = day?.description ? String(day.description).trim() : "";
+
+    let imageHTML = "";
+    if (url && size && size.w && size.h) {
+      const fit = Math.min(IMG_BOX_W / size.w, IMG_BOX_MAX_H / size.h);
+      const w = Math.round(size.w * fit);
+      const h = Math.round(size.h * fit);
+
+      imageHTML = `
+        <div style="margin-top:10px;width:${IMG_BOX_W}px;height:${h}px;background:${C.champagneSoft};border-radius:12px;overflow:hidden;">
+          <img src="${escapeHTML(url)}" crossorigin="anonymous" alt=""
+               style="display:block;width:${w}px;height:${h}px;margin:0 auto;" />
+        </div>`;
+    }
+
     return `
-      <div data-atom style="display:flex;align-items:stretch;margin-bottom:14px;border:1px solid ${C.line};border-left:4px solid ${C.rose};border-radius:12px;overflow:hidden;background:#fff;">
-        ${
-          img
-            ? `<div style="flex:none;width:210px;min-height:150px;background-image:${cssUrl(img)};background-size:cover;background-position:center;"></div>`
-            : ""
-        }
-        <div style="flex:1;min-width:0;padding:16px 20px;">
+      <div style="margin-bottom:22px;">
+        <div data-atom ${description ? "data-keep" : ""} style="${BAR}padding-bottom:${description ? 8 : 0}px;">
           <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px;">
             <span style="font-family:${SERIF};font-size:34px;font-weight:600;color:${C.rose};line-height:1.1;">${escapeHTML(label)}</span>
             <span style="font-family:${SANS};font-size:9px;font-weight:600;letter-spacing:.28em;color:${C.gold};">DAY</span>
           </div>
           ${
             day?.title
-              ? `<div style="font-family:${SERIF};font-size:22px;font-weight:600;color:${C.ink};margin:0 0 6px;line-height:1.25;">${escapeHTML(day.title)}</div>`
+              ? `<div style="font-family:${SERIF};font-size:22px;font-weight:600;color:${C.ink};margin:0;line-height:1.25;">${escapeHTML(day.title)}</div>`
               : ""
           }
-          ${
-            day?.description
-              ? `<div style="font-family:${SANS};font-size:12px;line-height:1.65;color:${C.body};white-space:pre-line;">${escapeHTML(day.description)}</div>`
-              : ""
-          }
+          ${imageHTML}
         </div>
+        ${
+          description
+            ? `<div data-lines
+                    data-linestyle="margin-left:-19px;padding-left:16px;border-left:3px solid ${C.rose};"
+                    style="font-family:${SANS};font-size:12px;line-height:1.65;color:${C.body};white-space:pre-line;padding-left:19px;box-sizing:border-box;margin:0;">${escapeHTML(description)}</div>`
+            : ""
+        }
       </div>`;
   };
 
@@ -284,7 +336,7 @@ export const generatePackagePDF = async (pkg) => {
       ${heroHTML}
       ${coverBodyHTML}
       <div data-newpage></div>
-      <div style="padding:0 48px;">
+      <div style="padding:0 ${CONTENT_X}px;">
         ${itineraryHTML}
         ${facilitiesHTML}
         ${coverageHTML}
@@ -300,13 +352,12 @@ export const generatePackagePDF = async (pkg) => {
     const pdfContent = container.firstElementChild;
     if (!pdfContent) throw new Error("PDF content could not be created.");
 
-    // Fonts + images must be ready BEFORE measuring anything.
-    await ensureFonts();
-    await preloadImages([coverImage, ...itinerary.map((d) => getImageUrl(d?.image))]);
+    // Make sure <img> tags inside the container have finished decoding.
+    await waitForContainerImages(pdfContent);
     await nextFrame();
 
     splitParagraphsIntoLines(pdfContent);
-    paginate(pdfContent);
+    paginate(pdfContent, PAGE_H);
     await nextFrame();
 
     const fileName = `${slugify(pkg.title || "package")}-itinerary.pdf`;
@@ -349,8 +400,10 @@ export const generatePackagePDF = async (pkg) => {
 // ---------------------------------------------------------
 
 /**
- * Replace every [data-lines] paragraph with one block per rendered
+ * Replace every [data-lines] block with one block per rendered
  * line, so a page break can fall BETWEEN lines instead of through one.
+ * Optional data-linestyle is appended to each line (used to repeat
+ * the itinerary accent bar on every line).
  */
 function splitParagraphsIntoLines(root) {
   root.querySelectorAll("[data-lines]").forEach((p) => {
@@ -360,6 +413,8 @@ function splitParagraphsIntoLines(root) {
       .filter(Boolean);
 
     if (!rows.length) return;
+
+    const lineStyle = p.getAttribute("data-linestyle") || "";
 
     p.style.whiteSpace = "normal";
     p.innerHTML = rows
@@ -382,7 +437,7 @@ function splitParagraphsIntoLines(root) {
     p.innerHTML = groups
       .map(
         (g) =>
-          `<div data-atom style="white-space:nowrap;">${escapeHTML(g.words.join(" "))}</div>`
+          `<div data-atom style="white-space:nowrap;${lineStyle}">${escapeHTML(g.words.join(" "))}</div>`
       )
       .join("");
   });
@@ -393,7 +448,7 @@ function splitParagraphsIntoLines(root) {
  * page. Page n (n >= 1) usable area:
  *   [n * PAGE_H + PAD_TOP, (n + 1) * PAGE_H - PAD_BOTTOM]
  */
-function paginate(root) {
+function paginate(root, PAGE_H) {
   const rootTop = () => root.getBoundingClientRect().top;
   const topOf = (el) => el.getBoundingClientRect().top - rootTop();
   const pageStart = (n) => (n === 0 ? 0 : n * PAGE_H + PAD_TOP);
@@ -427,7 +482,7 @@ function paginate(root) {
     const rect = el.getBoundingClientRect();
     let height = rect.height;
 
-    // Headings stay with whatever comes next.
+    // Headings / day headers stay with whatever comes next.
     const next = items[i + 1];
     if (el.hasAttribute("data-keep") && next && !next.hasAttribute("data-newpage")) {
       height = next.getBoundingClientRect().bottom - rect.top;
@@ -486,21 +541,43 @@ async function ensureFonts() {
   }
 }
 
-/** Resolve once every image URL has loaded or failed. */
+/**
+ * Load every image once. Resolves to a Map(url -> {w, h}) containing
+ * only the images that loaded; failed ones are simply missing.
+ */
 function preloadImages(urls) {
+  const sizes = new Map();
+
   return Promise.all(
     urls.filter(Boolean).map(
       (url) =>
         new Promise((resolve) => {
           const img = new Image();
           img.crossOrigin = "anonymous";
-          img.onload = resolve;
+          img.onload = () => {
+            sizes.set(url, { w: img.naturalWidth, h: img.naturalHeight });
+            resolve();
+          };
           img.onerror = () => {
             console.warn("Image failed to load:", url);
             resolve();
           };
           img.src = url;
         })
+    )
+  ).then(() => sizes);
+}
+
+/** Wait until every <img> already inside the container is decoded. */
+function waitForContainerImages(root) {
+  return Promise.all(
+    Array.from(root.querySelectorAll("img")).map((img) =>
+      img.complete
+        ? Promise.resolve()
+        : new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          })
     )
   );
 }
@@ -514,6 +591,25 @@ function nextFrame() {
 // ---------------------------------------------------------
 // Data helpers
 // ---------------------------------------------------------
+
+/**
+ * Ask Cloudinary for a resized JPEG (never upscaled, never cropped).
+ * Smaller canvas, faster PDF, and avoids WebP/AVIF surprises.
+ * Non-Cloudinary or already-transformed URLs are returned unchanged.
+ */
+function optimizeUrl(url, width) {
+  if (!url) return null;
+
+  if (
+    url.includes("res.cloudinary.com") &&
+    url.includes("/upload/") &&
+    !/\/upload\/(?:[a-z]{1,3}_[^/]*\/)+/.test(url)
+  ) {
+    return url.replace("/upload/", `/upload/f_jpg,q_auto:good,w_${width},c_limit/`);
+  }
+
+  return url;
+}
 
 /** CSS url() that is safe inside an inline style attribute. */
 function cssUrl(url) {
@@ -594,9 +690,3 @@ function slugify(value) {
 }
 
 export default generatePackagePDF;
-
-
-
-
-
-

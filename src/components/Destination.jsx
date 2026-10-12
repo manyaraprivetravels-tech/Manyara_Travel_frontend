@@ -33,6 +33,9 @@ const CARD_BASIS =
 const NAV_BUTTON =
   "hidden h-12 w-12 items-center justify-center rounded-full border border-champagne/70 bg-white text-text-dark shadow-travel-card transition-all duration-300 hover:border-primary hover:bg-primary hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 sm:flex";
 
+  /* Cards shown on the home page. The rest live on the full destinations page. */
+const HOME_LIMIT = 6;
+
 /* =========================================================
    HELPERS
 ========================================================= */
@@ -480,6 +483,57 @@ const AtlasCard = memo(function AtlasCard({
 });
 
 /* =========================================================
+   VIEW ALL CARD
+========================================================= */
+
+const ViewAllCard = memo(function ViewAllCard({ total, index }) {
+  return (
+    <div
+      className={`${CARD_BASIS} reveal-item group`}
+      style={{ "--i": Math.min(index, 6) }}
+    >
+      <Link
+        to="/destinations"
+        aria-label={`View all ${total} destinations`}
+        className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4"
+      >
+        <div
+          className={`relative border border-champagne/70 bg-white p-1.5 shadow-travel-card transition-[border-color,box-shadow,transform] duration-500 ease-soft group-hover:-translate-y-1.5 group-hover:border-primary/50 ${ARCH_OUTER}`}
+        >
+          <div
+            className={`relative flex aspect-[3/4] w-full flex-col items-center justify-center overflow-hidden bg-brand-gradient px-6 text-center ${ARCH_INNER}`}
+          >
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-primary shadow-brand transition-transform duration-500 ease-soft group-hover:scale-110">
+              <Globe2 className="h-7 w-7" aria-hidden="true" />
+            </span>
+
+            <p className="mt-6 text-[10px] font-medium uppercase tracking-[0.24em] text-primary">
+              {total} destinations
+            </p>
+
+            <h3 className="mt-2 font-display text-[1.85rem] font-medium leading-[1.05] tracking-[-0.01em] text-text-display [text-wrap:balance] sm:text-[2rem]">
+              View All Destinations
+            </h3>
+
+            <p className="mt-3 text-[14px] leading-6 text-text-secondary">
+              Discover every place we plan journeys to.
+            </p>
+
+            <span className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[0.18em] text-white shadow-brand transition-colors group-hover:bg-primary-hover">
+              Explore all
+              <ArrowRight
+                className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1"
+                aria-hidden="true"
+              />
+            </span>
+          </div>
+        </div>
+      </Link>
+    </div>
+  );
+});
+
+/* =========================================================
    MAIN SECTION
 ========================================================= */
 
@@ -498,20 +552,42 @@ export default function DestinationSection() {
      DATA
   ========================================================= */
 
-  const visiblePlaces = useMemo(() => {
-    const list = Array.isArray(data)
-      ? data
-      : Array.isArray(data?.items)
-        ? data.items
-        : [];
+  // const visiblePlaces = useMemo(() => {
+  //   const list = Array.isArray(data)
+  //     ? data
+  //     : Array.isArray(data?.items)
+  //       ? data.items
+  //       : [];
 
-    return list
-      .filter((place) => place?.slug)
-      .sort(
-        (a, b) =>
-          Number(a?.display_order ?? 0) - Number(b?.display_order ?? 0)
-      );
-  }, [data]);
+  //   return list
+  //     .filter((place) => place?.slug)
+  //     .sort(
+  //       (a, b) =>
+  //         Number(a?.display_order ?? 0) - Number(b?.display_order ?? 0)
+  //     );
+  // }, [data]);
+
+
+
+  const allPlaces = useMemo(() => {
+  const list = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.items)
+      ? data.items
+      : [];
+
+  return list
+    .filter((place) => place?.slug)
+    .sort(
+      (a, b) => Number(a?.display_order ?? 0) - Number(b?.display_order ?? 0)
+    );
+}, [data]);
+
+/* Only the first few cards are rendered on the home page */
+const visiblePlaces = useMemo(() => allPlaces.slice(0, HOME_LIMIT), [allPlaces]);
+
+const showViewAll = allPlaces.length > HOME_LIMIT;
+
 
   const publishedPackages = useMemo(() => {
     const list = Array.isArray(packageResponse)
@@ -874,6 +950,11 @@ export default function DestinationSection() {
                   />
                 );
               })}
+
+              {showViewAll && (
+  <ViewAllCard total={allPlaces.length} index={visiblePlaces.length} />
+)}
+
             </div>
 
             {/* MOBILE SWIPE PROGRESS */}

@@ -1,5 +1,7 @@
 
 
+
+
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -42,36 +44,12 @@ const PACKAGE_TYPES = [
 // =========================================================
 
 const DISCOVERY_OPTIONS = [
-  {
-    key: "is_popular",
-    label: "Popular",
-    description: "Show in Popular Packages",
-  },
-  {
-    key: "is_recommended",
-    label: "Recommended",
-    description: "Show in Recommended Packages",
-  },
-  {
-    key: "is_trending",
-    label: "Trending",
-    description: "Show in Trending Packages",
-  },
-  {
-    key: "is_featured",
-    label: "Featured",
-    description: "Show in Featured Packages",
-  },
-  {
-    key: "is_new",
-    label: "New",
-    description: "Show in New Packages",
-  },
-  {
-    key: "is_most_visited",
-    label: "Most Visited",
-    description: "Show in Most Visited Packages",
-  },
+  { key: "is_popular", label: "Popular", description: "Show in Popular Packages" },
+  { key: "is_recommended", label: "Recommended", description: "Show in Recommended Packages" },
+  { key: "is_trending", label: "Trending", description: "Show in Trending Packages" },
+  { key: "is_featured", label: "Featured", description: "Show in Featured Packages" },
+  { key: "is_new", label: "New", description: "Show in New Packages" },
+  { key: "is_most_visited", label: "Most Visited", description: "Show in Most Visited Packages" },
 ];
 
 // =========================================================
@@ -125,6 +103,11 @@ const freshForm = () => ({
   exclusions: [],
 });
 
+// Stable keys for itinerary rows (so removing a middle day never
+// shifts upload / preview state onto the wrong row).
+let keyCounter = 0;
+const newKey = () => `day-${Date.now()}-${keyCounter++}`;
+
 // =========================================================
 // STYLES
 // =========================================================
@@ -136,30 +119,24 @@ const SELECT_CLASS =
   "w-full min-w-0 rounded-xl border border-border bg-white px-3.5 py-3 text-sm text-ink-800 outline-none transition-all focus:border-rose-300 focus:ring-4 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-surface";
 
 const TEXTAREA_CLASS =
-  "w-full min-w-0 resize-none rounded-xl border border-border bg-white px-3.5 py-3 text-sm text-ink-800 outline-none transition-all placeholder:text-placeholder focus:border-rose-300 focus:ring-4 focus:ring-rose-100";
+  "w-full min-w-0 resize-none rounded-xl border border-border bg-white px-3.5 py-3 text-sm leading-relaxed text-ink-800 outline-none transition-all placeholder:text-placeholder focus:border-rose-300 focus:ring-4 focus:ring-rose-100";
 
 const LABEL_CLASS = "mb-1.5 block text-sm font-semibold text-ink-800";
 
 const HELP_CLASS = "mt-1.5 text-xs leading-relaxed text-ink-500";
+
+const SECTION_TITLE = "font-display text-2xl font-semibold tracking-tight text-ink-800";
 
 // =========================================================
 // HELPERS
 // =========================================================
 
 function getDestinationName(destination) {
-  return (
-    destination?.place_name ||
-    destination?.name ||
-    destination?.title ||
-    ""
-  );
+  return destination?.place_name || destination?.name || destination?.title || "";
 }
 
 function getImageUrl(image) {
-  if (typeof image === "string") {
-    return image;
-  }
-
+  if (typeof image === "string") return image;
   return image?.url || "";
 }
 
@@ -190,11 +167,126 @@ function getApiError(error, fallback) {
       .join("\n");
   }
 
-  if (typeof detail === "string") {
-    return detail;
-  }
+  if (typeof detail === "string") return detail;
 
   return error?.message || fallback;
+}
+
+// =========================================================
+// SMALL COMPONENTS
+// =========================================================
+
+function StatCard({ label, value, accent = false }) {
+  return (
+    <div className="rounded-2xl border border-border bg-white p-4 shadow-travel-card">
+      <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">{label}</p>
+
+      <p
+        className={`mt-1 font-display text-3xl font-semibold ${
+          accent ? "text-rose-600" : "text-ink-800"
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function SectionHeader({ title, hint }) {
+  return (
+    <div className="mb-4">
+      <h3 className={SECTION_TITLE}>{title}</h3>
+      {hint && <p className="mt-1 text-xs leading-5 text-ink-500">{hint}</p>}
+    </div>
+  );
+}
+
+function DestinationTypeCard({ active, title, text, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-2xl border p-4 text-left transition-all ${
+        active
+          ? "border-rose-300 bg-rose-50 shadow-travel-card"
+          : "border-border bg-white hover:border-rose-200 hover:bg-rose-50/40"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <span
+          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+            active ? "border-rose-600 bg-rose-600" : "border-border bg-white"
+          }`}
+        >
+          {active && <span className="h-2 w-2 rounded-full bg-white" />}
+        </span>
+
+        <span>
+          <span className="block text-sm font-bold text-ink-800">{title}</span>
+          <span className="mt-1 block text-xs leading-5 text-ink-500">{text}</span>
+        </span>
+      </div>
+    </button>
+  );
+}
+
+function ListSection({
+  title,
+  hint,
+  placeholder,
+  emptyText,
+  removeLabel,
+  items,
+  onAdd,
+  onChange,
+  onRemove,
+}) {
+  return (
+    <section className="border-t border-border pt-7">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h3 className={SECTION_TITLE}>{title}</h3>
+          <p className="mt-1 text-xs text-ink-500">{hint}</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onAdd}
+          className="shrink-0 rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-100"
+        >
+          + Add
+        </button>
+      </div>
+
+      <div className="space-y-2.5">
+        {items.map((item, index) => (
+          <div key={index} className="flex gap-2">
+            <input
+              value={item}
+              onChange={(e) => onChange(index, e.target.value)}
+              placeholder={placeholder}
+              className={INPUT_CLASS}
+            />
+
+            <button
+              type="button"
+              onClick={() => onRemove(index)}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-error/15 bg-error-bg text-sm font-bold text-error-text transition-colors hover:border-error/25"
+              aria-label={removeLabel}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+
+        {items.length === 0 && (
+          <div className="rounded-xl border border-dashed border-border bg-surface-alt px-4 py-5 text-center text-xs text-ink-400">
+            {emptyText}
+          </div>
+        )}
+      </div>
+    </section>
+  );
 }
 
 // =========================================================
@@ -241,9 +333,25 @@ export default function PackagesManage() {
 
   const [typeFilter, setTypeFilter] = useState("all");
 
+  // Image uploads currently running (so Save can't run mid-upload)
+  const [busyUploads, setBusyUploads] = useState(() => new Set());
+
   const requestIdRef = useRef(0);
 
   const initialLoadDone = useRef(false);
+
+  const uploading = busyUploads.size > 0;
+
+  const trackUpload = (key) => (isBusy) =>
+    setBusyUploads((prev) => {
+      if (prev.has(key) === isBusy) return prev;
+
+      const next = new Set(prev);
+      if (isBusy) next.add(key);
+      else next.delete(key);
+
+      return next;
+    });
 
   const hasActiveFilters =
     Boolean(search) || statusFilter !== "all" || typeFilter !== "all";
@@ -259,13 +367,8 @@ export default function PackagesManage() {
     return () => clearTimeout(t);
   }, [search]);
 
-  const fetchPackages = async ({
-    skip = 0,
-    limit = PAGE_SIZE,
-    mode,
-  } = {}) => {
-    const resolvedMode =
-      mode || (initialLoadDone.current ? "refresh" : "initial");
+  const fetchPackages = async ({ skip = 0, limit = PAGE_SIZE, mode } = {}) => {
+    const resolvedMode = mode || (initialLoadDone.current ? "refresh" : "initial");
 
     // Ignore out-of-order responses (fast typing / quick filter changes)
     const requestId = ++requestIdRef.current;
@@ -295,9 +398,7 @@ export default function PackagesManage() {
         return [...prev, ...items.filter((p) => !seen.has(p.id))];
       });
 
-      setTotal(
-        Array.isArray(data) ? items.length : data?.total ?? items.length
-      );
+      setTotal(Array.isArray(data) ? items.length : data?.total ?? items.length);
 
       initialLoadDone.current = true;
       setError("");
@@ -371,9 +472,7 @@ export default function PackagesManage() {
 
       setDestinations([]);
 
-      setError(
-        getApiError(err, "Could not load Most Visited destinations.")
-      );
+      setError(getApiError(err, "Could not load Most Visited destinations."));
     } finally {
       setDestinationsLoading(false);
     }
@@ -415,17 +514,11 @@ export default function PackagesManage() {
   // =========================================================
 
   const updateField = (field, value) => {
-    setForm((current) => ({
-      ...current,
-      [field]: value,
-    }));
+    setForm((current) => ({ ...current, [field]: value }));
   };
 
   const toggleDiscovery = (field) => {
-    setForm((current) => ({
-      ...current,
-      [field]: !current[field],
-    }));
+    setForm((current) => ({ ...current, [field]: !current[field] }));
   };
 
   // =========================================================
@@ -480,6 +573,8 @@ export default function PackagesManage() {
 
   const openCreate = () => {
     setForm(freshForm());
+
+    setBusyUploads(new Set());
 
     setError("");
 
@@ -538,6 +633,7 @@ export default function PackagesManage() {
 
       itinerary: Array.isArray(pkg?.itinerary)
         ? pkg.itinerary.map((item, index) => ({
+            _key: newKey(),
             day: index + 1,
             title: item?.title || "",
             description: item?.description || "",
@@ -555,6 +651,8 @@ export default function PackagesManage() {
 
       cancellation_policy: pkg?.cancellation_policy || "",
     });
+
+    setBusyUploads(new Set());
 
     setError("");
 
@@ -597,12 +695,7 @@ export default function PackagesManage() {
         destination: getDestinationName(match) || current.destination,
       }));
     }
-  }, [
-    destinations,
-    form.destination,
-    form.destination_id,
-    form.destination_type,
-  ]);
+  }, [destinations, form.destination, form.destination_id, form.destination_type]);
 
   // =========================================================
   // ITINERARY
@@ -615,6 +708,7 @@ export default function PackagesManage() {
       itinerary: [
         ...current.itinerary,
         {
+          _key: newKey(),
           day: current.itinerary.length + 1,
           title: "",
           description: "",
@@ -640,10 +734,7 @@ export default function PackagesManage() {
 
       itinerary: current.itinerary
         .filter((_, i) => i !== index)
-        .map((item, i) => ({
-          ...item,
-          day: i + 1,
-        })),
+        .map((item, i) => ({ ...item, day: i + 1 })),
     }));
   };
 
@@ -721,6 +812,11 @@ export default function PackagesManage() {
   const handleSave = async (e) => {
     e.preventDefault();
 
+    if (uploading) {
+      setError("Please wait for image uploads to finish.");
+      return;
+    }
+
     setSaving(true);
     setError("");
 
@@ -746,10 +842,7 @@ export default function PackagesManage() {
         return;
       }
 
-      if (
-        form.destination_type === "regular" &&
-        !Number(form.destination_id)
-      ) {
+      if (form.destination_type === "regular" && !Number(form.destination_id)) {
         setError("Please select a regular destination.");
         return;
       }
@@ -785,9 +878,7 @@ export default function PackagesManage() {
       // -----------------------------------------------------
 
       const normalDestinationId =
-        form.destination_type === "regular"
-          ? Number(form.destination_id)
-          : null;
+        form.destination_type === "regular" ? Number(form.destination_id) : null;
 
       const seasonalDestinationId =
         form.destination_type === "seasonal"
@@ -819,8 +910,7 @@ export default function PackagesManage() {
         duration_days: Number(form.duration_days),
 
         duration_nights: Number(
-          form.duration_nights ||
-            Math.max(Number(form.duration_days) - 1, 0)
+          form.duration_nights || Math.max(Number(form.duration_days) - 1, 0)
         ),
 
         description: form.description.trim() || null,
@@ -843,7 +933,7 @@ export default function PackagesManage() {
             ...(img?.public_id ? { public_id: img.public_id } : {}),
           })),
 
-        // Itinerary
+        // Itinerary (_key is UI-only and is NOT sent)
         itinerary: form.itinerary.map((item, index) => ({
           day: index + 1,
           title: item?.title?.trim() || "",
@@ -852,25 +942,17 @@ export default function PackagesManage() {
         })),
 
         // Lists
-        facilities: form.facilities
-          .map((item) => item.trim())
-          .filter(Boolean),
+        facilities: form.facilities.map((item) => item.trim()).filter(Boolean),
 
-        inclusions: form.inclusions
-          .map((item) => item.trim())
-          .filter(Boolean),
+        inclusions: form.inclusions.map((item) => item.trim()).filter(Boolean),
 
-        exclusions: form.exclusions
-          .map((item) => item.trim())
-          .filter(Boolean),
+        exclusions: form.exclusions.map((item) => item.trim()).filter(Boolean),
 
         // Policies
         terms_and_conditions: form.terms_and_conditions.trim() || null,
 
         cancellation_policy: form.cancellation_policy.trim() || null,
       };
-
-      console.log("Saving package:", payload);
 
       // UPDATE
       if (editing?.id) {
@@ -901,9 +983,7 @@ export default function PackagesManage() {
   // =========================================================
 
   const handleDelete = async (id) => {
-    if (
-      !window.confirm("Delete this package? This action cannot be undone.")
-    ) {
+    if (!window.confirm("Delete this package? This action cannot be undone.")) {
       return;
     }
 
@@ -932,6 +1012,8 @@ export default function PackagesManage() {
     setEditing(null);
 
     setForm(freshForm());
+
+    setBusyUploads(new Set());
 
     setError("");
   };
@@ -979,13 +1061,13 @@ export default function PackagesManage() {
             </span>
           </div>
 
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-ink-800 sm:text-4xl">
+          <h1 className="font-display text-4xl font-semibold tracking-tight text-ink-800 sm:text-5xl">
             Packages
           </h1>
 
           <p className="mt-1.5 max-w-2xl text-sm leading-6 text-ink-500">
-            Create and manage travel packages, destinations, visibility
-            sections, itineraries and package policies.
+            Create and manage travel packages, destinations, visibility sections,
+            itineraries and package policies.
           </p>
         </div>
 
@@ -1021,45 +1103,10 @@ export default function PackagesManage() {
       ====================================================== */}
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="rounded-2xl border border-border bg-white p-4 shadow-travel-card">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">
-            Total Packages
-          </p>
-
-          <p className="mt-1 font-display text-2xl font-semibold text-ink-800">
-            {stats.total}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-white p-4 shadow-travel-card">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">
-            Published
-          </p>
-
-          <p className="mt-1 font-display text-2xl font-semibold text-rose-600">
-            {stats.published}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-white p-4 shadow-travel-card">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">
-            Drafts
-          </p>
-
-          <p className="mt-1 font-display text-2xl font-semibold text-ink-800">
-            {stats.draft}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-white p-4 shadow-travel-card">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">
-            Featured
-          </p>
-
-          <p className="mt-1 font-display text-2xl font-semibold text-rose-600">
-            {stats.featured}
-          </p>
-        </div>
+        <StatCard label="Total Packages" value={stats.total} />
+        <StatCard label="Published" value={stats.published} accent />
+        <StatCard label="Drafts" value={stats.draft} />
+        <StatCard label="Featured" value={stats.featured} accent />
       </div>
 
       {/* =====================================================
@@ -1109,8 +1156,7 @@ export default function PackagesManage() {
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1">
           <p className="text-xs text-ink-500">
-            Showing{" "}
-            <span className="font-bold text-ink-700">{packages.length}</span>{" "}
+            Showing <span className="font-bold text-ink-700">{packages.length}</span>{" "}
             of <span className="font-bold text-ink-700">{total}</span>{" "}
             {hasActiveFilters ? "matching packages" : "packages"}
           </p>
@@ -1139,16 +1185,14 @@ export default function PackagesManage() {
         <div className="rounded-2xl border border-border bg-white p-10 text-center shadow-travel-card">
           <div className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-2 border-rose-100 border-t-rose-600" />
 
-          <p className="text-sm font-medium text-ink-500">
-            Loading packages...
-          </p>
+          <p className="text-sm font-medium text-ink-500">Loading packages...</p>
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-travel-card">
           <div className="border-b border-border bg-surface-alt px-4 py-3 sm:px-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h2 className="font-display text-lg font-semibold text-ink-800">
+                <h2 className="font-display text-xl font-semibold text-ink-800">
                   Package Catalogue
                 </h2>
 
@@ -1181,18 +1225,12 @@ export default function PackagesManage() {
               <thead className="bg-surface text-[11px] uppercase tracking-[0.12em] text-ink-500">
                 <tr>
                   <th className="px-5 py-3.5 text-left font-bold">Package</th>
-                  <th className="px-5 py-3.5 text-left font-bold">
-                    Destination
-                  </th>
+                  <th className="px-5 py-3.5 text-left font-bold">Destination</th>
                   <th className="px-5 py-3.5 text-left font-bold">Type</th>
                   <th className="px-5 py-3.5 text-left font-bold">Price</th>
-                  <th className="px-5 py-3.5 text-left font-bold">
-                    Visibility
-                  </th>
+                  <th className="px-5 py-3.5 text-left font-bold">Visibility</th>
                   <th className="px-5 py-3.5 text-left font-bold">Status</th>
-                  <th className="px-5 py-3.5 text-right font-bold">
-                    Actions
-                  </th>
+                  <th className="px-5 py-3.5 text-right font-bold">Actions</th>
                 </tr>
               </thead>
 
@@ -1204,6 +1242,8 @@ export default function PackagesManage() {
 
                   const isDeleting = deletingId === pkg.id;
 
+                  const thumb = getImageUrl(pkg?.images?.[0]);
+
                   return (
                     <tr
                       key={pkg.id}
@@ -1213,11 +1253,11 @@ export default function PackagesManage() {
 
                       <td className="px-5 py-4">
                         <div className="flex max-w-[280px] items-center gap-3">
-                          {getImageUrl(pkg?.images?.[0]) ? (
+                          {thumb ? (
                             <img
-                              src={getImageUrl(pkg?.images?.[0])}
+                              src={thumb}
                               alt=""
-                              className="h-12 w-12 shrink-0 rounded-xl object-cover ring-1 ring-border"
+                              className="h-12 w-12 shrink-0 rounded-xl bg-surface object-cover ring-1 ring-border"
                             />
                           ) : (
                             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-gradient text-lg text-rose-600">
@@ -1231,8 +1271,7 @@ export default function PackagesManage() {
                             </p>
 
                             <p className="mt-0.5 truncate text-xs text-ink-500">
-                              {pkg.duration_days} days{" "}
-                              {pkg.duration_nights ?? 0} nights
+                              {pkg.duration_days} days {pkg.duration_nights ?? 0} nights
                             </p>
                           </div>
                         </div>
@@ -1250,9 +1289,7 @@ export default function PackagesManage() {
                             isSeasonal ? "text-rose-600" : "text-ink-400"
                           }`}
                         >
-                          {isSeasonal
-                            ? "Seasonal destination"
-                            : "Regular destination"}
+                          {isSeasonal ? "Seasonal destination" : "Regular destination"}
                         </span>
                       </td>
 
@@ -1260,9 +1297,8 @@ export default function PackagesManage() {
 
                       <td className="px-5 py-4">
                         <span className="inline-flex rounded-full border border-rose-100 bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700">
-                          {PACKAGE_TYPES.find(
-                            (type) => type.value === pkg.package_type
-                          )?.label ||
+                          {PACKAGE_TYPES.find((type) => type.value === pkg.package_type)
+                            ?.label ||
                             pkg.package_type ||
                             "Family"}
                         </span>
@@ -1294,9 +1330,7 @@ export default function PackagesManage() {
                               </span>
                             ))
                           ) : (
-                            <span className="text-xs text-ink-400">
-                              No labels
-                            </span>
+                            <span className="text-xs text-ink-400">No labels</span>
                           )}
                         </div>
                       </td>
@@ -1313,9 +1347,7 @@ export default function PackagesManage() {
                         >
                           <span
                             className={`h-1.5 w-1.5 rounded-full ${
-                              pkg.status === "published"
-                                ? "bg-success"
-                                : "bg-ink-400"
+                              pkg.status === "published" ? "bg-success" : "bg-ink-400"
                             }`}
                           />
 
@@ -1362,13 +1394,12 @@ export default function PackagesManage() {
                           ✦
                         </div>
 
-                        <p className="font-display text-lg font-semibold text-ink-800">
+                        <p className="font-display text-xl font-semibold text-ink-800">
                           No packages found
                         </p>
 
                         <p className="mt-1 text-sm leading-6 text-ink-500">
-                          Try changing your filters or create a new travel
-                          package.
+                          Try changing your filters or create a new travel package.
                         </p>
 
                         {!hasActiveFilters && (
@@ -1393,12 +1424,8 @@ export default function PackagesManage() {
           {packages.length > 0 && (
             <div className="flex flex-col items-center gap-3 border-t border-border bg-surface-alt px-4 py-4 sm:flex-row sm:justify-between sm:px-5">
               <p className="text-xs text-ink-500">
-                Showing{" "}
-                <span className="font-bold text-ink-700">
-                  {packages.length}
-                </span>{" "}
-                of <span className="font-bold text-ink-700">{total}</span>{" "}
-                packages
+                Showing <span className="font-bold text-ink-700">{packages.length}</span>{" "}
+                of <span className="font-bold text-ink-700">{total}</span> packages
               </p>
 
               {hasMore && (
@@ -1414,10 +1441,7 @@ export default function PackagesManage() {
 
                   {loadingMore
                     ? "Loading..."
-                    : `Load ${Math.min(
-                        PAGE_SIZE,
-                        total - packages.length
-                      )} more`}
+                    : `Load ${Math.min(PAGE_SIZE, total - packages.length)} more`}
                 </button>
               )}
             </div>
@@ -1445,13 +1469,13 @@ export default function PackagesManage() {
                     </span>
                   </div>
 
-                  <h2 className="font-display text-2xl font-semibold text-ink-800">
+                  <h2 className="font-display text-3xl font-semibold tracking-tight text-ink-800">
                     {editing?.id ? "Edit Package" : "Create New Package"}
                   </h2>
 
                   <p className="mt-1 text-xs leading-5 text-ink-500 sm:text-sm">
-                    Manage package content, destinations, itinerary, images
-                    and website visibility.
+                    Manage package content, destinations, itinerary, images and
+                    website visibility.
                   </p>
                 </div>
 
@@ -1469,26 +1493,17 @@ export default function PackagesManage() {
 
             {/* FORM */}
 
-            <form
-              onSubmit={handleSave}
-              className="min-h-0 flex-1 overflow-y-auto"
-            >
+            <form onSubmit={handleSave} className="min-h-0 flex-1 overflow-y-auto">
               <div className="space-y-7 p-4 sm:p-6 lg:p-8">
                 {/* =============================================
                     BASIC DETAILS
                 ============================================== */}
 
                 <section className="rounded-2xl border border-border bg-surface-alt p-4 sm:p-5">
-                  <div className="mb-5">
-                    <h3 className="font-display text-xl font-semibold text-ink-800">
-                      Basic Details
-                    </h3>
-
-                    <p className="mt-1 text-xs leading-5 text-ink-500">
-                      Define the main package information, pricing and
-                      destination.
-                    </p>
-                  </div>
+                  <SectionHeader
+                    title="Basic Details"
+                    hint="Define the main package information, pricing and destination."
+                  />
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {/* TITLE */}
@@ -1517,78 +1532,19 @@ export default function PackagesManage() {
                       </label>
 
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        {/* REGULAR */}
-
-                        <button
-                          type="button"
+                        <DestinationTypeCard
+                          active={form.destination_type === "regular"}
+                          title="Regular Destination"
+                          text="Use a normal destination from Most Visited."
                           onClick={() => handleDestinationTypeChange("regular")}
-                          className={`rounded-2xl border p-4 text-left transition-all ${
-                            form.destination_type === "regular"
-                              ? "border-rose-300 bg-rose-50 shadow-travel-card"
-                              : "border-border bg-white hover:border-rose-200 hover:bg-rose-50/40"
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <span
-                              className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                                form.destination_type === "regular"
-                                  ? "border-rose-600 bg-rose-600"
-                                  : "border-border bg-white"
-                              }`}
-                            >
-                              {form.destination_type === "regular" && (
-                                <span className="h-2 w-2 rounded-full bg-white" />
-                              )}
-                            </span>
+                        />
 
-                            <span>
-                              <span className="block text-sm font-bold text-ink-800">
-                                Regular Destination
-                              </span>
-
-                              <span className="mt-1 block text-xs leading-5 text-ink-500">
-                                Use a normal destination from Most Visited.
-                              </span>
-                            </span>
-                          </div>
-                        </button>
-
-                        {/* SEASONAL */}
-
-                        <button
-                          type="button"
+                        <DestinationTypeCard
+                          active={form.destination_type === "seasonal"}
+                          title="Seasonal Destination"
+                          text="Use a destination available for a specific season."
                           onClick={() => handleDestinationTypeChange("seasonal")}
-                          className={`rounded-2xl border p-4 text-left transition-all ${
-                            form.destination_type === "seasonal"
-                              ? "border-rose-300 bg-rose-50 shadow-travel-card"
-                              : "border-border bg-white hover:border-rose-200 hover:bg-rose-50/40"
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <span
-                              className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                                form.destination_type === "seasonal"
-                                  ? "border-rose-600 bg-rose-600"
-                                  : "border-border bg-white"
-                              }`}
-                            >
-                              {form.destination_type === "seasonal" && (
-                                <span className="h-2 w-2 rounded-full bg-white" />
-                              )}
-                            </span>
-
-                            <span>
-                              <span className="block text-sm font-bold text-ink-800">
-                                Seasonal Destination
-                              </span>
-
-                              <span className="mt-1 block text-xs leading-5 text-ink-500">
-                                Use a destination available for a specific
-                                season.
-                              </span>
-                            </span>
-                          </div>
-                        </button>
+                        />
                       </div>
 
                       <p className={HELP_CLASS}>
@@ -1600,10 +1556,7 @@ export default function PackagesManage() {
 
                     {form.destination_type === "regular" && (
                       <div className="sm:col-span-2">
-                        <label
-                          htmlFor="package-destination"
-                          className={LABEL_CLASS}
-                        >
+                        <label htmlFor="package-destination" className={LABEL_CLASS}>
                           Regular Destination
                           <span className="ml-1 text-rose-600">*</span>
                         </label>
@@ -1613,9 +1566,7 @@ export default function PackagesManage() {
                           required
                           value={form.destination_id}
                           disabled={destinationsLoading}
-                          onChange={(e) =>
-                            handleRegularDestinationChange(e.target.value)
-                          }
+                          onChange={(e) => handleRegularDestinationChange(e.target.value)}
                           className={SELECT_CLASS}
                         >
                           <option value="">
@@ -1641,10 +1592,7 @@ export default function PackagesManage() {
 
                     {form.destination_type === "seasonal" && (
                       <div className="sm:col-span-2">
-                        <label
-                          htmlFor="seasonal-destination"
-                          className={LABEL_CLASS}
-                        >
+                        <label htmlFor="seasonal-destination" className={LABEL_CLASS}>
                           Seasonal Destination
                           <span className="ml-1 text-rose-600">*</span>
                         </label>
@@ -1654,9 +1602,7 @@ export default function PackagesManage() {
                           required
                           value={form.seasoned_destination_id}
                           disabled={seasonedLoading}
-                          onChange={(e) =>
-                            handleSeasonalDestinationChange(e.target.value)
-                          }
+                          onChange={(e) => handleSeasonalDestinationChange(e.target.value)}
                           className={SELECT_CLASS}
                         >
                           <option value="">
@@ -1672,18 +1618,15 @@ export default function PackagesManage() {
                                 destination?.status === "published"
                             )
                             .map((destination) => (
-                              <option
-                                key={destination.id}
-                                value={destination.id}
-                              >
+                              <option key={destination.id} value={destination.id}>
                                 {getDestinationName(destination)}
                               </option>
                             ))}
                         </select>
 
                         <p className={HELP_CLASS}>
-                          This package will be associated only with the
-                          selected seasonal destination.
+                          This package will be associated only with the selected
+                          seasonal destination.
                         </p>
                       </div>
                     )}
@@ -1698,9 +1641,7 @@ export default function PackagesManage() {
                       <select
                         id="package-type"
                         value={form.package_type}
-                        onChange={(e) =>
-                          updateField("package_type", e.target.value)
-                        }
+                        onChange={(e) => updateField("package_type", e.target.value)}
                         className={SELECT_CLASS}
                       >
                         {PACKAGE_TYPES.map((type) => (
@@ -1767,9 +1708,7 @@ export default function PackagesManage() {
                         type="number"
                         min="0"
                         value={form.display_order}
-                        onChange={(e) =>
-                          updateField("display_order", e.target.value)
-                        }
+                        onChange={(e) => updateField("display_order", e.target.value)}
                         placeholder="0"
                         className={INPUT_CLASS}
                       />
@@ -1790,9 +1729,7 @@ export default function PackagesManage() {
                         required
                         min="1"
                         value={form.duration_days}
-                        onChange={(e) =>
-                          updateField("duration_days", e.target.value)
-                        }
+                        onChange={(e) => updateField("duration_days", e.target.value)}
                         placeholder="5"
                         className={INPUT_CLASS}
                       />
@@ -1811,9 +1748,7 @@ export default function PackagesManage() {
                         required
                         min="0"
                         value={form.duration_nights}
-                        onChange={(e) =>
-                          updateField("duration_nights", e.target.value)
-                        }
+                        onChange={(e) => updateField("duration_nights", e.target.value)}
                         placeholder="4"
                         className={INPUT_CLASS}
                       />
@@ -1830,21 +1765,17 @@ export default function PackagesManage() {
                 ============================================== */}
 
                 <section className="rounded-2xl border border-rose-100 bg-brand-gradient p-4 sm:p-5">
-                  <div className="mb-5">
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-rose-600 shadow-sm">
-                        ✦
-                      </span>
+                  <div className="mb-5 flex items-center gap-3">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-rose-600 shadow-sm">
+                      ✦
+                    </span>
 
-                      <div>
-                        <h3 className="font-display text-xl font-semibold text-ink-800">
-                          Website Visibility
-                        </h3>
+                    <div>
+                      <h3 className={SECTION_TITLE}>Website Visibility</h3>
 
-                        <p className="text-xs text-ink-500">
-                          Choose where this package should appear.
-                        </p>
-                      </div>
+                      <p className="text-xs text-ink-500">
+                        Choose where this package should appear.
+                      </p>
                     </div>
                   </div>
 
@@ -1862,7 +1793,7 @@ export default function PackagesManage() {
                           }`}
                         >
                           <span
-                            className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-all ${
+                            className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-xs transition-all ${
                               checked
                                 ? "border-rose-600 bg-rose-600 text-white"
                                 : "border-border bg-white text-transparent"
@@ -1923,15 +1854,10 @@ export default function PackagesManage() {
                 ============================================== */}
 
                 <section>
-                  <div className="mb-3">
-                    <h3 className="font-display text-xl font-semibold text-ink-800">
-                      Package Description
-                    </h3>
-
-                    <p className="mt-1 text-xs text-ink-500">
-                      Give travellers a clear overview of the experience.
-                    </p>
-                  </div>
+                  <SectionHeader
+                    title="Package Description"
+                    hint="Give travellers a clear overview of the experience."
+                  />
 
                   <textarea
                     rows={6}
@@ -1949,13 +1875,12 @@ export default function PackagesManage() {
                 <section className="border-t border-border pt-7">
                   <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                      <h3 className="font-display text-xl font-semibold text-ink-800">
-                        Day-by-Day Itinerary
-                      </h3>
+                      <h3 className={SECTION_TITLE}>Day-by-Day Itinerary</h3>
 
                       <p className="mt-1 text-xs leading-5 text-ink-500">
-                        Add activities, descriptions and a dedicated image for
-                        each day.
+                        Add activities, descriptions and a dedicated image for each
+                        day. Best results: landscape 16:9 (e.g. 1600 × 900). Other
+                        shapes are shown in full, never cropped.
                       </p>
                     </div>
 
@@ -1974,9 +1899,7 @@ export default function PackagesManage() {
                         ✦
                       </div>
 
-                      <p className="font-semibold text-ink-700">
-                        No itinerary days yet
-                      </p>
+                      <p className="font-semibold text-ink-700">No itinerary days yet</p>
 
                       <p className="mt-1 text-xs text-ink-500">
                         Click “Add Day” to create Day 1.
@@ -1987,7 +1910,7 @@ export default function PackagesManage() {
                   <div className="space-y-4">
                     {form.itinerary.map((item, index) => (
                       <div
-                        key={index}
+                        key={item._key || index}
                         className="overflow-hidden rounded-2xl border border-border bg-white shadow-travel-card"
                       >
                         {/* DAY HEADER */}
@@ -2004,7 +1927,7 @@ export default function PackagesManage() {
                               </p>
 
                               <p className="truncate text-xs text-ink-500">
-                                Day {index + 1} itinerary details
+                                {item?.title?.trim() || `Day ${index + 1} itinerary details`}
                               </p>
                             </div>
                           </div>
@@ -2022,19 +1945,13 @@ export default function PackagesManage() {
                           {/* DAY TITLE */}
 
                           <div className="mb-4">
-                            <label className={LABEL_CLASS}>
-                              Day {index + 1} Title
-                            </label>
+                            <label className={LABEL_CLASS}>Day {index + 1} Title</label>
 
                             <input
                               required
                               value={item?.title || ""}
                               onChange={(e) =>
-                                updateItineraryDay(
-                                  index,
-                                  "title",
-                                  e.target.value
-                                )
+                                updateItineraryDay(index, "title", e.target.value)
                               }
                               placeholder="Example: Arrival in Kochi & Local Sightseeing"
                               className={INPUT_CLASS}
@@ -2053,11 +1970,7 @@ export default function PackagesManage() {
                               rows={4}
                               value={item?.description || ""}
                               onChange={(e) =>
-                                updateItineraryDay(
-                                  index,
-                                  "description",
-                                  e.target.value
-                                )
+                                updateItineraryDay(index, "description", e.target.value)
                               }
                               placeholder="Describe activities, sightseeing, meals, transfers and experiences for this day..."
                               className={TEXTAREA_CLASS}
@@ -2080,24 +1993,13 @@ export default function PackagesManage() {
                             </div>
 
                             {item?.image ? (
-                              <div className="relative h-48 w-full overflow-hidden rounded-2xl border border-border bg-surface sm:h-60">
+                              <div className="relative w-full overflow-hidden rounded-2xl border border-border bg-surface">
+                                {/* object-contain: the WHOLE image is visible */}
                                 <img
                                   src={item.image}
                                   alt={item?.title || `Day ${index + 1}`}
-                                  className="h-full w-full object-cover"
+                                  className="mx-auto block h-auto max-h-72 w-full object-contain"
                                 />
-
-                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink-900/70 via-ink-900/20 to-transparent p-4">
-                                  <p className="text-xs font-bold text-white">
-                                    Day {index + 1}
-                                  </p>
-
-                                  {item?.title && (
-                                    <p className="mt-0.5 truncate text-sm font-semibold text-white">
-                                      {item.title}
-                                    </p>
-                                  )}
-                                </div>
 
                                 <button
                                   type="button"
@@ -2112,10 +2014,13 @@ export default function PackagesManage() {
                               <div className="rounded-2xl border border-dashed border-border bg-surface-alt p-2">
                                 <ImageUploadField
                                   value={null}
-                                  onChange={(img) =>
-                                    addItineraryImage(index, img)
-                                  }
+                                  onChange={(img) => addItineraryImage(index, img)}
                                   label=""
+                                  size="lg"
+                                  resetOnSuccess
+                                  onBusyChange={trackUpload(
+                                    `day-image-${item._key || index}`
+                                  )}
                                 />
                               </div>
                             )}
@@ -2141,242 +2046,107 @@ export default function PackagesManage() {
                 ============================================== */}
 
                 <section className="border-t border-border pt-7">
-                  <div className="mb-4">
-                    <h3 className="font-display text-xl font-semibold text-ink-800">
-                      Package Images
-                    </h3>
-
-                    <p className="mt-1 text-xs leading-5 text-ink-500">
-                      Add the main images used across package cards and the
-                      package detail page.
-                    </p>
-                  </div>
+                  <SectionHeader
+                    title="Package Images"
+                    hint="The first image is the cover used on cards and the detail page. Best results: landscape 16:9 (e.g. 1600 × 900). Other shapes are shown in full, never cropped."
+                  />
 
                   <div className="flex flex-wrap gap-3">
                     {form.images.map((img, index) => (
                       <div
-                        key={index}
+                        key={`${index}-${img?.url}`}
                         className="group relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-border bg-surface shadow-travel-card"
                       >
+                        {/* object-contain: admin sees the WHOLE image */}
                         <img
                           src={img?.url}
                           alt=""
-                          className="h-full w-full object-cover"
+                          className="h-full w-full object-contain"
                         />
 
                         <button
                           type="button"
                           onClick={() => removeImage(index)}
                           className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-sm font-bold text-ink-700 shadow-lg transition-colors hover:bg-error-bg hover:text-error-text"
+                          aria-label={`Remove image ${index + 1}`}
                         >
                           ×
                         </button>
 
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink-900/60 to-transparent px-2 pb-2 pt-5 text-[10px] font-bold text-white">
-                          Image {index + 1}
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink-900/60 to-transparent px-2 pb-2 pt-5 text-[10px] font-bold text-white">
+                          {index === 0 ? "Cover" : `Image ${index + 1}`}
                         </div>
                       </div>
                     ))}
 
-                    <div className="h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-dashed border-rose-200 bg-rose-50/40 p-1">
+                    {/* size="tile" fills this 112px box exactly, so nothing is clipped */}
+                    <div className="h-28 w-28 shrink-0 overflow-hidden rounded-2xl bg-rose-50/40">
                       <ImageUploadField
                         value={null}
                         onChange={addImage}
                         label=""
+                        size="tile"
+                        resetOnSuccess
+                        onBusyChange={trackUpload("package-image")}
                       />
                     </div>
                   </div>
                 </section>
 
                 {/* =============================================
-                    FACILITIES
+                    FACILITIES / INCLUSIONS / EXCLUSIONS
                 ============================================== */}
 
-                <section className="border-t border-border pt-7">
-                  <div className="mb-4 flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="font-display text-xl font-semibold text-ink-800">
-                        Facilities
-                      </h3>
+                <ListSection
+                  title="Facilities"
+                  hint="Hotel, breakfast, transport, AC, guide, etc."
+                  placeholder="Example: Breakfast included"
+                  emptyText="No facilities added."
+                  removeLabel="Remove facility"
+                  items={form.facilities}
+                  onAdd={() => addListItem("facilities")}
+                  onChange={(i, v) => updateListItem("facilities", i, v)}
+                  onRemove={(i) => removeListItem("facilities", i)}
+                />
 
-                      <p className="mt-1 text-xs text-ink-500">
-                        Hotel, breakfast, transport, AC, guide, etc.
-                      </p>
-                    </div>
+                <ListSection
+                  title="Inclusions"
+                  hint="What is included in the package?"
+                  placeholder="Example: 4 nights hotel accommodation"
+                  emptyText="No inclusions added."
+                  removeLabel="Remove inclusion"
+                  items={form.inclusions}
+                  onAdd={() => addListItem("inclusions")}
+                  onChange={(i, v) => updateListItem("inclusions", i, v)}
+                  onRemove={(i) => removeListItem("inclusions", i)}
+                />
 
-                    <button
-                      type="button"
-                      onClick={() => addListItem("facilities")}
-                      className="shrink-0 rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-100"
-                    >
-                      + Add
-                    </button>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    {form.facilities.map((item, index) => (
-                      <div key={index} className="flex gap-2">
-                        <input
-                          value={item}
-                          onChange={(e) =>
-                            updateListItem("facilities", index, e.target.value)
-                          }
-                          placeholder="Example: Breakfast included"
-                          className={INPUT_CLASS}
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => removeListItem("facilities", index)}
-                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-error/15 bg-error-bg text-sm font-bold text-error-text transition-colors hover:border-error/25"
-                          aria-label="Remove facility"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-
-                    {form.facilities.length === 0 && (
-                      <div className="rounded-xl border border-dashed border-border bg-surface-alt px-4 py-5 text-center text-xs text-ink-400">
-                        No facilities added.
-                      </div>
-                    )}
-                  </div>
-                </section>
-
-                {/* =============================================
-                    INCLUSIONS
-                ============================================== */}
-
-                <section className="border-t border-border pt-7">
-                  <div className="mb-4 flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="font-display text-xl font-semibold text-ink-800">
-                        Inclusions
-                      </h3>
-
-                      <p className="mt-1 text-xs text-ink-500">
-                        What is included in the package?
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => addListItem("inclusions")}
-                      className="shrink-0 rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-100"
-                    >
-                      + Add
-                    </button>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    {form.inclusions.map((item, index) => (
-                      <div key={index} className="flex gap-2">
-                        <input
-                          value={item}
-                          onChange={(e) =>
-                            updateListItem("inclusions", index, e.target.value)
-                          }
-                          placeholder="Example: 4 nights hotel accommodation"
-                          className={INPUT_CLASS}
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => removeListItem("inclusions", index)}
-                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-error/15 bg-error-bg text-sm font-bold text-error-text transition-colors hover:border-error/25"
-                          aria-label="Remove inclusion"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-
-                    {form.inclusions.length === 0 && (
-                      <div className="rounded-xl border border-dashed border-border bg-surface-alt px-4 py-5 text-center text-xs text-ink-400">
-                        No inclusions added.
-                      </div>
-                    )}
-                  </div>
-                </section>
-
-                {/* =============================================
-                    EXCLUSIONS
-                ============================================== */}
-
-                <section className="border-t border-border pt-7">
-                  <div className="mb-4 flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="font-display text-xl font-semibold text-ink-800">
-                        Exclusions
-                      </h3>
-
-                      <p className="mt-1 text-xs text-ink-500">
-                        What is not included?
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => addListItem("exclusions")}
-                      className="shrink-0 rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-100"
-                    >
-                      + Add
-                    </button>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    {form.exclusions.map((item, index) => (
-                      <div key={index} className="flex gap-2">
-                        <input
-                          value={item}
-                          onChange={(e) =>
-                            updateListItem("exclusions", index, e.target.value)
-                          }
-                          placeholder="Example: Flight tickets"
-                          className={INPUT_CLASS}
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => removeListItem("exclusions", index)}
-                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-error/15 bg-error-bg text-sm font-bold text-error-text transition-colors hover:border-error/25"
-                          aria-label="Remove exclusion"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-
-                    {form.exclusions.length === 0 && (
-                      <div className="rounded-xl border border-dashed border-border bg-surface-alt px-4 py-5 text-center text-xs text-ink-400">
-                        No exclusions added.
-                      </div>
-                    )}
-                  </div>
-                </section>
+                <ListSection
+                  title="Exclusions"
+                  hint="What is not included?"
+                  placeholder="Example: Flight tickets"
+                  emptyText="No exclusions added."
+                  removeLabel="Remove exclusion"
+                  items={form.exclusions}
+                  onAdd={() => addListItem("exclusions")}
+                  onChange={(i, v) => updateListItem("exclusions", i, v)}
+                  onRemove={(i) => removeListItem("exclusions", i)}
+                />
 
                 {/* =============================================
                     TERMS
                 ============================================== */}
 
                 <section className="border-t border-border pt-7">
-                  <div className="mb-3">
-                    <h3 className="font-display text-xl font-semibold text-ink-800">
-                      Terms & Conditions
-                    </h3>
-
-                    <p className="mt-1 text-xs text-ink-500">
-                      Package-specific terms shown to travellers.
-                    </p>
-                  </div>
+                  <SectionHeader
+                    title="Terms & Conditions"
+                    hint="Package-specific terms shown to travellers."
+                  />
 
                   <textarea
                     rows={7}
                     value={form.terms_and_conditions}
-                    onChange={(e) =>
-                      updateField("terms_and_conditions", e.target.value)
-                    }
+                    onChange={(e) => updateField("terms_and_conditions", e.target.value)}
                     placeholder="Enter package terms and conditions..."
                     className={TEXTAREA_CLASS}
                   />
@@ -2387,22 +2157,15 @@ export default function PackagesManage() {
                 ============================================== */}
 
                 <section className="border-t border-border pt-7">
-                  <div className="mb-3">
-                    <h3 className="font-display text-xl font-semibold text-ink-800">
-                      Cancellation Policy
-                    </h3>
-
-                    <p className="mt-1 text-xs text-ink-500">
-                      Explain cancellation and refund rules for this package.
-                    </p>
-                  </div>
+                  <SectionHeader
+                    title="Cancellation Policy"
+                    hint="Explain cancellation and refund rules for this package."
+                  />
 
                   <textarea
                     rows={7}
                     value={form.cancellation_policy}
-                    onChange={(e) =>
-                      updateField("cancellation_policy", e.target.value)
-                    }
+                    onChange={(e) => updateField("cancellation_policy", e.target.value)}
                     placeholder="Enter cancellation policy..."
                     className={TEXTAREA_CLASS}
                   />
@@ -2424,7 +2187,13 @@ export default function PackagesManage() {
               {/* FOOTER ACTIONS */}
 
               <div className="sticky bottom-0 z-20 border-t border-border bg-white/95 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
-                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+                  {uploading && (
+                    <span className="text-center text-xs font-semibold text-rose-600 sm:mr-auto sm:text-left">
+                      Uploading images… please wait before saving.
+                    </span>
+                  )}
+
                   <button
                     type="button"
                     onClick={closeModal}
@@ -2436,7 +2205,7 @@ export default function PackagesManage() {
 
                   <button
                     type="submit"
-                    disabled={saving}
+                    disabled={saving || uploading}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-6 py-3 text-sm font-bold text-white shadow-brand transition-all hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                   >
                     {saving && (
@@ -2445,6 +2214,8 @@ export default function PackagesManage() {
 
                     {saving
                       ? "Saving..."
+                      : uploading
+                      ? "Uploading..."
                       : editing?.id
                       ? "Update Package"
                       : "Save Package"}
@@ -2458,11 +2229,6 @@ export default function PackagesManage() {
     </div>
   );
 }
-
-
-
-
-
 
 
 

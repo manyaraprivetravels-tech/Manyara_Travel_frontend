@@ -17,17 +17,7 @@ function formatSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/**
- * Select several photos and videos at once. They upload one after another,
- * each with its own 0-100% progress bar. Every finished upload is passed to
- * onInsert([{ type: "image" | "video", url, caption: "" }]).
- *
- * Props:
- *  - onInsert       required
- *  - onBusyChange   (isBusy: boolean) => void   true while anything is queued/uploading
- *  - disabled
- *  - maxImageMB / maxVideoMB
- */
+
 export default function BlogMediaUploader({
   onInsert,
   onBusyChange,
