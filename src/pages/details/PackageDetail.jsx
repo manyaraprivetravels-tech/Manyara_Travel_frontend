@@ -117,9 +117,9 @@ const formatDuration = (days, nights) => {
 
 /*
   FullImage
-  Shows the image exactly as uploaded: full width, natural height.
-  No fixed-height box, no cropping, no blur, no background fill.
-  Always give it `h-auto w-full` via imgClassName.
+  Shows the image exactly as uploaded: never cropped, no blur, no
+  background fill. Size it with h-auto w-auto max-w-full max-h-[...]
+  via imgClassName so the aspect ratio is always kept.
 */
 function FullImage({ src, alt, eager = false, imgClassName = "" }) {
   return (
@@ -638,23 +638,25 @@ export default function PackageDetail() {
           </section>
 
           {/* COVER IMAGE
-              Full width, natural height: the whole image is shown exactly
-              as uploaded. No fixed aspect box, no crop, no blur. */}
+              Whole image, never cropped, no blur. Height is capped so it
+              doesn't dominate the page; width follows the image's own ratio. */}
           <section className="pb-8 sm:pb-10">
-            <div className="w-full overflow-hidden rounded-2xl shadow-travel-card sm:rounded-3xl">
-              {packageImages.length > 0 ? (
-                <FullImage
-                  src={packageImages[0]}
-                  alt={pkg.title}
-                  eager
-                  imgClassName="h-auto w-full"
-                />
-              ) : (
-                <div className="flex aspect-[16/9] w-full items-center justify-center bg-surface-soft">
-                  <MapPin className="h-12 w-12 text-ink-300" aria-hidden="true" />
+            {packageImages.length > 0 ? (
+              <div className="flex justify-center">
+                <div className="max-w-full overflow-hidden rounded-2xl shadow-travel-card sm:rounded-3xl">
+                  <FullImage
+                    src={packageImages[0]}
+                    alt={pkg.title}
+                    eager
+                    imgClassName="h-auto max-h-[20rem] w-auto max-w-full sm:max-h-[26rem] lg:max-h-[30rem]"
+                  />
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="flex aspect-[16/9] w-full items-center justify-center overflow-hidden rounded-2xl bg-surface-soft shadow-travel-card sm:rounded-3xl">
+                <MapPin className="h-12 w-12 text-ink-300" aria-hidden="true" />
+              </div>
+            )}
           </section>
 
           {/* Sentinel: the floating button appears once this scrolls out of view */}
@@ -744,14 +746,16 @@ export default function PackageDetail() {
                           </div>
                         </div>
 
-                        {/* Full width, natural height: nothing is cropped */}
+                        {/* Whole image, never cropped; height capped, centered */}
                         {item.image && (
-                          <div className="mt-5">
-                            <FullImage
-                              src={item.image}
-                              alt={`${pkg.title} - Day ${item.day}`}
-                              imgClassName="h-auto w-full"
-                            />
+                          <div className="mt-5 flex justify-center px-5 sm:px-6">
+                            <div className="max-w-full overflow-hidden rounded-xl sm:rounded-2xl">
+                              <FullImage
+                                src={item.image}
+                                alt={`${pkg.title} - Day ${item.day}`}
+                                imgClassName="h-auto max-h-[18rem] w-auto max-w-full sm:max-h-[22rem] lg:max-h-[26rem]"
+                              />
+                            </div>
                           </div>
                         )}
 

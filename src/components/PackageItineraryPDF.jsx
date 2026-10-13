@@ -1,3 +1,5 @@
+
+
 const BRAND = "Manyara Prive Vacations";
 const TAGLINE = "Curated journeys. Effortless luxury.";
 
@@ -29,9 +31,10 @@ const PAD_TOP = 40; // empty space at the top of pages 2+
 const PAD_BOTTOM = 46; // empty space at the bottom of every page
 const CONTENT_X = 48; // left/right page padding
 const DAY_BAR = 19; // 3px accent bar + 16px gap in the itinerary
-const IMG_BOX_W = PAGE_W - CONTENT_X * 2 - DAY_BAR; // full width available to a day image
-const HERO_IMG_MAX_H = 560; // cover image: tallest it may be on page 1 (never cropped)
-const HERO_MIN_H = 200; // cover area height when there is no image / a very wide one
+const IMG_BOX_W = PAGE_W - CONTENT_X * 2 - DAY_BAR; // widest a day image may be
+const DAY_IMG_MAX_H = 300; // tallest a day image may be (never cropped)
+const HERO_IMG_MAX_W = PAGE_W - CONTENT_X * 2; // widest the cover image may be
+const HERO_IMG_MAX_H = 340; // tallest the cover image may be (never cropped)
 
 /**
  * Lower scale on phones: iOS Safari limits canvas area, and long
@@ -56,11 +59,6 @@ export const generatePackagePDF = async (pkg) => {
 
   const { default: html2pdf } = await import("html2pdf.js");
   const { scale: SCALE, pageH: PAGE_H } = getGeometry();
-
-  // Day images can be as tall as a page allows (minus room for the day
-  // header and the first description line). Only extremely tall portrait
-  // photos are ever scaled down, and they are never cropped.
-  const IMG_MAX_H = Math.floor(PAGE_H - PAD_TOP - PAD_BOTTOM - 150);
 
   // ---------------------------------------------------------
   // Normalize data
@@ -97,19 +95,16 @@ export const generatePackagePDF = async (pkg) => {
 
   const coverImage = coverUrl && sizes.has(coverUrl) ? coverUrl : null;
 
-  // Cover image: full width, natural height. Only a very tall portrait
-  // photo is scaled down (never cropped) so it still fits on page 1.
+  // Cover image: fitted inside a framed box (never cropped, never stretched).
   const coverSize = coverImage ? sizes.get(coverImage) : null;
-  let heroImgW = PAGE_W;
+  let heroImgW = 0;
   let heroImgH = 0;
 
   if (coverSize && coverSize.w && coverSize.h) {
-    const fit = Math.min(PAGE_W / coverSize.w, HERO_IMG_MAX_H / coverSize.h);
+    const fit = Math.min(HERO_IMG_MAX_W / coverSize.w, HERO_IMG_MAX_H / coverSize.h);
     heroImgW = Math.round(coverSize.w * fit);
     heroImgH = Math.round(coverSize.h * fit);
   }
-
-  const heroBoxH = heroImgH ? Math.max(heroImgH, HERO_MIN_H) : HERO_MIN_H;
 
   // ---------------------------------------------------------
   // HTML builders
@@ -172,29 +167,24 @@ export const generatePackagePDF = async (pkg) => {
 
   // ---------------------------------------------------------
   // COVER (page 1)
-  // The cover photo is shown in FULL: full page width, natural
-  // height, no crop, no dark wash over it (only a light fade
-  // behind the brand name at the very top). The package title sits
-  // in its own colour band UNDER the photo, so nothing covers it.
+  // One brand-coloured block: logo, the cover photo shown whole inside
+  // it (centred, rounded, never cropped), then the package title.
   // ---------------------------------------------------------
   const heroHTML = `
-    <div data-atom style="width:${PAGE_W}px;background:linear-gradient(135deg,${C.roseDeep},${C.rose} 55%,#E8286F);">
-      <div style="position:relative;width:${PAGE_W}px;height:${heroBoxH}px;overflow:hidden;background:${
-        coverImage ? C.ink : `linear-gradient(135deg,${C.roseDeep},${C.rose} 55%,#E8286F)`
-      };">
-        ${
-          coverImage && heroImgH
-            ? `<img src="${escapeHTML(coverImage)}" crossorigin="anonymous" alt=""
-                    style="position:absolute;top:0;left:${Math.round((PAGE_W - heroImgW) / 2)}px;width:${heroImgW}px;height:${heroImgH}px;display:block;" />`
-            : ""
-        }
-        <div style="position:absolute;top:0;left:0;width:${PAGE_W}px;height:110px;background:linear-gradient(to bottom,rgba(31,27,34,.55),rgba(31,27,34,0));"></div>
-
-        <div style="position:absolute;top:26px;left:0;width:${PAGE_W}px;text-align:center;">
-          <div style="font-family:${SERIF};font-size:30px;font-weight:600;letter-spacing:.3em;color:#fff;text-transform:uppercase;padding-left:.3em;">Manyara</div>
-          <div style="font-family:${SANS};font-size:9px;font-weight:500;letter-spacing:.5em;color:${C.champagne};margin-top:3px;padding-left:.5em;">PRIVE VACATIONS</div>
-        </div>
+    <div data-atom style="width:${PAGE_W}px;background:linear-gradient(135deg,${C.roseDeep},${C.rose} 55%,#E8286F);box-sizing:border-box;">
+      <div style="padding-top:30px;text-align:center;">
+        <div style="font-family:${SERIF};font-size:30px;font-weight:600;letter-spacing:.3em;color:#fff;text-transform:uppercase;padding-left:.3em;">Manyara</div>
+        <div style="font-family:${SANS};font-size:9px;font-weight:500;letter-spacing:.5em;color:${C.champagne};margin-top:3px;padding-left:.5em;">PRIVE VACATIONS</div>
       </div>
+
+      ${
+        coverImage && heroImgH
+          ? `<div style="width:${heroImgW}px;height:${heroImgH}px;margin:24px auto 0;border-radius:14px;overflow:hidden;">
+               <img src="${escapeHTML(coverImage)}" crossorigin="anonymous" alt=""
+                    style="display:block;width:${heroImgW}px;height:${heroImgH}px;" />
+             </div>`
+          : ""
+      }
 
       <div style="padding:26px ${CONTENT_X}px 30px;box-sizing:border-box;color:#fff;">
         ${
@@ -236,8 +226,8 @@ export const generatePackagePDF = async (pkg) => {
   // line atoms, so a page break can only fall BETWEEN lines and a
   // long day can never be cut through. The rose bar is drawn on
   // every atom so it stays continuous across a page break.
-  // Day images are shown at full content width and natural height:
-  // no crop, no background, no bars.
+  // Day images are fitted inside a max box (width x 300px), centred:
+  // never cropped, never stretched, no background fill.
   // ---------------------------------------------------------
   const BAR = `border-left:3px solid ${C.rose};padding-left:16px;`;
 
@@ -251,14 +241,16 @@ export const generatePackagePDF = async (pkg) => {
 
     let imageHTML = "";
     if (url && size && size.w && size.h) {
-      const fit = Math.min(IMG_BOX_W / size.w, IMG_MAX_H / size.h);
+      const fit = Math.min(IMG_BOX_W / size.w, DAY_IMG_MAX_H / size.h);
       const w = Math.round(size.w * fit);
       const h = Math.round(size.h * fit);
 
       imageHTML = `
-        <div style="margin-top:10px;width:${w}px;height:${h}px;border-radius:12px;overflow:hidden;">
-          <img src="${escapeHTML(url)}" crossorigin="anonymous" alt=""
-               style="display:block;width:${w}px;height:${h}px;" />
+        <div style="margin-top:10px;width:${IMG_BOX_W}px;display:flex;justify-content:center;">
+          <div style="width:${w}px;height:${h}px;border-radius:12px;overflow:hidden;">
+            <img src="${escapeHTML(url)}" crossorigin="anonymous" alt=""
+                 style="display:block;width:${w}px;height:${h}px;" />
+          </div>
         </div>`;
     }
 
