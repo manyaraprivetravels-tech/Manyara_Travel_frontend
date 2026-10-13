@@ -118,16 +118,22 @@ const formatDuration = (days, nights) => {
 
 /*
   FullImage
-  Shows the image exactly as uploaded: never cropped, no blur, no
-  background fill. Size it with h-auto w-auto max-w-full max-h-[...]
-  via imgClassName so the aspect ratio is always kept.
+  Shows the whole photo, never cropped, never blurred.
+
+  - w-full h-auto: the image fills the width of its frame and keeps its own
+    aspect ratio, so normal landscape photos have no empty space at all.
+  - max-h-* (passed in className) + object-contain: only a very tall photo
+    hits the cap; it is then shown whole and centred inside the frame, whose
+    soft background fills the side space.
+
+  Always put it inside a frame that has overflow-hidden and bg-surface-soft.
 */
-function FullImage({ src, alt, eager = false, imgClassName = "" }) {
+function FullImage({ src, alt, eager = false, className = "" }) {
   return (
     <img
       src={src}
       alt={alt}
-      className={`block ${imgClassName}`}
+      className={`block h-auto w-full object-contain ${className}`}
       loading={eager ? "eager" : "lazy"}
       decoding="async"
     />
@@ -247,10 +253,10 @@ function DetailSkeleton() {
         <div className="h-4 w-48 rounded bg-primary/10" />
         <div className="mt-8 h-5 w-40 rounded bg-primary/10" />
         <div className="mt-4 h-12 w-3/4 rounded bg-primary/10" />
-        <div className="mt-8 aspect-[4/3] rounded-3xl bg-primary/10 sm:aspect-[16/9]" />
 
-        <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="space-y-4">
+        <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="space-y-6">
+            <div className="aspect-[4/3] rounded-3xl bg-primary/10 sm:aspect-[16/9]" />
             <div className="h-8 w-56 rounded bg-primary/10" />
             <div className="h-4 rounded bg-primary/10" />
             <div className="h-4 rounded bg-primary/10" />
@@ -643,21 +649,19 @@ export default function PackageDetail() {
             {/* LEFT */}
             <div className="min-w-0">
               {/* COVER IMAGE
-                  Lives in the left column (beside the booking card), the way
-                  travel sites lay it out. Whole image, never cropped, no blur:
-                  width follows the column, height follows the image ratio and
-                  is capped so a tall photo never takes over the page. */}
+                  The frame is the full width of the column, so a normal
+                  landscape photo fills it edge to edge with no empty space.
+                  Nothing is cropped. Only a very tall photo reaches the
+                  height cap; it is then shown whole and centred. */}
               <section className="mb-8 sm:mb-10">
                 {packageImages.length > 0 ? (
-                  <div className="flex justify-center">
-                    <div className="max-w-full overflow-hidden rounded-2xl shadow-travel-card sm:rounded-3xl">
-                      <FullImage
-                        src={packageImages[0]}
-                        alt={pkg.title}
-                        eager
-                        imgClassName="h-auto max-h-[22rem] w-auto max-w-full sm:max-h-[28rem] lg:max-h-[34rem]"
-                      />
-                    </div>
+                  <div className="overflow-hidden rounded-2xl bg-surface-soft shadow-travel-card sm:rounded-3xl">
+                    <FullImage
+                      src={packageImages[0]}
+                      alt={pkg.title}
+                      eager
+                      className="max-h-[24rem] sm:max-h-[32rem] lg:max-h-[40rem]"
+                    />
                   </div>
                 ) : (
                   <div className="flex aspect-[16/9] w-full items-center justify-center overflow-hidden rounded-2xl bg-surface-soft shadow-travel-card sm:rounded-3xl">
@@ -736,17 +740,21 @@ export default function PackageDetail() {
                           className="overflow-hidden rounded-2xl border border-divider bg-card shadow-travel-card sm:rounded-3xl"
                         >
                           {/* Mobile: title, image, text stacked.
-                              Desktop: compact image on the left, title + text on the right. */}
+                              md and up: image in a fixed-width column on the
+                              left (always fills that column), day badge,
+                              title and text on the right. */}
                           <div
                             className={`grid grid-cols-1 ${
                               hasImage
-                                ? "md:grid-cols-[20rem_minmax(0,1fr)] md:grid-rows-[auto_1fr] lg:grid-cols-[22rem_minmax(0,1fr)]"
+                                ? "md:grid-cols-[17rem_minmax(0,1fr)] md:grid-rows-[auto_1fr] lg:grid-cols-[20rem_minmax(0,1fr)]"
                                 : ""
                             }`}
                           >
                             <div
                               className={`flex items-start gap-4 px-5 pt-5 sm:px-6 sm:pt-6 ${
-                                hasImage ? "md:col-start-2 md:row-start-1 md:pl-2 lg:pl-3" : ""
+                                hasImage
+                                  ? "md:col-start-2 md:row-start-1 md:pl-6 md:pt-5"
+                                  : ""
                               }`}
                             >
                               <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl bg-primary-lighter text-primary">
@@ -765,15 +773,16 @@ export default function PackageDetail() {
                               </div>
                             </div>
 
-                            {/* Whole image, never cropped: width follows the
-                                column, height follows the image, capped. */}
+                            {/* Whole image, never cropped. It fills its
+                                column; only a very tall photo is capped and
+                                centred inside the soft frame. */}
                             {hasImage && (
-                              <div className="mt-5 flex justify-center px-5 sm:px-6 md:col-start-1 md:row-span-2 md:row-start-1 md:mt-0 md:items-start md:px-0 md:py-5 md:pl-5 lg:pl-6">
-                                <div className="max-w-full overflow-hidden rounded-xl">
+                              <div className="mt-5 px-5 sm:px-6 md:col-start-1 md:row-span-2 md:row-start-1 md:mt-0 md:self-start md:p-5 md:pr-0">
+                                <div className="overflow-hidden rounded-xl bg-surface-soft">
                                   <FullImage
                                     src={item.image}
                                     alt={`${pkg.title} - Day ${item.day}`}
-                                    imgClassName="h-auto max-h-[20rem] w-auto max-w-full md:max-h-[24rem]"
+                                    className="max-h-[22rem] md:max-h-[26rem]"
                                   />
                                 </div>
                               </div>
@@ -782,7 +791,9 @@ export default function PackageDetail() {
                             {item.description ? (
                               <div
                                 className={`p-5 sm:p-6 ${
-                                  hasImage ? "md:col-start-2 md:row-start-2 md:pl-2 md:pt-3 lg:pl-3" : ""
+                                  hasImage
+                                    ? "md:col-start-2 md:row-start-2 md:pl-6 md:pt-3"
+                                    : ""
                                 }`}
                               >
                                 <p className="whitespace-pre-line break-words text-sm leading-7 text-text sm:text-base sm:leading-8">
