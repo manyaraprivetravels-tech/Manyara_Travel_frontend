@@ -596,7 +596,7 @@ export default function SeasonalSection() {
     <section
       id="seasonal-destinations"
       aria-labelledby="seasonal-title"
-      className="relative isolate w-full overflow-x-clip bg-gradient-to-b from-surface-alt to-background py-16 antialiased [contain-intrinsic-size:auto_860px] [content-visibility:auto] sm:py-20 lg:py-24"
+      className="relative isolate w-full overflow-x-clip bg-gradient-to-b from-surface-alt to-background py-16 antialiased [contain-intrinsic-size:auto_860px] sm:py-20 lg:py-24"
     >
       {/* Top hairline */}
       <div

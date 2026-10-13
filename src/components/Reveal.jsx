@@ -9,23 +9,16 @@ import {
   useState,
 } from "react";
 
-/* ==========================================================
-   useInView
-   - Fires ONCE (observer disconnects after the first hit),
-     so animations never replay while scrolling up/down.
-   - Reduced-motion users / browsers without IntersectionObserver
-     get the content immediately, no animation.
-========================================================== */
+
 export function useInView({
-  threshold = 0.12,
-  rootMargin = "0px 0px -6% 0px",
+  threshold = 0,
+  rootMargin = "0px 0px 300px 0px",
 } = {}) {
-  const ref = useRef(null);
+  const [node, setNode] = useState(null);
   const [inView, setInView] = useState(false);
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return undefined;
+    if (!node || inView) return undefined;
 
     const reduceMotion = window.matchMedia?.(
       "(prefers-reduced-motion: reduce)"
@@ -46,12 +39,13 @@ export function useInView({
       { threshold, rootMargin }
     );
 
-    io.observe(el);
+    io.observe(node);
     return () => io.disconnect();
-  }, [threshold, rootMargin]);
+  }, [node, inView, threshold, rootMargin]);
 
-  return [ref, inView];
+  return [setNode, inView];
 }
+
 
 export function Reveal({
   as: Tag = "div",

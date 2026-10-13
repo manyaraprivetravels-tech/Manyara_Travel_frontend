@@ -12,6 +12,7 @@ export function useQuery(query, ...args) {
 
   useEffect(() => {
     let active = true;
+    let timer;
 
     setData(peekCache(key));
     setError(null);
@@ -20,19 +21,25 @@ export function useQuery(query, ...args) {
       if (active) setData(fresh);
     });
 
-    query(...args)
-      .then((result) => {
-        if (active) setData(result);
-      })
-      .catch((err) => {
-        if (active) setError(err);
-      });
+    const load = (attempt) => {
+      query(...args)
+        .then((result) => { if (active) setData(result); })
+        .catch((err) => {
+          if (!active) return;
+          if (attempt < 2) {
+            timer = setTimeout(() => load(attempt + 1), 3000 * (attempt + 1));
+          } else {
+            setError(err);
+          }
+        });
+    };
+    load(0);
 
     return () => {
       active = false;
+      clearTimeout(timer);
       unsubscribe();
     };
-    // `key` already identifies the query and its arguments.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 

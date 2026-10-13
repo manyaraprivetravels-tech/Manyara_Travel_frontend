@@ -17,6 +17,7 @@ import {
   Globe2,
 } from "lucide-react";
 
+import {cld,cldSrcSet} from "../utils/cloudinary";
 import { cld, cldSrcSet } from "../utils/cloudinary";
 
 import { getMostVisited, getPackages } from "../api/content";
@@ -772,7 +773,6 @@ const showViewAll = allPlaces.length > HOME_LIMIT;
         py-16
         antialiased
         [contain-intrinsic-size:auto_820px]
-        [content-visibility:auto]
         sm:py-24
         lg:py-28
       "

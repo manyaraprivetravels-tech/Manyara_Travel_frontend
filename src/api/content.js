@@ -457,16 +457,6 @@ export const getSeasonedDestinationBySlug = query(
 export const invalidateSeasonedDestinations = () =>
   clearCacheByPrefix("seasoned-destination");
 
-
-
-
-
-
-
-
-
-
-
 /* ============================================================
    HERO
    Home-page carousel slides. Edited often, so it refreshes after
