@@ -718,7 +718,7 @@ export default function PackageDetail() {
 
                   <InfoCard
                     icon={<IndianRupee className="h-5 w-5" aria-hidden="true" />}
-                    label="Starting From"
+                    label="Package Cost"
                     value={formattedPrice}
                   />
                 </div>
@@ -897,7 +897,7 @@ export default function PackageDetail() {
                 {/* PRICE */}
                 <div className="mb-5 rounded-2xl border border-primary/10 bg-brand-gradient p-5">
                   <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
-                    Starting from
+                    Package Cost
                   </p>
 
                   <div className="flex flex-wrap items-end gap-2">

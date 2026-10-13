@@ -1674,7 +1674,7 @@ export default function PackagesManage() {
 
                     <div>
                       <label htmlFor="package-price" className={LABEL_CLASS}>
-                        Starting Price (₹)
+                        Package cost (₹)
                       </label>
 
                       <div className="relative">

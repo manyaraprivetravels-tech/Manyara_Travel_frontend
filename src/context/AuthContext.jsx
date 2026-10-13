@@ -1,10 +1,11 @@
 
 
+
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
 } from "react";
 
@@ -12,74 +13,30 @@ import api from "../api/axios";
 
 const AuthContext = createContext(null);
 
-// 30 minutes
-const INACTIVITY_LIMIT = 30 * 60 * 1000;
+const INACTIVITY_LIMIT = 30 * 30 * 1000; // 30 min of no real user activity
+const ACTIVITY_THROTTLE = 1000; // write activity at most once per second
+const HEARTBEAT_INTERVAL = 4 * 60 * 1000; // tell server + refresh token (only if active)
+const CHECK_INTERVAL = 15 * 1000; // how often we check for expiry
 
-// Prevent high-frequency events such as mousemove
-// from constantly resetting the timer.
-const ACTIVITY_THROTTLE = 1000;
+// localStorage (NOT sessionStorage) so all tabs share one activity clock
+const LAST_ACTIVITY_KEY = "admin_last_activity";
+const TOKEN_KEY = "access_token";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const inactivityTimerRef = useRef(null);
-  const lastActivityRef = useRef(0);
-
-  // ---------------------------------------------------------
-  // LOGOUT
-  // ---------------------------------------------------------
-  const logout = () => {
-    localStorage.removeItem("access_token");
-    sessionStorage.removeItem("admin_last_activity");
-
-    if (inactivityTimerRef.current) {
-      clearTimeout(inactivityTimerRef.current);
-      inactivityTimerRef.current = null;
-    }
-
+  const logout = useCallback(() => {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(LAST_ACTIVITY_KEY);
     setUser(null);
-  };
-
-  // ---------------------------------------------------------
-  // RESET ADMIN INACTIVITY TIMER
-  // ---------------------------------------------------------
-  const resetInactivityTimer = () => {
-    if (user?.role !== "admin") {
-      return;
-    }
-
-    const now = Date.now();
-
-    // Throttle frequent events such as mousemove/scroll
-    if (
-      lastActivityRef.current &&
-      now - lastActivityRef.current < ACTIVITY_THROTTLE
-    ) {
-      return;
-    }
-
-    lastActivityRef.current = now;
-
-    sessionStorage.setItem(
-      "admin_last_activity",
-      String(now)
-    );
-
-    if (inactivityTimerRef.current) {
-      clearTimeout(inactivityTimerRef.current);
-    }
-
-    inactivityTimerRef.current = setTimeout(() => {
-      logout();
-    }, INACTIVITY_LIMIT);
-  };
+  }, []);
 
   // ---------------------------------------------------------
   // CHECK EXISTING TOKEN ON APP START
   // ---------------------------------------------------------
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
+    const token = localStorage.getItem(TOKEN_KEY);
 
     if (!token) {
       setLoading(false);
@@ -88,151 +45,133 @@ export function AuthProvider({ children }) {
 
     api
       .get("/auth/me")
-      .then((res) => {
-        setUser(res.data);
-      })
+      .then((res) => setUser(res.data))
       .catch(() => {
-        localStorage.removeItem("access_token");
-        sessionStorage.removeItem("admin_last_activity");
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(LAST_ACTIVITY_KEY);
         setUser(null);
       })
-      .finally(() => {
-        setLoading(false);
-      });
+      .finally(() => setLoading(false));
   }, []);
 
   // ---------------------------------------------------------
   // LOGIN
   // ---------------------------------------------------------
   const login = async (email, password) => {
-    const res = await api.post("/auth/login", {
-      email,
-      password,
-    });
+    const res = await api.post("/auth/login", { email, password });
 
-    localStorage.setItem(
-      "access_token",
-      res.data.access_token
-    );
+    localStorage.setItem(TOKEN_KEY, res.data.access_token);
+    localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
 
     setUser(res.data.user);
-
-    // Start a fresh 30-minute inactivity period
-    if (res.data.user?.role === "admin") {
-      const now = Date.now();
-
-      lastActivityRef.current = now;
-
-      sessionStorage.setItem(
-        "admin_last_activity",
-        String(now)
-      );
-    }
-
     return res.data.user;
   };
 
   // ---------------------------------------------------------
-  // ADMIN INACTIVITY HANDLER
+  // LOGOUT IN ONE TAB => LOGOUT IN ALL TABS
   // ---------------------------------------------------------
   useEffect(() => {
-    if (user?.role !== "admin") {
+    const onStorage = (e) => {
+      if (e.key === TOKEN_KEY && !e.newValue) {
+        setUser(null);
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  // ---------------------------------------------------------
+  // SERVER SAYS SESSION IS OVER (401 from axios interceptor)
+  // ---------------------------------------------------------
+  useEffect(() => {
+    const onExpired = () => setUser(null);
+    window.addEventListener("auth:expired", onExpired);
+    return () => window.removeEventListener("auth:expired", onExpired);
+  }, []);
+
+  // ---------------------------------------------------------
+  // ADMIN INACTIVITY + HEARTBEAT
+  // ---------------------------------------------------------
+  useEffect(() => {
+    if (user?.role !== "admin") return;
+
+    const readLast = () => Number(localStorage.getItem(LAST_ACTIVITY_KEY) || 0);
+
+    // Already idle too long (e.g. browser was closed and reopened)
+    const stored = readLast();
+    if (stored && Date.now() - stored >= INACTIVITY_LIMIT) {
+      logout();
       return;
     }
+    if (!stored) {
+      localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
+    }
 
+    let lastWrite = 0;
+    let activitySinceHeartbeat = false;
+
+    const markActivity = () => {
+      const now = Date.now();
+      if (now - lastWrite < ACTIVITY_THROTTLE) return;
+      lastWrite = now;
+      activitySinceHeartbeat = true;
+      localStorage.setItem(LAST_ACTIVITY_KEY, String(now));
+    };
+
+    const checkExpiry = () => {
+      const last = readLast();
+      if (last && Date.now() - last >= INACTIVITY_LIMIT) {
+        logout();
+      }
+    };
+
+    // Keeps the server's last_activity_at fresh and slides the JWT expiry,
+    // but ONLY when the admin was actually active since the last beat.
+    const heartbeat = async () => {
+      if (!activitySinceHeartbeat) return;
+      activitySinceHeartbeat = false;
+      try {
+        const res = await api.post("/auth/heartbeat");
+        if (res.data?.access_token) {
+          localStorage.setItem(TOKEN_KEY, res.data.access_token);
+        }
+      } catch (err) {
+        if (err?.response?.status === 401) logout();
+      }
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") checkExpiry();
+    };
+
+    // scroll uses capture so scrolling inside inner containers counts too
     const events = [
       "mousemove",
       "mousedown",
       "keydown",
+      "wheel",
       "scroll",
       "touchstart",
       "click",
     ];
-
-    const handleActivity = () => {
-      resetInactivityTimer();
-    };
-
-    const storedLastActivity = Number(
-      sessionStorage.getItem("admin_last_activity") || 0
+    events.forEach((ev) =>
+      window.addEventListener(ev, markActivity, { passive: true, capture: true })
     );
+    document.addEventListener("visibilitychange", onVisible);
 
-    const now = Date.now();
+    const checkId = setInterval(checkExpiry, CHECK_INTERVAL);
+    const beatId = setInterval(heartbeat, HEARTBEAT_INTERVAL);
 
-    // -------------------------------------------------------
-    // If admin was already inactive for 30+ minutes
-    // -------------------------------------------------------
-    if (
-      storedLastActivity &&
-      now - storedLastActivity >= INACTIVITY_LIMIT
-    ) {
-      logout();
-      return;
-    }
-
-    // -------------------------------------------------------
-    // Existing session without activity timestamp
-    // -------------------------------------------------------
-    if (!storedLastActivity) {
-      const current = Date.now();
-
-      lastActivityRef.current = current;
-
-      sessionStorage.setItem(
-        "admin_last_activity",
-        String(current)
-      );
-    } else {
-      lastActivityRef.current = storedLastActivity;
-    }
-
-    // -------------------------------------------------------
-    // Calculate remaining time
-    // -------------------------------------------------------
-    const elapsed =
-      Date.now() - lastActivityRef.current;
-
-    const remaining = Math.max(
-      INACTIVITY_LIMIT - elapsed,
-      0
-    );
-
-    inactivityTimerRef.current = setTimeout(() => {
-      logout();
-    }, remaining);
-
-    // -------------------------------------------------------
-    // Listen for admin activity
-    // -------------------------------------------------------
-    events.forEach((event) => {
-      window.addEventListener(
-        event,
-        handleActivity,
-        { passive: true }
-      );
-    });
-
-    // -------------------------------------------------------
-    // Cleanup
-    // -------------------------------------------------------
     return () => {
-      events.forEach((event) => {
-        window.removeEventListener(
-          event,
-          handleActivity
-        );
-      });
-
-      if (inactivityTimerRef.current) {
-        clearTimeout(inactivityTimerRef.current);
-        inactivityTimerRef.current = null;
-      }
+      events.forEach((ev) =>
+        window.removeEventListener(ev, markActivity, { capture: true })
+      );
+      document.removeEventListener("visibilitychange", onVisible);
+      clearInterval(checkId);
+      clearInterval(beatId);
     };
-  }, [user]);
+  }, [user, logout]);
 
-  // ---------------------------------------------------------
-  // PROVIDER
-  // ---------------------------------------------------------
   return (
     <AuthContext.Provider
       value={{
@@ -252,85 +191,3 @@ export const useAuth = () => useContext(AuthContext);
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// import { createContext, useContext, useEffect, useState } from "react";
-// import api from "../api/axios";
-
-// const AuthContext = createContext(null);
-
-// export function AuthProvider({ children }) {
-//   const [user, setUser] = useState(null);
-//   const [loading, setLoading] = useState(true);
-
-//   // on mount, if a token exists, validate it against /auth/me
-//   useEffect(() => {
-//     const token = localStorage.getItem("access_token");
-//     if (!token) {
-//       setLoading(false);
-//       return;
-//     }
-//     api
-//       .get("/auth/me")
-//       .then((res) => setUser(res.data))
-//       .catch(() => {
-//         localStorage.removeItem("access_token");
-//       })
-//       .finally(() => setLoading(false));
-//   }, []);
-
-//   const login = async (email, password) => {
-//     const res = await api.post("/auth/login", { email, password });
-//     localStorage.setItem("access_token", res.data.access_token);
-//     setUser(res.data.user);
-//     return res.data.user;
-//   };
-
-//   const logout = () => {
-//     localStorage.removeItem("access_token");
-//     setUser(null);
-//   };
-
-//   return (
-//     <AuthContext.Provider value={{ user, loading, login, logout, isAdmin: user?.role === "admin" }}>
-//       {children}
-//     </AuthContext.Provider>
-//   );
-// }
-
-// export const useAuth = () => useContext(AuthContext);

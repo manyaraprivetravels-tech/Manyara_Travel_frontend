@@ -624,7 +624,7 @@ function PackageCard({ pkg }) {
           <div className="mt-5 flex items-end justify-between gap-4 border-t border-rose-100 pt-4">
             <div>
               <p className="text-xs text-[#9a7b83]">
-                Starting from
+                Package Cost 
               </p>
 
               <p className="mt-0.5 text-lg font-bold text-primary">

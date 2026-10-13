@@ -15,4 +15,27 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+
+// If the server rejects an authenticated request with 401 (token expired
+// or admin inactivity), clear the session and tell the app to log out.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    const url = error?.config?.url || "";
+    const hadToken = Boolean(error?.config?.headers?.Authorization);
+ 
+    // A 401 from /auth/login just means wrong credentials - not an expired session.
+    const isLoginRequest = url.includes("/auth/login");
+ 
+    if (status === 401 && hadToken && !isLoginRequest) {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("admin_last_activity");
+      window.dispatchEvent(new Event("auth:expired"));
+    }
+ 
+    return Promise.reject(error);
+  }
+);
+
 export default api;
