@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 
 import {cld,cldSrcSet} from "../utils/cloudinary";
-import { cld, cldSrcSet } from "../utils/cloudinary";
 
 import { getMostVisited, getPackages } from "../api/content";
 import { useQuery } from "../hooks/useQuery";
