@@ -1,6 +1,7 @@
 
 
 
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -637,46 +638,48 @@ export default function PackageDetail() {
             )}
           </section>
 
-          {/* COVER IMAGE
-              Whole image, never cropped, no blur. Height is capped so it
-              doesn't dominate the page; width follows the image's own ratio. */}
-          <section className="pb-8 sm:pb-10">
-            {packageImages.length > 0 ? (
-              <div className="flex justify-center">
-                <div className="max-w-full overflow-hidden rounded-2xl shadow-travel-card sm:rounded-3xl">
-                  <FullImage
-                    src={packageImages[0]}
-                    alt={pkg.title}
-                    eager
-                    imgClassName="h-auto max-h-[20rem] w-auto max-w-full sm:max-h-[26rem] lg:max-h-[30rem]"
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="flex aspect-[16/9] w-full items-center justify-center overflow-hidden rounded-2xl bg-surface-soft shadow-travel-card sm:rounded-3xl">
-                <MapPin className="h-12 w-12 text-ink-300" aria-hidden="true" />
-              </div>
-            )}
-          </section>
-
-          {/* Sentinel: the floating button appears once this scrolls out of view */}
-          <div ref={heroEndRef} aria-hidden="true" className="h-px" />
-
-          {/* DESCRIPTION */}
-          {pkg.description && (
-            <section className="pb-10 sm:pb-12">
-              <SectionHeading eyebrow="The Experience" title="About This Package" />
-
-              <p className="whitespace-pre-line break-words text-sm leading-7 text-text sm:text-base sm:leading-8">
-                {pkg.description}
-              </p>
-            </section>
-          )}
-
           {/* TWO COLUMNS */}
           <div className="grid grid-cols-1 items-start gap-8 pb-16 sm:pb-20 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-12 xl:gap-14">
             {/* LEFT */}
             <div className="min-w-0">
+              {/* COVER IMAGE
+                  Lives in the left column (beside the booking card), the way
+                  travel sites lay it out. Whole image, never cropped, no blur:
+                  width follows the column, height follows the image ratio and
+                  is capped so a tall photo never takes over the page. */}
+              <section className="mb-8 sm:mb-10">
+                {packageImages.length > 0 ? (
+                  <div className="flex justify-center">
+                    <div className="max-w-full overflow-hidden rounded-2xl shadow-travel-card sm:rounded-3xl">
+                      <FullImage
+                        src={packageImages[0]}
+                        alt={pkg.title}
+                        eager
+                        imgClassName="h-auto max-h-[22rem] w-auto max-w-full sm:max-h-[28rem] lg:max-h-[34rem]"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex aspect-[16/9] w-full items-center justify-center overflow-hidden rounded-2xl bg-surface-soft shadow-travel-card sm:rounded-3xl">
+                    <MapPin className="h-12 w-12 text-ink-300" aria-hidden="true" />
+                  </div>
+                )}
+              </section>
+
+              {/* Sentinel: the floating button appears once this scrolls out of view */}
+              <div ref={heroEndRef} aria-hidden="true" className="h-px" />
+
+              {/* DESCRIPTION */}
+              {pkg.description && (
+                <section className="mb-10 sm:mb-12">
+                  <SectionHeading eyebrow="The Experience" title="About This Package" />
+
+                  <p className="whitespace-pre-line break-words text-sm leading-7 text-text sm:text-base sm:leading-8">
+                    {pkg.description}
+                  </p>
+                </section>
+              )}
+
               {/* PACKAGE INFORMATION */}
               <section className="mb-10 sm:mb-12">
                 <SectionHeading eyebrow="At a Glance" title="Package Information" />
@@ -724,54 +727,75 @@ export default function PackageDetail() {
                   />
 
                   <div className="space-y-5 sm:space-y-6">
-                    {itinerary.map((item, index) => (
-                      <article
-                        key={`${item.day}-${index}`}
-                        className="overflow-hidden rounded-2xl border border-divider bg-card shadow-travel-card sm:rounded-3xl"
-                      >
-                        <div className="flex items-start gap-4 px-5 pt-5 sm:px-6 sm:pt-6">
-                          <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl bg-primary-lighter text-primary">
-                            <span className="text-[9px] font-semibold uppercase tracking-[0.2em]">
-                              Day
-                            </span>
-                            <span className="font-display text-2xl font-semibold leading-none">
-                              {String(item.day).padStart(2, "0")}
-                            </span>
-                          </div>
+                    {itinerary.map((item, index) => {
+                      const hasImage = Boolean(item.image);
 
-                          <div className="min-w-0 pt-1">
-                            <h3 className="break-words font-display text-2xl font-semibold leading-snug text-text-dark sm:text-[1.7rem]">
-                              {item.title || `Day ${item.day}`}
-                            </h3>
-                          </div>
-                        </div>
+                      return (
+                        <article
+                          key={`${item.day}-${index}`}
+                          className="overflow-hidden rounded-2xl border border-divider bg-card shadow-travel-card sm:rounded-3xl"
+                        >
+                          {/* Mobile: title, image, text stacked.
+                              Desktop: compact image on the left, title + text on the right. */}
+                          <div
+                            className={`grid grid-cols-1 ${
+                              hasImage
+                                ? "md:grid-cols-[20rem_minmax(0,1fr)] md:grid-rows-[auto_1fr] lg:grid-cols-[22rem_minmax(0,1fr)]"
+                                : ""
+                            }`}
+                          >
+                            <div
+                              className={`flex items-start gap-4 px-5 pt-5 sm:px-6 sm:pt-6 ${
+                                hasImage ? "md:col-start-2 md:row-start-1 md:pl-2 lg:pl-3" : ""
+                              }`}
+                            >
+                              <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl bg-primary-lighter text-primary">
+                                <span className="text-[9px] font-semibold uppercase tracking-[0.2em]">
+                                  Day
+                                </span>
+                                <span className="font-display text-2xl font-semibold leading-none">
+                                  {String(item.day).padStart(2, "0")}
+                                </span>
+                              </div>
 
-                        {/* Whole image, never cropped; height capped, centered */}
-                        {item.image && (
-                          <div className="mt-5 flex justify-center px-5 sm:px-6">
-                            <div className="max-w-full overflow-hidden rounded-xl sm:rounded-2xl">
-                              <FullImage
-                                src={item.image}
-                                alt={`${pkg.title} - Day ${item.day}`}
-                                imgClassName="h-auto max-h-[18rem] w-auto max-w-full sm:max-h-[22rem] lg:max-h-[26rem]"
-                              />
+                              <div className="min-w-0 pt-1">
+                                <h3 className="break-words font-display text-2xl font-semibold leading-snug text-text-dark sm:text-[1.7rem]">
+                                  {item.title || `Day ${item.day}`}
+                                </h3>
+                              </div>
                             </div>
-                          </div>
-                        )}
 
-                        {item.description && (
-                          <div className="p-5 sm:p-6">
-                            <p className="whitespace-pre-line break-words text-sm leading-7 text-text sm:text-base sm:leading-8">
-                              {item.description}
-                            </p>
-                          </div>
-                        )}
+                            {/* Whole image, never cropped: width follows the
+                                column, height follows the image, capped. */}
+                            {hasImage && (
+                              <div className="mt-5 flex justify-center px-5 sm:px-6 md:col-start-1 md:row-span-2 md:row-start-1 md:mt-0 md:items-start md:px-0 md:py-5 md:pl-5 lg:pl-6">
+                                <div className="max-w-full overflow-hidden rounded-xl">
+                                  <FullImage
+                                    src={item.image}
+                                    alt={`${pkg.title} - Day ${item.day}`}
+                                    imgClassName="h-auto max-h-[20rem] w-auto max-w-full md:max-h-[24rem]"
+                                  />
+                                </div>
+                              </div>
+                            )}
 
-                        {!item.image && !item.description && (
-                          <div className="pb-5 sm:pb-6" />
-                        )}
-                      </article>
-                    ))}
+                            {item.description ? (
+                              <div
+                                className={`p-5 sm:p-6 ${
+                                  hasImage ? "md:col-start-2 md:row-start-2 md:pl-2 md:pt-3 lg:pl-3" : ""
+                                }`}
+                              >
+                                <p className="whitespace-pre-line break-words text-sm leading-7 text-text sm:text-base sm:leading-8">
+                                  {item.description}
+                                </p>
+                              </div>
+                            ) : (
+                              !hasImage && <div className="pb-5 sm:pb-6" />
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
                   </div>
                 </section>
               )}
@@ -1120,7 +1144,6 @@ export default function PackageDetail() {
     </>
   );
 }
-
 
 
 
