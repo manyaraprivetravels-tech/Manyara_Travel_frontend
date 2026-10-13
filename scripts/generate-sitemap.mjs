@@ -1,61 +1,106 @@
-// Runs automatically before `npm run build` (see the "prebuild" script in
-// package.json). It asks your FastAPI backend for the current packages,
-// destinations, and blog posts, then writes public/sitemap.xml so the
-// sitemap always reflects what's actually published - no manual upkeep.
-//
-// Requires Node 18+ (built-in fetch). Set VITE_API_BASE_URL in your .env
-// or it falls back to http://localhost:8000.
-
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SITE_URL = "https://onatripholidays.com";
-const API_BASE = process.env.VITE_API_BASE_URL || "http://localhost:8000";
+const SITE_URL = "https://manyaraprivevacations.com";
+const API_BASE = (
+  process.env.VITE_API_BASE_URL || "https://manyara-travel-backend-2yco.onrender.com"
+).replace(/\/$/, "");
 
-async function safeFetchJson(url) {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    return await res.json();
-  } catch (err) {
-    console.warn(`[sitemap] Skipping ${url} — ${err.message}`);
-    return [];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* Render may be asleep during the build, so allow a long wait and retry. */
+async function fetchJson(url, attempts = 3) {
+  for (let i = 1; i <= attempts; i += 1) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(45000) });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      return await res.json();
+    } catch (err) {
+      console.warn(`[sitemap] ${url} attempt ${i}/${attempts}: ${err.message}`);
+      if (i < attempts) await sleep(4000 * i);
+    }
   }
+  return [];
 }
 
-function urlEntry(loc, { changefreq = "weekly", priority = "0.7" } = {}) {
-  return `  <url>\n    <loc>${loc}</loc>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+const toList = (data) => {
+  if (Array.isArray(data)) return data;
+  for (const key of ["items", "data", "packages"]) {
+    if (Array.isArray(data?.[key])) return data[key];
+  }
+  return [];
+};
+
+const isPublished = (item) => {
+  const status = String(item?.status ?? "").trim().toLowerCase();
+  return status === "" || status === "published" || item?.is_published === true;
+};
+
+const esc = (value) =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+const lastmodOf = (item) => {
+  const raw = item?.updated_at || item?.created_at;
+  const date = raw ? new Date(raw) : null;
+  return date && !Number.isNaN(date.getTime())
+    ? date.toISOString().slice(0, 10)
+    : "";
+};
+
+function entry(pathname, item) {
+  const lastmod = lastmodOf(item);
+  return `  <url><loc>${esc(SITE_URL + pathname)}</loc>${
+    lastmod ? `<lastmod>${lastmod}</lastmod>` : ""
+  }</url>`;
 }
+
+const section = (base, list) =>
+  toList(list)
+    .filter((item) => item?.slug && isPublished(item))
+    .map((item) => entry(`${base}/${encodeURIComponent(item.slug)}`, item));
 
 async function main() {
-  const [packages, destinations, blogs] = await Promise.all([
-    safeFetchJson(`${API_BASE}/packages`),
-    safeFetchJson(`${API_BASE}/most-visited`),
-    safeFetchJson(`${API_BASE}/blogs`),
+  const [packages, destinations, seasonal, blogs] = await Promise.all([
+    fetchJson(`${API_BASE}/packages`),
+    fetchJson(`${API_BASE}/most-visited`),
+    fetchJson(`${API_BASE}/seasoned-destinations`),
+    fetchJson(`${API_BASE}/blogs`),
   ]);
 
-  const entries = [
-    urlEntry(`${SITE_URL}/`, { changefreq: "daily", priority: "1.0" }),
-    urlEntry(`${SITE_URL}/about`, { changefreq: "monthly", priority: "0.5" }),
-    urlEntry(`${SITE_URL}/blog`, { changefreq: "daily", priority: "0.8" }),
-    ...packages.map((p) =>
-      urlEntry(`${SITE_URL}/packages/${p.slug || p.id}`, { priority: "0.9" })
-    ),
-    ...destinations.map((d) =>
-      urlEntry(`${SITE_URL}/destinations/${d.slug || d.id}`, { priority: "0.8" })
-    ),
-    ...blogs.map((b) =>
-      urlEntry(`${SITE_URL}/blog/${b.slug || b.id}`, { changefreq: "monthly", priority: "0.6" })
-    ),
+  const staticPaths = [
+    "/",
+    "/about",
+    "/packages",
+    "/destinations",
+    "/seasoned-destinations",
+    "/blog",
   ];
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join("\n")}\n</urlset>\n`;
+  const entries = [
+    ...staticPaths.map((p) => entry(p)),
+    ...section("/packages", packages),
+    ...section("/destinations", destinations),
+    ...section("/seasoned-destinations", seasonal),
+    ...section("/blog", blogs),
+  ];
+
+  const xml =
+    `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    `${entries.join("\n")}\n</urlset>\n`;
 
   const outPath = path.join(__dirname, "..", "public", "sitemap.xml");
   fs.writeFileSync(outPath, xml, "utf-8");
   console.log(`[sitemap] Wrote ${entries.length} URLs to ${outPath}`);
+
+  if (entries.length === staticPaths.length) {
+    console.warn("[sitemap] API returned nothing, so only static pages are listed.");
+  }
 }
 
 main();
