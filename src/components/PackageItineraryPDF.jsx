@@ -29,8 +29,9 @@ const PAD_TOP = 40; // empty space at the top of pages 2+
 const PAD_BOTTOM = 46; // empty space at the bottom of every page
 const CONTENT_X = 48; // left/right page padding
 const DAY_BAR = 19; // 3px accent bar + 16px gap in the itinerary
-const IMG_BOX_W = PAGE_W - CONTENT_X * 2 - DAY_BAR; // width available to a day image
-const IMG_BOX_MAX_H = 360; // tallest a day image may be (no cropping, it is scaled to fit)
+const IMG_BOX_W = PAGE_W - CONTENT_X * 2 - DAY_BAR; // full width available to a day image
+const HERO_IMG_MAX_H = 560; // cover image: tallest it may be on page 1 (never cropped)
+const HERO_MIN_H = 200; // cover area height when there is no image / a very wide one
 
 /**
  * Lower scale on phones: iOS Safari limits canvas area, and long
@@ -56,6 +57,11 @@ export const generatePackagePDF = async (pkg) => {
   const { default: html2pdf } = await import("html2pdf.js");
   const { scale: SCALE, pageH: PAGE_H } = getGeometry();
 
+  // Day images can be as tall as a page allows (minus room for the day
+  // header and the first description line). Only extremely tall portrait
+  // photos are ever scaled down, and they are never cropped.
+  const IMG_MAX_H = Math.floor(PAGE_H - PAD_TOP - PAD_BOTTOM - 150);
+
   // ---------------------------------------------------------
   // Normalize data
   // ---------------------------------------------------------
@@ -80,16 +86,30 @@ export const generatePackagePDF = async (pkg) => {
 
   // ---------------------------------------------------------
   // Fonts + images MUST be ready before building / measuring.
-  // preloadImages also returns each image's natural size so day
-  // images can be fitted without cropping.
+  // preloadImages also returns each image's natural size so every
+  // image can be fitted without cropping.
   // ---------------------------------------------------------
   await ensureFonts();
 
-  const coverUrl = optimizeUrl(rawCover, 1400);
-  const dayUrls = itinerary.map((d) => optimizeUrl(getImageUrl(d?.image), 1200));
+  const coverUrl = optimizeUrl(rawCover, 1800);
+  const dayUrls = itinerary.map((d) => optimizeUrl(getImageUrl(d?.image), 1600));
   const sizes = await preloadImages([coverUrl, ...dayUrls]);
 
   const coverImage = coverUrl && sizes.has(coverUrl) ? coverUrl : null;
+
+  // Cover image: full width, natural height. Only a very tall portrait
+  // photo is scaled down (never cropped) so it still fits on page 1.
+  const coverSize = coverImage ? sizes.get(coverImage) : null;
+  let heroImgW = PAGE_W;
+  let heroImgH = 0;
+
+  if (coverSize && coverSize.w && coverSize.h) {
+    const fit = Math.min(PAGE_W / coverSize.w, HERO_IMG_MAX_H / coverSize.h);
+    heroImgW = Math.round(coverSize.w * fit);
+    heroImgH = Math.round(coverSize.h * fit);
+  }
+
+  const heroBoxH = heroImgH ? Math.max(heroImgH, HERO_MIN_H) : HERO_MIN_H;
 
   // ---------------------------------------------------------
   // HTML builders
@@ -151,21 +171,32 @@ export const generatePackagePDF = async (pkg) => {
     </div>`;
 
   // ---------------------------------------------------------
-  // COVER (page 1). A full-bleed hero has to fill its box, so
-  // this one image is allowed to crop (background-size: cover).
+  // COVER (page 1)
+  // The cover photo is shown in FULL: full page width, natural
+  // height, no crop, no dark wash over it (only a light fade
+  // behind the brand name at the very top). The package title sits
+  // in its own colour band UNDER the photo, so nothing covers it.
   // ---------------------------------------------------------
   const heroHTML = `
-    <div data-atom style="position:relative;width:${PAGE_W}px;height:400px;overflow:hidden;background:linear-gradient(135deg,${C.roseDeep},${C.rose} 55%,#E8286F);${
-      coverImage ? `background-image:${cssUrl(coverImage)};background-size:cover;background-position:center;` : ""
-    }">
-      <div style="position:absolute;top:0;left:0;width:${PAGE_W}px;height:400px;background:linear-gradient(to bottom,rgba(31,27,34,.6) 0%,rgba(31,27,34,.05) 38%,rgba(31,27,34,.85) 100%);"></div>
+    <div data-atom style="width:${PAGE_W}px;background:linear-gradient(135deg,${C.roseDeep},${C.rose} 55%,#E8286F);">
+      <div style="position:relative;width:${PAGE_W}px;height:${heroBoxH}px;overflow:hidden;background:${
+        coverImage ? C.ink : `linear-gradient(135deg,${C.roseDeep},${C.rose} 55%,#E8286F)`
+      };">
+        ${
+          coverImage && heroImgH
+            ? `<img src="${escapeHTML(coverImage)}" crossorigin="anonymous" alt=""
+                    style="position:absolute;top:0;left:${Math.round((PAGE_W - heroImgW) / 2)}px;width:${heroImgW}px;height:${heroImgH}px;display:block;" />`
+            : ""
+        }
+        <div style="position:absolute;top:0;left:0;width:${PAGE_W}px;height:110px;background:linear-gradient(to bottom,rgba(31,27,34,.55),rgba(31,27,34,0));"></div>
 
-      <div style="position:absolute;top:30px;left:0;width:${PAGE_W}px;text-align:center;">
-        <div style="font-family:${SERIF};font-size:30px;font-weight:600;letter-spacing:.3em;color:#fff;text-transform:uppercase;padding-left:.3em;">Manyara</div>
-        <div style="font-family:${SANS};font-size:9px;font-weight:500;letter-spacing:.5em;color:${C.champagne};margin-top:3px;padding-left:.5em;">PRIVE VACATIONS</div>
+        <div style="position:absolute;top:26px;left:0;width:${PAGE_W}px;text-align:center;">
+          <div style="font-family:${SERIF};font-size:30px;font-weight:600;letter-spacing:.3em;color:#fff;text-transform:uppercase;padding-left:.3em;">Manyara</div>
+          <div style="font-family:${SANS};font-size:9px;font-weight:500;letter-spacing:.5em;color:${C.champagne};margin-top:3px;padding-left:.5em;">PRIVE VACATIONS</div>
+        </div>
       </div>
 
-      <div style="position:absolute;left:48px;right:48px;bottom:34px;color:#fff;">
+      <div style="padding:26px ${CONTENT_X}px 30px;box-sizing:border-box;color:#fff;">
         ${
           pkg.destination
             ? `<div style="font-family:${SANS};font-size:11px;font-weight:600;letter-spacing:.32em;text-transform:uppercase;color:${C.champagne};margin-bottom:10px;">${escapeHTML(pkg.destination)}</div>`
@@ -205,7 +236,8 @@ export const generatePackagePDF = async (pkg) => {
   // line atoms, so a page break can only fall BETWEEN lines and a
   // long day can never be cut through. The rose bar is drawn on
   // every atom so it stays continuous across a page break.
-  // Images are scaled to fit (contain), never cropped.
+  // Day images are shown at full content width and natural height:
+  // no crop, no background, no bars.
   // ---------------------------------------------------------
   const BAR = `border-left:3px solid ${C.rose};padding-left:16px;`;
 
@@ -219,14 +251,14 @@ export const generatePackagePDF = async (pkg) => {
 
     let imageHTML = "";
     if (url && size && size.w && size.h) {
-      const fit = Math.min(IMG_BOX_W / size.w, IMG_BOX_MAX_H / size.h);
+      const fit = Math.min(IMG_BOX_W / size.w, IMG_MAX_H / size.h);
       const w = Math.round(size.w * fit);
       const h = Math.round(size.h * fit);
 
       imageHTML = `
-        <div style="margin-top:10px;width:${IMG_BOX_W}px;height:${h}px;background:${C.champagneSoft};border-radius:12px;overflow:hidden;">
+        <div style="margin-top:10px;width:${w}px;height:${h}px;border-radius:12px;overflow:hidden;">
           <img src="${escapeHTML(url)}" crossorigin="anonymous" alt=""
-               style="display:block;width:${w}px;height:${h}px;margin:0 auto;" />
+               style="display:block;width:${w}px;height:${h}px;" />
         </div>`;
     }
 
@@ -366,7 +398,7 @@ export const generatePackagePDF = async (pkg) => {
       .set({
         margin: 0, // margins are handled by paginate()
         filename: fileName,
-        image: { type: "jpeg", quality: 0.95 },
+        image: { type: "jpeg", quality: 0.98 },
         html2canvas: {
           scale: SCALE,
           useCORS: true,
@@ -593,8 +625,8 @@ function nextFrame() {
 // ---------------------------------------------------------
 
 /**
- * Ask Cloudinary for a resized JPEG (never upscaled, never cropped).
- * Smaller canvas, faster PDF, and avoids WebP/AVIF surprises.
+ * Ask Cloudinary for a resized JPEG (never upscaled, never cropped:
+ * c_limit only shrinks an image that is wider than `width`).
  * Non-Cloudinary or already-transformed URLs are returned unchanged.
  */
 function optimizeUrl(url, width) {
@@ -605,19 +637,10 @@ function optimizeUrl(url, width) {
     url.includes("/upload/") &&
     !/\/upload\/(?:[a-z]{1,3}_[^/]*\/)+/.test(url)
   ) {
-    return url.replace("/upload/", `/upload/f_jpg,q_auto:good,w_${width},c_limit/`);
+    return url.replace("/upload/", `/upload/f_jpg,q_auto:best,w_${width},c_limit/`);
   }
 
   return url;
-}
-
-/** CSS url() that is safe inside an inline style attribute. */
-function cssUrl(url) {
-  const safe = String(url).replace(
-    /['"()\s<>]/g,
-    (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")
-  );
-  return `url('${safe}')`;
 }
 
 /** Image URL from a string or an image object. */
