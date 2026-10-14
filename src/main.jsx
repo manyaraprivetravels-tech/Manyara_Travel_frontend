@@ -18,16 +18,25 @@ import {
 
 const quiet = () => {};
 
-
 if (window.location.pathname === "/") {
-  [
-    getHero,
-    getSiteSettings,
-    getPackages,
-    getMostVisited,
-    getSeasonedDestinations,
-    getBlogs,
-  ].forEach((query) => query().catch(quiet));
+  /* Above the fold: start immediately */
+  [getHero, getSiteSettings, getMostVisited].forEach((query) =>
+    query().catch(quiet)
+  );
+
+  /* Below the fold: start once the first screen's requests are under way.
+     Their useQuery calls share the same pending promise, so nothing is
+     fetched twice. */
+  const prefetchLater = () =>
+    [getPackages, getSeasonedDestinations, getBlogs].forEach((query) =>
+      query().catch(quiet)
+    );
+
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(prefetchLater, { timeout: 2000 });
+  } else {
+    setTimeout(prefetchLater, 1500);
+  }
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -37,9 +46,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </HelmetProvider>
   </React.StrictMode>,
 );
-
-
-
 
 
 
