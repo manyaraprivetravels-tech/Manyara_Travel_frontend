@@ -21,6 +21,16 @@ const EMPTY_FORM = {
 };
 
 const getErrorMessage = (err, fallback) => {
+  // Request cancelled by the 60s limit: the server may still have saved it.
+  if (err?.code === "ECONNABORTED") {
+    return "The server took too long to respond. Check the list before trying again.";
+  }
+
+  // No response at all (offline, server down, CORS).
+  if (err?.request && !err?.response) {
+    return "Could not reach the server. Check your connection and try again.";
+  }
+
   const detail = err?.response?.data?.detail;
 
   if (Array.isArray(detail)) {
@@ -48,6 +58,7 @@ export default function CreatorsManage() {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -75,7 +86,10 @@ export default function CreatorsManage() {
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    if (saving) return;
+
     setError("");
+    setSuccess("");
 
     if (form.password !== form.confirm_password) {
       setError("Password and Confirm Password do not match.");
@@ -86,7 +100,7 @@ export default function CreatorsManage() {
       form.role === "admin" &&
       !form.admin_verification_password.trim()
     ) {
-      setError("Existing admin password is required.");
+      setError("Your admin password is required.");
       return;
     }
 
@@ -112,6 +126,12 @@ export default function CreatorsManage() {
 
       await registerUser(payload);
 
+      setSuccess(
+        `${
+          form.role === "admin" ? "Admin" : "Creator"
+        } account created for ${payload.email}.`
+      );
+
       setForm(EMPTY_FORM);
       setShowPassword(false);
       setShowConfirmPassword(false);
@@ -130,6 +150,7 @@ export default function CreatorsManage() {
 
   const toggleActive = async (user) => {
     setError("");
+    setSuccess("");
 
     try {
       await setCreatorStatus(user.id, !user.is_active);
@@ -146,7 +167,7 @@ export default function CreatorsManage() {
 
   const handleDelete = async (user) => {
     if (
-      !confirm(
+      !window.confirm(
         `Remove ${user.name}'s account? This cannot be undone.`
       )
     ) {
@@ -154,6 +175,7 @@ export default function CreatorsManage() {
     }
 
     setError("");
+    setSuccess("");
 
     try {
       await deleteCreator(user.id);
@@ -195,6 +217,7 @@ export default function CreatorsManage() {
   const openCreateForm = () => {
     setForm(EMPTY_FORM);
     setError("");
+    setSuccess("");
     setShowPassword(false);
     setShowConfirmPassword(false);
     setShowAdminVerification(false);
@@ -217,9 +240,24 @@ export default function CreatorsManage() {
         </button>
       </div>
 
+      {/* Page-level success */}
+      {success && !showForm && (
+        <div
+          className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3"
+          role="status"
+        >
+          <p className="text-sm text-green-700">
+            {success}
+          </p>
+        </div>
+      )}
+
       {/* Page-level error */}
       {error && !showForm && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+        <div
+          className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3"
+          role="alert"
+        >
           <p className="text-sm text-red-600">
             {error}
           </p>
@@ -330,17 +368,23 @@ export default function CreatorsManage() {
             <form
               onSubmit={handleCreate}
               className="space-y-4"
+              autoComplete="off"
             >
               {/* Name */}
               <div>
-                <label className="block text-sm font-medium text-navy mb-1.5">
+                <label
+                  htmlFor="new-account-name"
+                  className="block text-sm font-medium text-navy mb-1.5"
+                >
                   Name
                 </label>
 
                 <input
+                  id="new-account-name"
                   required
                   minLength={2}
                   maxLength={100}
+                  autoComplete="off"
                   value={form.name}
                   onChange={(e) =>
                     setForm({
@@ -355,13 +399,18 @@ export default function CreatorsManage() {
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-navy mb-1.5">
+                <label
+                  htmlFor="new-account-email"
+                  className="block text-sm font-medium text-navy mb-1.5"
+                >
                   Email
                 </label>
 
                 <input
+                  id="new-account-email"
                   type="email"
                   required
+                  autoComplete="off"
                   value={form.email}
                   onChange={(e) =>
                     setForm({
@@ -376,12 +425,16 @@ export default function CreatorsManage() {
 
               {/* Password */}
               <div>
-                <label className="block text-sm font-medium text-navy mb-1.5">
+                <label
+                  htmlFor="new-account-password"
+                  className="block text-sm font-medium text-navy mb-1.5"
+                >
                   Password
                 </label>
 
                 <div className="relative">
                   <input
+                    id="new-account-password"
                     type={
                       showPassword
                         ? "text"
@@ -390,6 +443,7 @@ export default function CreatorsManage() {
                     required
                     minLength={6}
                     maxLength={72}
+                    autoComplete="new-password"
                     value={form.password}
                     onChange={(e) =>
                       setForm({
@@ -426,12 +480,16 @@ export default function CreatorsManage() {
 
               {/* Confirm Password */}
               <div>
-                <label className="block text-sm font-medium text-navy mb-1.5">
+                <label
+                  htmlFor="new-account-confirm-password"
+                  className="block text-sm font-medium text-navy mb-1.5"
+                >
                   Confirm Password
                 </label>
 
                 <div className="relative">
                   <input
+                    id="new-account-confirm-password"
                     type={
                       showConfirmPassword
                         ? "text"
@@ -440,6 +498,7 @@ export default function CreatorsManage() {
                     required
                     minLength={6}
                     maxLength={72}
+                    autoComplete="new-password"
                     value={form.confirm_password}
                     onChange={(e) =>
                       setForm({
@@ -477,11 +536,15 @@ export default function CreatorsManage() {
 
               {/* Role */}
               <div>
-                <label className="block text-sm font-medium text-navy mb-1.5">
+                <label
+                  htmlFor="new-account-role"
+                  className="block text-sm font-medium text-navy mb-1.5"
+                >
                   Role
                 </label>
 
                 <select
+                  id="new-account-role"
                   value={form.role}
                   onChange={handleRoleChange}
                   className="w-full px-3 py-2 rounded-lg border border-navy/15 text-sm outline-none focus:border-secondary"
@@ -505,18 +568,22 @@ export default function CreatorsManage() {
                     </p>
 
                     <p className="text-xs text-navy/50 mt-1">
-                      Enter the password of an existing
-                      admin to authorize creation of this
-                      new admin account.
+                      Enter your own admin password to
+                      authorize creation of this new admin
+                      account.
                     </p>
                   </div>
 
-                  <label className="block text-sm font-medium text-navy mb-1.5">
-                    Existing Admin Password
+                  <label
+                    htmlFor="new-account-admin-password"
+                    className="block text-sm font-medium text-navy mb-1.5"
+                  >
+                    Your Admin Password
                   </label>
 
                   <div className="relative">
                     <input
+                      id="new-account-admin-password"
                       type={
                         showAdminVerification
                           ? "text"
@@ -527,6 +594,7 @@ export default function CreatorsManage() {
                       }
                       minLength={6}
                       maxLength={72}
+                      autoComplete="off"
                       value={
                         form.admin_verification_password
                       }
@@ -538,7 +606,7 @@ export default function CreatorsManage() {
                         })
                       }
                       className="w-full px-3 pr-10 py-2 rounded-lg border border-navy/15 text-sm outline-none focus:border-secondary"
-                      placeholder="Enter existing admin password"
+                      placeholder="Enter your admin password"
                     />
 
                     <button
@@ -567,7 +635,10 @@ export default function CreatorsManage() {
 
               {/* Form Error */}
               {error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5">
+                <div
+                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5"
+                  role="alert"
+                >
                   <p className="text-sm text-red-600">
                     {error}
                   </p>
