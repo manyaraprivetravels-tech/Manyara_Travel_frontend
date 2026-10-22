@@ -1,10 +1,8 @@
 
 
-
-
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, Phone, PhoneCall, X } from "lucide-react";
-import {FaWhatsapp} from "react-icons/fa";
+import { Phone, PhoneCall, X } from "lucide-react";
+import { FaWhatsapp } from "react-icons/fa";
 import api from "../api/axios";
 
 export default function FloatingContact() {
@@ -78,7 +76,7 @@ export default function FloatingContact() {
   return (
     <div
       ref={contactRef}
-      className="fixed right-4 bottom-5 sm:right-6 sm:bottom-6 z-[60]"
+      className="fixed right-4 bottom-12 sm:right-6 sm:bottom-25 z-[60]"
     >
       {/* Contact Options */}
       <div
@@ -115,14 +113,13 @@ export default function FloatingContact() {
           <span className="text-sm font-semibold">WhatsApp</span>
 
           <span
-          className="w-11 h-11 rounded-full
-            bg-[#25D366] text-white
-            flex items-center justify-center
-            shrink-0"
-        >
-          <FaWhatsapp className="w-6 h-6" />
-        </span>
-
+            className="w-11 h-11 rounded-full
+              bg-[#25D366] text-white
+              flex items-center justify-center
+              shrink-0"
+          >
+            <FaWhatsapp className="w-6 h-6" />
+          </span>
         </a>
 
         {/* Call Us */}
@@ -213,6 +210,5 @@ export default function FloatingContact() {
     </div>
   );
 }
-
 
 

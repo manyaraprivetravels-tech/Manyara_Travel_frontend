@@ -1,7 +1,5 @@
 
 
-
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -22,6 +20,8 @@ import {
 
 import { getPackageBySlug } from "../../api/content";
 import { useQuery } from "../../hooks/useQuery";
+import { cld, cldSrcSet } from "../../utils/cloudinary";
+import { COVER_ASPECT, ITINERARY_ASPECT } from "../../utils/imageRatios";
 import Footer from "../../components/Footer";
 import Seo from "../../components/Seo";
 import FAQSection from "../../components/FAQSection";
@@ -53,6 +53,13 @@ const PACKAGE_TYPE_LABELS = {
 
 const PRIMARY_BUTTON =
   "inline-flex items-center justify-center gap-2 rounded-xl bg-primary font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-70";
+
+/* Image sizes requested from the CDN (cover is the large one) */
+const COVER_WIDTHS = [800, 1200, 1600];
+const COVER_SIZES = "(max-width: 1024px) 100vw, 760px";
+
+const DAY_WIDTHS = [480, 720, 1000];
+const DAY_SIZES = "(max-width: 768px) 100vw, 320px";
 
 /* =========================================================
    HELPERS
@@ -117,26 +124,29 @@ const formatDuration = (days, nights) => {
 ========================================================= */
 
 /*
-  FullImage
-  Shows the whole photo, never cropped, never blurred.
+  FramedImage
+  Every package photo is cropped in the admin to a fixed shape (16:9 cover,
+  4:3 itinerary day), so it simply fills its frame: edge to edge, nothing
+  blurred, nothing letterboxed, and every day image is exactly the same size.
+  The shapes come from utils/imageRatios.js, the same file the admin crop
+  tool uses. Older photos that were not cropped are centre-trimmed to fit.
 
-  - w-full h-auto: the image fills the width of its frame and keeps its own
-    aspect ratio, so normal landscape photos have no empty space at all.
-  - max-h-* (passed in className) + object-contain: only a very tall photo
-    hits the cap; it is then shown whole and centred inside the frame, whose
-    soft background fills the side space.
-
-  Always put it inside a frame that has overflow-hidden and bg-surface-soft.
+  Put it inside a wrapper that has overflow-hidden and the rounded corners.
 */
-function FullImage({ src, alt, eager = false, className = "" }) {
+function FramedImage({ src, alt, aspect, widths, sizes, eager = false }) {
   return (
-    <img
-      src={src}
-      alt={alt}
-      className={`block h-auto w-full object-contain ${className}`}
-      loading={eager ? "eager" : "lazy"}
-      decoding="async"
-    />
+    <div className="w-full overflow-hidden bg-surface-soft" style={{ aspectRatio: aspect }}>
+      <img
+        src={cld(src, widths[1])}
+        srcSet={cldSrcSet(src, widths)}
+        sizes={sizes}
+        alt={alt}
+        className="h-full w-full object-cover"
+        loading={eager ? "eager" : "lazy"}
+        fetchPriority={eager ? "high" : "auto"}
+        decoding="async"
+      />
+    </div>
   );
 }
 
@@ -256,7 +266,10 @@ function DetailSkeleton() {
 
         <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-6">
-            <div className="aspect-[4/3] rounded-3xl bg-primary/10 sm:aspect-[16/9]" />
+            <div
+              className="rounded-3xl bg-primary/10"
+              style={{ aspectRatio: COVER_ASPECT }}
+            />
             <div className="h-8 w-56 rounded bg-primary/10" />
             <div className="h-4 rounded bg-primary/10" />
             <div className="h-4 rounded bg-primary/10" />
@@ -327,7 +340,7 @@ export default function PackageDetail() {
   const heroEndRef = useRef(null);
   const asideRef = useRef(null);
   const reviewSectionRef = useRef(null);
-  const faqSectionRef = useRef(null);
+
   const [showFloatingDownload, setShowFloatingDownload] = useState(false);
 
   /* ---------------------------------------------------------
@@ -336,62 +349,59 @@ export default function PackageDetail() {
      screen, and while a modal is open.
   --------------------------------------------------------- */
 
-  useEffect(() => {
-    if (loading || !pkg) {
-      setShowFloatingDownload(false);
-      return undefined;
-    }
+useEffect(() => {
+  if (loading || !pkg) {
+    setShowFloatingDownload(false);
+    return undefined;
+  }
 
-    const flags = {
-      pastHero: false,
-      asideVisible: false,
-      reviewVisible: false,
-      faqVisible: false,
-    };
+  const flags = {
+    pastHero: false,
+    asideVisible: false,
+    reviewReached: false,
+  };
 
-    const update = () =>
-      setShowFloatingDownload(
-        flags.pastHero &&
-          !flags.asideVisible &&
-          !flags.reviewVisible &&
-          !flags.faqVisible &&
-          !showEnquiry &&
-          !showReview
-      );
+  const update = () =>
+    setShowFloatingDownload(
+      flags.pastHero &&
+        !flags.asideVisible &&
+        !flags.reviewReached &&
+        !showEnquiry &&
+        !showReview
+    );
 
-    /* threshold 0 on SMALL elements: independent of page height */
-    const watch = (element, handler) => {
-      if (!element) return null;
+  const watch = (element, handler) => {
+    if (!element) return null;
 
-      const observer = new IntersectionObserver(([entry]) => {
-        handler(entry);
-        update();
-      });
+    const observer = new IntersectionObserver(([entry]) => {
+      handler(entry);
+      update();
+    });
 
-      observer.observe(element);
-      return observer;
-    };
+    observer.observe(element);
+    return observer;
+  };
 
-    const observers = [
-      watch(heroEndRef.current, (entry) => {
-        flags.pastHero =
-          !entry.isIntersecting && entry.boundingClientRect.top < 0;
-      }),
-      watch(asideRef.current, (entry) => {
-        flags.asideVisible = entry.isIntersecting;
-      }),
-      watch(reviewSectionRef.current, (entry) => {
-        flags.reviewVisible = entry.isIntersecting;
-      }),
-      watch(faqSectionRef.current, (entry) => {
-        flags.faqVisible = entry.isIntersecting;
-      }),
-    ].filter(Boolean);
+  const observers = [
+    watch(heroEndRef.current, (entry) => {
+      flags.pastHero =
+        !entry.isIntersecting && entry.boundingClientRect.top < 0;
+    }),
+    watch(asideRef.current, (entry) => {
+      flags.asideVisible = entry.isIntersecting;
+    }),
+    watch(reviewSectionRef.current, (entry) => {
+      /* on screen now, OR already scrolled past (FAQ / footer) */
+      flags.reviewReached =
+        entry.isIntersecting || entry.boundingClientRect.top < 0;
+    }),
+  ].filter(Boolean);
 
-    update();
+  update();
 
-    return () => observers.forEach((observer) => observer.disconnect());
-  }, [loading, pkg, showEnquiry, showReview]);
+  return () => observers.forEach((observer) => observer.disconnect());
+}, [loading, pkg, showEnquiry, showReview]);
+
 
   /* Close the policy popup with Escape */
   useEffect(() => {
@@ -649,22 +659,26 @@ export default function PackageDetail() {
             {/* LEFT */}
             <div className="min-w-0">
               {/* COVER IMAGE
-                  The frame is the full width of the column, so a normal
-                  landscape photo fills it edge to edge with no empty space.
-                  Nothing is cropped. Only a very tall photo reaches the
-                  height cap; it is then shown whole and centred. */}
+                  Large 16:9 frame, the full width of the column. The photo
+                  fills it edge to edge (it was cropped to 16:9 in the admin,
+                  so nothing is cut off, blurred or letterboxed). */}
               <section className="mb-8 sm:mb-10">
                 {packageImages.length > 0 ? (
-                  <div className="overflow-hidden rounded-2xl bg-surface-soft shadow-travel-card sm:rounded-3xl">
-                    <FullImage
+                  <div className="overflow-hidden rounded-2xl shadow-travel-card sm:rounded-3xl">
+                    <FramedImage
                       src={packageImages[0]}
                       alt={pkg.title}
+                      aspect={COVER_ASPECT}
+                      widths={COVER_WIDTHS}
+                      sizes={COVER_SIZES}
                       eager
-                      className="max-h-[24rem] sm:max-h-[32rem] lg:max-h-[40rem]"
                     />
                   </div>
                 ) : (
-                  <div className="flex aspect-[16/9] w-full items-center justify-center overflow-hidden rounded-2xl bg-surface-soft shadow-travel-card sm:rounded-3xl">
+                  <div
+                    className="flex w-full items-center justify-center overflow-hidden rounded-2xl bg-surface-soft shadow-travel-card sm:rounded-3xl"
+                    style={{ aspectRatio: COVER_ASPECT }}
+                  >
                     <MapPin className="h-12 w-12 text-ink-300" aria-hidden="true" />
                   </div>
                 )}
@@ -739,10 +753,11 @@ export default function PackageDetail() {
                           key={`${item.day}-${index}`}
                           className="overflow-hidden rounded-2xl border border-divider bg-card shadow-travel-card sm:rounded-3xl"
                         >
-                          {/* Mobile: title, image, text stacked.
-                              md and up: image in a fixed-width column on the
-                              left (always fills that column), day badge,
-                              title and text on the right. */}
+                          {/* Mobile: title, image, text stacked (image is the
+                              full card width). md and up: the image sits in a
+                              fixed-width column on the left, day badge, title
+                              and text on the right. Every day image uses the
+                              same 4:3 frame, so all days are the same size. */}
                           <div
                             className={`grid grid-cols-1 ${
                               hasImage
@@ -773,16 +788,15 @@ export default function PackageDetail() {
                               </div>
                             </div>
 
-                            {/* Whole image, never cropped. It fills its
-                                column; only a very tall photo is capped and
-                                centred inside the soft frame. */}
                             {hasImage && (
                               <div className="mt-5 px-5 sm:px-6 md:col-start-1 md:row-span-2 md:row-start-1 md:mt-0 md:self-start md:p-5 md:pr-0">
-                                <div className="overflow-hidden rounded-xl bg-surface-soft">
-                                  <FullImage
+                                <div className="overflow-hidden rounded-xl">
+                                  <FramedImage
                                     src={item.image}
                                     alt={`${pkg.title} - Day ${item.day}`}
-                                    className="max-h-[22rem] md:max-h-[26rem]"
+                                    aspect={ITINERARY_ASPECT}
+                                    widths={DAY_WIDTHS}
+                                    sizes={DAY_SIZES}
                                   />
                                 </div>
                               </div>
@@ -1038,7 +1052,7 @@ export default function PackageDetail() {
         </section>
 
         {/* FAQ */}
-        <section ref={faqSectionRef}>
+        <section >
           <FAQSection category="packages" />
         </section>
 
@@ -1194,6 +1208,20 @@ export default function PackageDetail() {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // import { useEffect, useMemo, useRef, useState } from "react";
 // import { Link, useParams } from "react-router-dom";
 // import {
@@ -1202,8 +1230,10 @@ export default function PackageDetail() {
 //   Check,
 //   ChevronRight,
 //   Clock,
+//   Compass,
 //   Download,
 //   FileText,
+//   IndianRupee,
 //   MapPin,
 //   MessageSquareHeart,
 //   ShieldCheck,
@@ -1252,9 +1282,7 @@ export default function PackageDetail() {
 //   if (!image) return "";
 //   if (typeof image === "string") return image.trim();
 
-//   return (
-//     image.url || image.secure_url || image.src || image.image_url || ""
-//   );
+//   return image.url || image.secure_url || image.src || image.image_url || "";
 // };
 
 // const getTextValue = (item) => {
@@ -1265,6 +1293,11 @@ export default function PackageDetail() {
 //     item.name || item.title || item.description || item.text || item.value || ""
 //   );
 // };
+
+// /* Seasonal packages are saved with destination = null, so fall back
+//    to the seasonal destination object when the API returns it. */
+// const getPlaceName = (place) =>
+//   place?.place_name || place?.name || place?.title || "";
 
 // /* Accepts an array, or a comma separated string */
 // const getListItems = (value) => {
@@ -1303,17 +1336,74 @@ export default function PackageDetail() {
 //    SMALL COMPONENTS
 // ========================================================= */
 
+// /*
+//   FullImage
+//   Shows the whole photo, never cropped, never blurred.
+
+//   - w-full h-auto: the image fills the width of its frame and keeps its own
+//     aspect ratio, so normal landscape photos have no empty space at all.
+//   - max-h-* (passed in className) + object-contain: only a very tall photo
+//     hits the cap; it is then shown whole and centred inside the frame, whose
+//     soft background fills the side space.
+
+//   Always put it inside a frame that has overflow-hidden and bg-surface-soft.
+// */
+// function FullImage({ src, alt, eager = false, className = "" }) {
+//   return (
+//     <img
+//       src={src}
+//       alt={alt}
+//       className={`block h-auto w-full object-contain ${className}`}
+//       loading={eager ? "eager" : "lazy"}
+//       decoding="async"
+//     />
+//   );
+// }
+
+// /* Elegant section title: small gold-toned eyebrow, serif heading, hairline */
+// function SectionHeading({ eyebrow, title, aside }) {
+//   return (
+//     <div className="mb-6 sm:mb-7">
+//       <div className="flex items-end justify-between gap-4">
+//         <div className="min-w-0">
+//           {eyebrow && (
+//             <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
+//               {eyebrow}
+//             </p>
+//           )}
+
+//           <h2 className="font-display text-3xl font-semibold leading-tight tracking-tight text-text-dark sm:text-4xl">
+//             {title}
+//           </h2>
+//         </div>
+
+//         {aside && <span className="shrink-0 pb-1 text-sm text-muted">{aside}</span>}
+//       </div>
+
+//       <div className="mt-3 flex items-center gap-3" aria-hidden="true">
+//         <span className="h-px w-12 bg-champagne" />
+//         <span className="h-1.5 w-1.5 rotate-45 bg-champagne" />
+//         <span className="h-px flex-1 bg-gradient-to-r from-champagne/60 to-transparent" />
+//       </div>
+//     </div>
+//   );
+// }
+
 // function InfoCard({ icon, label, value }) {
 //   return (
 //     <div className="min-w-0 rounded-2xl border border-divider bg-surface p-5">
-//       <div className="mb-2 flex items-center gap-3">
-//         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-card text-primary">
+//       <div className="mb-3 flex items-center gap-3">
+//         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-card text-primary shadow-travel-card">
 //           {icon}
 //         </div>
-//         <span className="text-sm text-muted">{label}</span>
+//         <span className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">
+//           {label}
+//         </span>
 //       </div>
 
-//       <p className="break-words font-bold text-text-dark">{value}</p>
+//       <p className="break-words font-display text-2xl font-semibold leading-snug text-text-dark">
+//         {value}
+//       </p>
 //     </div>
 //   );
 // }
@@ -1326,7 +1416,9 @@ export default function PackageDetail() {
 //       </div>
 
 //       <div className="min-w-0">
-//         <p className="text-xs text-muted">{label}</p>
+//         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+//           {label}
+//         </p>
 //         <p className="break-words font-semibold text-text-dark">{value}</p>
 //       </div>
 //     </div>
@@ -1341,7 +1433,7 @@ export default function PackageDetail() {
 //     <button
 //       type="button"
 //       onClick={onClick}
-//       className="group w-full rounded-2xl border border-divider bg-card p-5 text-left transition-all duration-200 hover:border-primary hover:shadow-travel-card sm:p-6"
+//       className="group w-full rounded-2xl border border-divider bg-card p-5 text-left transition-all duration-200 hover:border-primary hover:shadow-travel-card focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:p-6"
 //     >
 //       <div className="flex items-center gap-4">
 //         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-lighter text-primary transition-colors group-hover:bg-primary group-hover:text-white">
@@ -1349,7 +1441,7 @@ export default function PackageDetail() {
 //         </div>
 
 //         <div className="min-w-0 flex-1">
-//           <h3 className="text-base font-bold text-text-dark sm:text-lg">
+//           <h3 className="font-display text-xl font-semibold text-text-dark">
 //             {isTerms ? "Terms & Conditions" : "Cancellation Policy"}
 //           </h3>
 
@@ -1381,10 +1473,10 @@ export default function PackageDetail() {
 //         <div className="h-4 w-48 rounded bg-primary/10" />
 //         <div className="mt-8 h-5 w-40 rounded bg-primary/10" />
 //         <div className="mt-4 h-12 w-3/4 rounded bg-primary/10" />
-//         <div className="mt-8 aspect-[16/9] rounded-3xl bg-primary/10 sm:aspect-[21/9]" />
 
-//         <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
-//           <div className="space-y-4">
+//         <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
+//           <div className="space-y-6">
+//             <div className="aspect-[4/3] rounded-3xl bg-primary/10 sm:aspect-[16/9]" />
 //             <div className="h-8 w-56 rounded bg-primary/10" />
 //             <div className="h-4 rounded bg-primary/10" />
 //             <div className="h-4 rounded bg-primary/10" />
@@ -1397,7 +1489,8 @@ export default function PackageDetail() {
 //   );
 // }
 
-// function NotFound({ message }) {
+// /* Missing package (404) vs. a real loading problem */
+// function StateMessage({ title, message, onRetry }) {
 //   return (
 //     <div className="min-h-screen bg-background">
 //       <div className="mx-auto max-w-3xl px-4 py-20 text-center sm:px-6 sm:py-28">
@@ -1406,17 +1499,27 @@ export default function PackageDetail() {
 //         </div>
 
 //         <h1 className="mb-3 font-display text-4xl font-semibold text-text-dark">
-//           Package Not Found
+//           {title}
 //         </h1>
 
-//         <p className="mb-8 text-text">
-//           {message || "The package you are looking for does not exist."}
-//         </p>
+//         <p className="mx-auto mb-8 max-w-md text-text">{message}</p>
 
-//         <Link to="/packages" className={`${PRIMARY_BUTTON} px-5 py-3`}>
-//           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-//           Back to Packages
-//         </Link>
+//         <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+//           {onRetry && (
+//             <button
+//               type="button"
+//               onClick={onRetry}
+//               className={`${PRIMARY_BUTTON} px-5 py-3`}
+//             >
+//               Try again
+//             </button>
+//           )}
+
+//           <Link to="/packages" className={`${PRIMARY_BUTTON} px-5 py-3`}>
+//             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+//             Back to Packages
+//           </Link>
+//         </div>
 //       </div>
 //     </div>
 //   );
@@ -1438,58 +1541,76 @@ export default function PackageDetail() {
 //   const [activePolicy, setActivePolicy] = useState(null);
 //   const [downloadingPDF, setDownloadingPDF] = useState(false);
 
-//   /* Floating "Download Itinerary" button (mobile + tablet) */
-//   const packageAreaRef = useRef(null);
+//   /* Floating "Download Itinerary" button (mobile + tablet).
+//      Small sentinel elements are observed instead of the whole (very tall)
+//      page content, so it works for 10-12 day itineraries too. */
+//   const heroEndRef = useRef(null);
+//   const asideRef = useRef(null);
+//   const reviewSectionRef = useRef(null);
 //   const faqSectionRef = useRef(null);
 //   const [showFloatingDownload, setShowFloatingDownload] = useState(false);
 
 //   /* ---------------------------------------------------------
-//      Floating button: visible while the package is on screen,
-//      hidden near the FAQ and while a modal is open.
+//      Floating button: visible once the cover has scrolled away,
+//      hidden while the sidebar card, review CTA or FAQ is on
+//      screen, and while a modal is open.
 //   --------------------------------------------------------- */
 
 //   useEffect(() => {
-//     const packageElement = packageAreaRef.current;
-//     const faqElement = faqSectionRef.current;
-
-//     if (loading || !pkg || !packageElement) {
+//     if (loading || !pkg) {
 //       setShowFloatingDownload(false);
 //       return undefined;
 //     }
 
-//     let packageVisible = false;
-//     let faqVisible = false;
+//     const flags = {
+//       pastHero: false,
+//       asideVisible: false,
+//       reviewVisible: false,
+//       faqVisible: false,
+//     };
 
 //     const update = () =>
 //       setShowFloatingDownload(
-//         packageVisible && !faqVisible && !showEnquiry && !showReview
+//         flags.pastHero &&
+//           !flags.asideVisible &&
+//           !flags.reviewVisible &&
+//           !flags.faqVisible &&
+//           !showEnquiry &&
+//           !showReview
 //       );
 
-//     const packageObserver = new IntersectionObserver(
-//       ([entry]) => {
-//         packageVisible = entry.isIntersecting;
+//     /* threshold 0 on SMALL elements: independent of page height */
+//     const watch = (element, handler) => {
+//       if (!element) return null;
+
+//       const observer = new IntersectionObserver(([entry]) => {
+//         handler(entry);
 //         update();
-//       },
-//       { threshold: 0.08, rootMargin: "-10% 0px -15% 0px" }
-//     );
+//       });
 
-//     const faqObserver = faqElement
-//       ? new IntersectionObserver(
-//           ([entry]) => {
-//             faqVisible = entry.isIntersecting;
-//             update();
-//           },
-//           { threshold: 0.05, rootMargin: "0px 0px -10% 0px" }
-//         )
-//       : null;
-
-//     packageObserver.observe(packageElement);
-//     if (faqObserver) faqObserver.observe(faqElement);
-
-//     return () => {
-//       packageObserver.disconnect();
-//       if (faqObserver) faqObserver.disconnect();
+//       observer.observe(element);
+//       return observer;
 //     };
+
+//     const observers = [
+//       watch(heroEndRef.current, (entry) => {
+//         flags.pastHero =
+//           !entry.isIntersecting && entry.boundingClientRect.top < 0;
+//       }),
+//       watch(asideRef.current, (entry) => {
+//         flags.asideVisible = entry.isIntersecting;
+//       }),
+//       watch(reviewSectionRef.current, (entry) => {
+//         flags.reviewVisible = entry.isIntersecting;
+//       }),
+//       watch(faqSectionRef.current, (entry) => {
+//         flags.faqVisible = entry.isIntersecting;
+//       }),
+//     ].filter(Boolean);
+
+//     update();
+
+//     return () => observers.forEach((observer) => observer.disconnect());
 //   }, [loading, pkg, showEnquiry, showReview]);
 
 //   /* Close the policy popup with Escape */
@@ -1507,6 +1628,15 @@ export default function PackageDetail() {
 //   /* ---------------------------------------------------------
 //      Derived content
 //   --------------------------------------------------------- */
+
+//   const destinationName = useMemo(
+//     () =>
+//       pkg?.destination ||
+//       getPlaceName(pkg?.seasoned_destination_obj) ||
+//       getPlaceName(pkg?.seasoned_destination) ||
+//       "",
+//     [pkg]
+//   );
 
 //   const packageImages = useMemo(() => {
 //     if (!pkg?.images) return [];
@@ -1614,7 +1744,8 @@ export default function PackageDetail() {
 
 //     try {
 //       setDownloadingPDF(true);
-//       await generatePackagePDF(pkg);
+//       /* destination fallback so seasonal packages still show a location */
+//       await generatePackagePDF({ ...pkg, destination: destinationName });
 //     } catch (pdfError) {
 //       console.error("Package PDF generation failed:", pdfError);
 //       window.alert("Unable to generate the itinerary PDF. Please try again.");
@@ -1634,13 +1765,23 @@ export default function PackageDetail() {
 //   if (loading) return <DetailSkeleton />;
 
 //   if (!pkg) {
+//     const status = error?.response?.status;
+//     const isRealError = Boolean(error) && status !== 404;
+
+//     if (isRealError) {
+//       return (
+//         <StateMessage
+//           title="We couldn't load this package"
+//           message="Something went wrong while loading this page. Please check your connection and try again."
+//           onRetry={() => window.location.reload()}
+//         />
+//       );
+//     }
+
 //     return (
-//       <NotFound
-//         message={
-//           error?.response?.data?.detail ||
-//           error?.message ||
-//           "The package you are looking for does not exist."
-//         }
+//       <StateMessage
+//         title="Package Not Found"
+//         message="The package you are looking for may have been removed or is no longer available."
 //       />
 //     );
 //   }
@@ -1683,10 +1824,7 @@ export default function PackageDetail() {
 //         </section>
 
 //         {/* PACKAGE CONTENT AREA */}
-//         <main
-//           ref={packageAreaRef}
-//           className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
-//         >
+//         <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 //           <div className="pt-6 sm:pt-8">
 //             <Link
 //               to="/packages"
@@ -1699,27 +1837,22 @@ export default function PackageDetail() {
 
 //           {/* TITLE */}
 //           <section className="pb-6 pt-5 sm:pt-7">
-//             <div className="mb-4 flex flex-wrap items-center gap-2">
-//               {pkg.destination && (
-//                 <div className="inline-flex items-center gap-2 text-text">
-//                   <MapPin className="h-5 w-5 text-primary" aria-hidden="true" />
-//                   <span>{pkg.destination}</span>
+//             <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+//               {destinationName && (
+//                 <div className="inline-flex min-w-0 items-center gap-2 text-sm font-semibold uppercase tracking-[0.16em] text-primary sm:text-[13px]">
+//                   <MapPin className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+//                   <span className="truncate">{destinationName}</span>
 //                 </div>
 //               )}
 
 //               {packageTypeLabel && (
-//                 <>
-//                   <span className="text-ink-300" aria-hidden="true">
-//                     •
-//                   </span>
-//                   <span className="inline-flex items-center rounded-full bg-primary-lighter px-3 py-1.5 text-xs font-semibold text-primary-dark sm:text-sm">
-//                     {packageTypeLabel}
-//                   </span>
-//                 </>
+//                 <span className="inline-flex items-center rounded-full border border-champagne bg-champagne-light px-3 py-1.5 text-xs font-semibold text-text-dark sm:text-sm">
+//                   {packageTypeLabel}
+//                 </span>
 //               )}
 //             </div>
 
-//             <h1 className="font-display text-4xl font-semibold leading-tight tracking-tight text-text-display sm:text-5xl lg:text-6xl">
+//             <h1 className="break-words font-display text-4xl font-semibold leading-[1.1] tracking-tight text-text-display sm:text-5xl lg:text-6xl">
 //               {pkg.title}
 //             </h1>
 
@@ -1731,45 +1864,49 @@ export default function PackageDetail() {
 //             )}
 //           </section>
 
-//           {/* COVER IMAGE */}
-//           <section className="pb-8 sm:pb-10">
-//             <div className="flex aspect-[16/9] w-full items-center justify-center overflow-hidden rounded-2xl bg-surface sm:aspect-[21/9] sm:rounded-3xl lg:aspect-[2.4/1]">
-//               {packageImages.length > 0 ? (
-//                 <img
-//                   src={packageImages[0]}
-//                   alt={pkg.title}
-//                   className="h-full w-full object-cover"
-//                   loading="eager"
-//                   decoding="async"
-//                 />
-//               ) : (
-//                 <MapPin className="h-12 w-12 text-ink-300" aria-hidden="true" />
-//               )}
-//             </div>
-//           </section>
-
-//           {/* DESCRIPTION */}
-//           {pkg.description && (
-//             <section className="pb-10 sm:pb-12">
-//               <h2 className="mb-4 font-display text-3xl font-semibold text-text-dark">
-//                 About This Package
-//               </h2>
-
-//               <p className="whitespace-pre-line text-sm leading-7 text-text sm:text-base sm:leading-8">
-//                 {pkg.description}
-//               </p>
-//             </section>
-//           )}
-
 //           {/* TWO COLUMNS */}
 //           <div className="grid grid-cols-1 items-start gap-8 pb-16 sm:pb-20 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-12 xl:gap-14">
 //             {/* LEFT */}
 //             <div className="min-w-0">
+//               {/* COVER IMAGE
+//                   The frame is the full width of the column, so a normal
+//                   landscape photo fills it edge to edge with no empty space.
+//                   Nothing is cropped. Only a very tall photo reaches the
+//                   height cap; it is then shown whole and centred. */}
+//               <section className="mb-8 sm:mb-10">
+//                 {packageImages.length > 0 ? (
+//                   <div className="overflow-hidden rounded-2xl bg-surface-soft shadow-travel-card sm:rounded-3xl">
+//                     <FullImage
+//                       src={packageImages[0]}
+//                       alt={pkg.title}
+//                       eager
+//                       className="max-h-[24rem] sm:max-h-[32rem] lg:max-h-[40rem]"
+//                     />
+//                   </div>
+//                 ) : (
+//                   <div className="flex aspect-[16/9] w-full items-center justify-center overflow-hidden rounded-2xl bg-surface-soft shadow-travel-card sm:rounded-3xl">
+//                     <MapPin className="h-12 w-12 text-ink-300" aria-hidden="true" />
+//                   </div>
+//                 )}
+//               </section>
+
+//               {/* Sentinel: the floating button appears once this scrolls out of view */}
+//               <div ref={heroEndRef} aria-hidden="true" className="h-px" />
+
+//               {/* DESCRIPTION */}
+//               {pkg.description && (
+//                 <section className="mb-10 sm:mb-12">
+//                   <SectionHeading eyebrow="The Experience" title="About This Package" />
+
+//                   <p className="whitespace-pre-line break-words text-sm leading-7 text-text sm:text-base sm:leading-8">
+//                     {pkg.description}
+//                   </p>
+//                 </section>
+//               )}
+
 //               {/* PACKAGE INFORMATION */}
 //               <section className="mb-10 sm:mb-12">
-//                 <h2 className="mb-5 font-display text-3xl font-semibold text-text-dark">
-//                   Package Information
-//                 </h2>
+//                 <SectionHeading eyebrow="At a Glance" title="Package Information" />
 
 //                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 //                   {durationLabel && (
@@ -1780,25 +1917,25 @@ export default function PackageDetail() {
 //                     />
 //                   )}
 
-//                   {pkg.destination && (
+//                   {destinationName && (
 //                     <InfoCard
 //                       icon={<MapPin className="h-5 w-5" aria-hidden="true" />}
 //                       label="Destination"
-//                       value={pkg.destination}
+//                       value={destinationName}
 //                     />
 //                   )}
 
 //                   {packageTypeLabel && (
 //                     <InfoCard
-//                       icon={<MapPin className="h-5 w-5" aria-hidden="true" />}
+//                       icon={<Compass className="h-5 w-5" aria-hidden="true" />}
 //                       label="Package Type"
 //                       value={packageTypeLabel}
 //                     />
 //                   )}
 
 //                   <InfoCard
-//                     icon={<Clock className="h-5 w-5" aria-hidden="true" />}
-//                     label="Starting From"
+//                     icon={<IndianRupee className="h-5 w-5" aria-hidden="true" />}
+//                     label="Package Cost"
 //                     value={formattedPrice}
 //                   />
 //                 </div>
@@ -1807,54 +1944,89 @@ export default function PackageDetail() {
 //               {/* ITINERARY */}
 //               {itinerary.length > 0 && (
 //                 <section className="mb-10 sm:mb-12">
-//                   <div className="mb-6 flex items-center justify-between gap-4">
-//                     <h2 className="font-display text-3xl font-semibold text-text-dark">
-//                       Itinerary
-//                     </h2>
-//                     <span className="text-sm text-muted">{itineraryDaysLabel}</span>
-//                   </div>
+//                   <SectionHeading
+//                     eyebrow="Your Journey"
+//                     title="Itinerary"
+//                     aside={itineraryDaysLabel}
+//                   />
 
 //                   <div className="space-y-5 sm:space-y-6">
-//                     {itinerary.map((item, index) => (
-//                       <article
-//                         key={`${item.day}-${index}`}
-//                         className="overflow-hidden rounded-2xl border border-divider bg-card shadow-travel-card sm:rounded-3xl"
-//                       >
-//                         <div className="px-5 pt-5 sm:px-6 sm:pt-6">
-//                           <span className="inline-flex items-center rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-white sm:text-sm">
-//                             Day {item.day}
-//                           </span>
-//                         </div>
+//                     {itinerary.map((item, index) => {
+//                       const hasImage = Boolean(item.image);
 
-//                         {item.title && (
-//                           <div className="px-5 pt-3 sm:px-6">
-//                             <h3 className="font-display text-2xl font-semibold text-text-dark">
-//                               {item.title}
-//                             </h3>
-//                           </div>
-//                         )}
+//                       return (
+//                         <article
+//                           key={`${item.day}-${index}`}
+//                           className="overflow-hidden rounded-2xl border border-divider bg-card shadow-travel-card sm:rounded-3xl"
+//                         >
+//                           {/* Mobile: title, image, text stacked.
+//                               md and up: image in a fixed-width column on the
+//                               left (always fills that column), day badge,
+//                               title and text on the right. */}
+//                           <div
+//                             className={`grid grid-cols-1 ${
+//                               hasImage
+//                                 ? "md:grid-cols-[17rem_minmax(0,1fr)] md:grid-rows-[auto_1fr] lg:grid-cols-[20rem_minmax(0,1fr)]"
+//                                 : ""
+//                             }`}
+//                           >
+//                             <div
+//                               className={`flex items-start gap-4 px-5 pt-5 sm:px-6 sm:pt-6 ${
+//                                 hasImage
+//                                   ? "md:col-start-2 md:row-start-1 md:pl-6 md:pt-5"
+//                                   : ""
+//                               }`}
+//                             >
+//                               <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl bg-primary-lighter text-primary">
+//                                 <span className="text-[9px] font-semibold uppercase tracking-[0.2em]">
+//                                   Day
+//                                 </span>
+//                                 <span className="font-display text-2xl font-semibold leading-none">
+//                                   {String(item.day).padStart(2, "0")}
+//                                 </span>
+//                               </div>
 
-//                         {item.image && (
-//                           <div className="mt-5 aspect-[16/9] overflow-hidden bg-surface sm:aspect-[2/1]">
-//                             <img
-//                               src={item.image}
-//                               alt={`${pkg.title} - Day ${item.day}`}
-//                               className="h-full w-full object-cover"
-//                               loading="lazy"
-//                               decoding="async"
-//                             />
-//                           </div>
-//                         )}
+//                               <div className="min-w-0 pt-1">
+//                                 <h3 className="break-words font-display text-2xl font-semibold leading-snug text-text-dark sm:text-[1.7rem]">
+//                                   {item.title || `Day ${item.day}`}
+//                                 </h3>
+//                               </div>
+//                             </div>
 
-//                         {item.description && (
-//                           <div className="p-5 sm:p-6">
-//                             <p className="whitespace-pre-line text-sm leading-7 text-text sm:text-base">
-//                               {item.description}
-//                             </p>
+//                             {/* Whole image, never cropped. It fills its
+//                                 column; only a very tall photo is capped and
+//                                 centred inside the soft frame. */}
+//                             {hasImage && (
+//                               <div className="mt-5 px-5 sm:px-6 md:col-start-1 md:row-span-2 md:row-start-1 md:mt-0 md:self-start md:p-5 md:pr-0">
+//                                 <div className="overflow-hidden rounded-xl bg-surface-soft">
+//                                   <FullImage
+//                                     src={item.image}
+//                                     alt={`${pkg.title} - Day ${item.day}`}
+//                                     className="max-h-[22rem] md:max-h-[26rem]"
+//                                   />
+//                                 </div>
+//                               </div>
+//                             )}
+
+//                             {item.description ? (
+//                               <div
+//                                 className={`p-5 sm:p-6 ${
+//                                   hasImage
+//                                     ? "md:col-start-2 md:row-start-2 md:pl-6 md:pt-3"
+//                                     : ""
+//                                 }`}
+//                               >
+//                                 <p className="whitespace-pre-line break-words text-sm leading-7 text-text sm:text-base sm:leading-8">
+//                                   {item.description}
+//                                 </p>
+//                               </div>
+//                             ) : (
+//                               !hasImage && <div className="pb-5 sm:pb-6" />
+//                             )}
 //                           </div>
-//                         )}
-//                       </article>
-//                     ))}
+//                         </article>
+//                       );
+//                     })}
 //                   </div>
 //                 </section>
 //               )}
@@ -1862,9 +2034,7 @@ export default function PackageDetail() {
 //               {/* FACILITIES */}
 //               {facilities.length > 0 && (
 //                 <section className="mb-10 sm:mb-12">
-//                   <h2 className="mb-5 font-display text-3xl font-semibold text-text-dark">
-//                     Facilities
-//                   </h2>
+//                   <SectionHeading eyebrow="Comforts" title="Facilities" />
 
 //                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 //                     {facilities.map((facility, index) => (
@@ -1875,7 +2045,7 @@ export default function PackageDetail() {
 //                         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-success-bg text-success">
 //                           <Check className="h-4 w-4" aria-hidden="true" />
 //                         </div>
-//                         <span className="text-sm text-text sm:text-base">
+//                         <span className="min-w-0 break-words text-sm text-text sm:text-base">
 //                           {facility}
 //                         </span>
 //                       </div>
@@ -1887,12 +2057,14 @@ export default function PackageDetail() {
 //               {/* INCLUSIONS / EXCLUSIONS */}
 //               {(inclusions.length > 0 || exclusions.length > 0) && (
 //                 <section className="mb-10 sm:mb-12">
+//                   <SectionHeading eyebrow="The Details" title="What’s Included" />
+
 //                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 //                     {inclusions.length > 0 && (
 //                       <div className="rounded-2xl border border-success/30 bg-success-bg/50 p-5 sm:p-6">
-//                         <h2 className="mb-5 font-display text-2xl font-semibold text-text-dark">
+//                         <h3 className="mb-5 font-display text-2xl font-semibold text-text-dark">
 //                           Inclusions
-//                         </h2>
+//                         </h3>
 
 //                         <ul className="space-y-3">
 //                           {inclusions.map((item, index) => (
@@ -1904,7 +2076,7 @@ export default function PackageDetail() {
 //                                 className="mt-0.5 h-5 w-5 shrink-0 text-success"
 //                                 aria-hidden="true"
 //                               />
-//                               <span>{item}</span>
+//                               <span className="min-w-0 break-words">{item}</span>
 //                             </li>
 //                           ))}
 //                         </ul>
@@ -1913,9 +2085,9 @@ export default function PackageDetail() {
 
 //                     {exclusions.length > 0 && (
 //                       <div className="rounded-2xl border border-error/30 bg-error-bg/50 p-5 sm:p-6">
-//                         <h2 className="mb-5 font-display text-2xl font-semibold text-text-dark">
+//                         <h3 className="mb-5 font-display text-2xl font-semibold text-text-dark">
 //                           Exclusions
-//                         </h2>
+//                         </h3>
 
 //                         <ul className="space-y-3">
 //                           {exclusions.map((item, index) => (
@@ -1927,7 +2099,7 @@ export default function PackageDetail() {
 //                                 className="mt-0.5 h-5 w-5 shrink-0 text-error"
 //                                 aria-hidden="true"
 //                               />
-//                               <span>{item}</span>
+//                               <span className="min-w-0 break-words">{item}</span>
 //                             </li>
 //                           ))}
 //                         </ul>
@@ -1940,9 +2112,7 @@ export default function PackageDetail() {
 //               {/* TERMS & CANCELLATION */}
 //               {(pkg.terms_and_conditions || pkg.cancellation_policy) && (
 //                 <section className="mb-10 sm:mb-12">
-//                   <h2 className="mb-5 font-display text-3xl font-semibold text-text-dark">
-//                     Important Information
-//                   </h2>
+//                   <SectionHeading eyebrow="Good to Know" title="Important Information" />
 
 //                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 //                     {pkg.terms_and_conditions && (
@@ -1963,26 +2133,33 @@ export default function PackageDetail() {
 //               )}
 //             </div>
 
-//             {/* RIGHT SIDEBAR */}
-//             <aside className="w-full self-start lg:sticky lg:top-[calc(var(--top-info-height,0px)+6rem)]">
+//             {/* RIGHT SIDEBAR
+//                 Sticky on desktop only. The wrapper uses overflow-x-clip (not
+//                 -hidden) so position: sticky keeps working. */}
+//             <aside
+//               ref={asideRef}
+//               className="w-full self-start lg:sticky lg:top-[calc(var(--top-info-height,0px)+6rem)]"
+//             >
 //               <div className="rounded-2xl border border-divider bg-card p-5 shadow-travel-card sm:rounded-3xl sm:p-6 lg:p-7">
 //                 {/* PRICE */}
-//                 <div className="border-b border-divider pb-5">
-//                   <p className="mb-1 text-sm text-muted">Starting from</p>
+//                 <div className="mb-5 rounded-2xl border border-primary/10 bg-brand-gradient p-5">
+//                   <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+//                     Package Cost
+//                   </p>
 
 //                   <div className="flex flex-wrap items-end gap-2">
-//                     <span className="text-3xl font-extrabold text-primary sm:text-4xl">
+//                     <span className="font-display text-4xl font-semibold leading-none text-text-dark sm:text-5xl">
 //                       {formattedPrice}
 //                     </span>
 
 //                     {hasPrice && (
-//                       <span className="pb-1 text-sm text-muted">/ person</span>
+//                       <span className="pb-1 text-sm text-text-secondary">/ person</span>
 //                     )}
 //                   </div>
 //                 </div>
 
 //                 {/* SUMMARY */}
-//                 <div className="space-y-4 py-5">
+//                 <div className="space-y-4 pb-5">
 //                   {durationLabel && (
 //                     <SidebarInfo
 //                       icon={<Clock className="h-5 w-5" aria-hidden="true" />}
@@ -1991,17 +2168,17 @@ export default function PackageDetail() {
 //                     />
 //                   )}
 
-//                   {pkg.destination && (
+//                   {destinationName && (
 //                     <SidebarInfo
 //                       icon={<MapPin className="h-5 w-5" aria-hidden="true" />}
 //                       label="Destination"
-//                       value={pkg.destination}
+//                       value={destinationName}
 //                     />
 //                   )}
 
 //                   {packageTypeLabel && (
 //                     <SidebarInfo
-//                       icon={<MapPin className="h-5 w-5" aria-hidden="true" />}
+//                       icon={<Compass className="h-5 w-5" aria-hidden="true" />}
 //                       label="Package Type"
 //                       value={packageTypeLabel}
 //                     />
@@ -2017,12 +2194,12 @@ export default function PackageDetail() {
 //                 </div>
 
 //                 {/* ACTIONS */}
-//                 <div className="space-y-3">
+//                 <div className="space-y-3 border-t border-divider pt-5">
 //                   <button
 //                     type="button"
 //                     onClick={openDownloadForm}
 //                     disabled={downloadingPDF}
-//                     className={`${PRIMARY_BUTTON} w-full px-5 py-3.5 shadow-sm`}
+//                     className={`${PRIMARY_BUTTON} w-full px-5 py-3.5 shadow-brand`}
 //                   >
 //                     <Download className="h-4 w-4" aria-hidden="true" />
 //                     {downloadingPDF ? "Preparing..." : "Download Itinerary"}
@@ -2035,25 +2212,11 @@ export default function PackageDetail() {
 //                     View More Packages
 //                     <ChevronRight className="h-4 w-4" aria-hidden="true" />
 //                   </Link>
-//                 </div>
 
-//                 {/* TRUST */}
-//                 <div className="mt-5 border-t border-divider pt-5">
-//                   <div className="flex items-start gap-3">
-//                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-success-bg text-success">
-//                       <Download className="h-5 w-5" aria-hidden="true" />
-//                     </div>
-
-//                     <div>
-//                       <p className="text-sm font-semibold text-text-dark">
-//                         Get your personalized itinerary
-//                       </p>
-//                       <p className="mt-1 text-xs leading-5 text-muted">
-//                         Submit your details and receive your personalized trip
-//                         itinerary.
-//                       </p>
-//                     </div>
-//                   </div>
+//                   <p className="pt-1 text-center text-xs leading-5 text-muted">
+//                     Submit your details and receive your personalized trip
+//                     itinerary.
+//                   </p>
 //                 </div>
 //               </div>
 //             </aside>
@@ -2061,19 +2224,22 @@ export default function PackageDetail() {
 //         </main>
 
 //         {/* REVIEW CTA */}
-//         <section className="border-y border-divider bg-surface-soft">
+//         <section
+//           ref={reviewSectionRef}
+//           className="border-y border-divider bg-surface-soft"
+//         >
 //           <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
 //             <div className="flex flex-col gap-6 rounded-2xl border border-divider bg-card p-6 shadow-travel-card sm:rounded-3xl sm:p-8 md:flex-row md:items-center md:justify-between">
 //               <div className="min-w-0">
-//                 <p className="text-xs font-semibold uppercase tracking-wide text-primary sm:text-sm">
+//                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
 //                   Traveller experiences
 //                 </p>
 
-//                 <h2 className="mt-2 font-display text-3xl font-semibold text-text-dark">
+//                 <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight text-text-dark sm:text-4xl">
 //                   Your Valuable Review
 //                 </h2>
 
-//                 <p className="mt-2 max-w-2xl text-sm text-text sm:text-base">
+//                 <p className="mt-2 max-w-2xl text-sm leading-6 text-text sm:text-base">
 //                   Share your experience with {BRAND_NAME} and help future
 //                   travellers plan their journey.
 //                 </p>
@@ -2100,7 +2266,7 @@ export default function PackageDetail() {
 
 //         {/* FLOATING DOWNLOAD (mobile + tablet) */}
 //         {showFloatingDownload && (
-//           <div className="fixed bottom-5 left-4 z-[80] sm:left-6 lg:hidden">
+//           <div className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-4 z-[80] sm:left-6 lg:hidden">
 //             <button
 //               type="button"
 //               onClick={openDownloadForm}
@@ -2117,7 +2283,7 @@ export default function PackageDetail() {
 //         {showEnquiry && (
 //           <EnquiryForm
 //             pkg={pkg}
-//             destination={pkg?.destination || null}
+//             destination={destinationName || null}
 //             onClose={() => setShowEnquiry(false)}
 //             onSuccess={handleEnquirySuccess}
 //             downloadItinerary={false}
@@ -2209,9 +2375,5 @@ export default function PackageDetail() {
 //     </>
 //   );
 // }
-
-
-
-
 
 

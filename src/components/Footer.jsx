@@ -5,6 +5,7 @@ import {
   Phone,
   MapPin,
   ExternalLink,
+  Code2,
 } from "lucide-react";
 import {
   FaInstagram,
@@ -572,6 +573,37 @@ export default function Footer() {
           <p className="text-xs leading-5 text-ivory/50">
             © {new Date().getFullYear()} {BRAND_NAME}. All rights reserved.
           </p>
+
+
+              <a
+              href="https://vssgowritechonline.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Designed and developed by VSS Gowri Tech Online Private Limited"
+              className="inline-flex items-center justify-center gap-1.5 text-xs leading-5 text-ivory/50 transition-colors duration-200 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 rounded-sm"
+            >
+
+                        {/* <img
+              src="/images/vss.jpeg"
+              alt=""
+              loading="lazy"
+              decoding="async"
+              width="28"
+              height="20"
+              className="h-4 w-7 shrink-0 object-contain opacity-80 transition-opacity duration-200 group-hover:opacity-100 sm:h-5 sm:w-8"
+            /> */}
+             
+              <span>
+                Designed &amp; Developed by{" "}
+                <span className="font-medium text-ivory/70">
+                  VSS Gowri Tech Online Private Limited
+                </span>
+              </span>
+              {/* <ExternalLink
+                className="h-3 w-3 shrink-0 opacity-70"
+                aria-hidden="true"
+              /> */}
+            </a>
 
           <p className="text-xs leading-5 text-ivory/40">
             Travel. Explore. Create memories.

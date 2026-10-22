@@ -222,6 +222,9 @@ function TextArea({
 /* ============================================================
    IMAGE FIELD
    ============================================================ */
+/* ============================================================
+   IMAGE FIELD
+   ============================================================ */
 function ImageField({ image, onChange }) {
   const imageUrl = getImageUrl(image);
 
@@ -231,14 +234,8 @@ function ImageField({ image, onChange }) {
       return;
     }
 
-    /*
-     * ImageUploadField returns the Cloudinary image object.
-     * Keep both values in the form so the backend stores:
-     * {
-     *   url: "...",
-     *   public_id: "..."
-     * }
-     */
+    // url + public_id are kept in the form and sent to the backend,
+    // but they are not shown on screen.
     onChange({
       url: uploadedImage?.url || uploadedImage?.secure_url || "",
       public_id: uploadedImage?.public_id || "",
@@ -278,14 +275,9 @@ function ImageField({ image, onChange }) {
               </button>
             </div>
 
-            <div>
-              <p className="text-sm font-semibold text-navy">
-                Profile image added
-              </p>
-              <p className="mt-1 text-xs leading-5 text-muted">
-                The image is stored in Cloudinary. You can replace it with another image.
-              </p>
-            </div>
+            <p className="text-sm font-semibold text-navy">
+              Profile image added
+            </p>
 
             {/* Replace image */}
             <ImageUploadField
@@ -293,22 +285,6 @@ function ImageField({ image, onChange }) {
               onChange={handleUpload}
               label="Replace profile image"
             />
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="min-w-0">
-                <FieldLabel>Image URL</FieldLabel>
-                <p className="break-all rounded-xl border border-border bg-white px-3.5 py-2.5 text-xs leading-5 text-slate-600">
-                  {imageUrl}
-                </p>
-              </div>
-
-              <div className="min-w-0">
-                <FieldLabel>Cloudinary public ID</FieldLabel>
-                <p className="break-all rounded-xl border border-border bg-white px-3.5 py-2.5 text-xs leading-5 text-slate-600">
-                  {image?.public_id || "Not available"}
-                </p>
-              </div>
-            </div>
           </div>
         ) : (
           <div className="space-y-3">
@@ -317,7 +293,7 @@ function ImageField({ image, onChange }) {
                 Add profile image
               </p>
               <p className="mt-1 text-xs leading-5 text-muted">
-                Optional. Upload an image to Cloudinary. The returned URL and public ID will be saved with this leadership record.
+                Optional. Upload a photo to show on the leadership card.
               </p>
             </div>
 
@@ -332,6 +308,7 @@ function ImageField({ image, onChange }) {
     </div>
   );
 }
+
 /* ============================================================
    SOCIAL LINK
    ============================================================ */

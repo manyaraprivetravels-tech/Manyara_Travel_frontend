@@ -345,7 +345,7 @@ export default function HappyMomentsSection() {
           <div className="flex gap-5 overflow-hidden py-4 sm:gap-6 lg:gap-7">
             {[1, 2, 3, 4].map((item) => (
               <div key={item} className={`${CARD_SIZE_CLASSES} ${CARD_SHELL}`}>
-                <div className="aspect-[4/5] w-full animate-pulse bg-surface-strong" />
+                <div className="aspect-[4/3] w-full animate-pulse bg-surface-strong" />
 
                 <div className="space-y-3 p-5 lg:p-6">
                   <div className="h-5 w-4/5 animate-pulse rounded bg-surface-strong" />
@@ -408,7 +408,7 @@ export default function HappyMomentsSection() {
                       {/* ======================================
                           IMAGE
                       ======================================= */}
-                      <div className="relative aspect-[4/5] w-full overflow-hidden bg-surface-strong">
+                      <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface-strong">
                         {imageUrl ? (
                           <img
                             src={cld(imageUrl, 600)}

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Film, ImagePlus, RotateCcw, X, CheckCircle2 } from "lucide-react";
 import { uploadImage, uploadVideo } from "../../api/adminUsers";
 
-const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp" , "image/avif"];
 const VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
 
 const DEFAULT_MAX_IMAGE_MB = 5; // keep in sync with settings.MAX_UPLOAD_MB

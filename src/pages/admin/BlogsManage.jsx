@@ -1,4 +1,6 @@
 
+
+
 import { useEffect, useState } from "react";
 import {
   Plus,
@@ -21,7 +23,6 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import ImageUploadField from "../../components/admin/ImageUploadField";
-import BlogMediaUploader from "../../components/admin/BlogMediaUploader";
 
 import {
   extractMedia,
@@ -110,7 +111,7 @@ export default function BlogsManage() {
   const [videoLink, setVideoLink] = useState("");
   const [videoError, setVideoError] = useState("");
 
-  // Upload states (cover image + blog photos only; videos are links)
+  // Upload states (cover image + blog photos; videos are links)
   const [coverUploading, setCoverUploading] = useState(false);
   const [mediaBusy, setMediaBusy] = useState(false);
 
@@ -131,13 +132,12 @@ export default function BlogsManage() {
     } catch (err) {
       console.error("Failed to load blogs:", err);
 
-      const message=
+      const message =
         err?.response?.data?.detail ||
-          "Failed to load blogs. Please try again.";
-      
+        "Failed to load blogs. Please try again.";
+
       setError(message);
       toast.error(message);
-
     } finally {
       setLoading(false);
     }
@@ -255,11 +255,22 @@ export default function BlogsManage() {
     }));
   };
 
+  /*
+   * Called by the "Add a photo" slot after the admin has picked,
+   * cropped and uploaded one image. The slot clears itself
+   * (resetOnSuccess), so the next photo can be added straight away.
+   */
+  const addPhoto = (image) => {
+    if (!image?.url) return; // upload failed or was cancelled
+
+    addMedia([{ type: "image", url: image.url, caption: "" }]);
+  };
+
   const addVideoLink = () => {
     const id = getYouTubeId(videoLink);
 
-   if (!id) {
-     setVideoError(
+    if (!id) {
+      setVideoError(
         "Enter a valid YouTube link, for example https://www.youtube.com/watch?v=..."
       );
       toast.warning("Please enter a valid YouTube link.");
@@ -269,11 +280,10 @@ export default function BlogsManage() {
     const url = toYouTubeUrl(id);
 
     const alreadyAdded = form.media.some(
-      (item) =>
-        item.type === "video" && getYouTubeId(item.url) === id
+      (item) => item.type === "video" && getYouTubeId(item.url) === id
     );
 
-   if (alreadyAdded) {
+    if (alreadyAdded) {
       setVideoError("This video is already added to the blog.");
       toast.warning("This video is already added to the blog.");
       return;
@@ -373,9 +383,7 @@ export default function BlogsManage() {
        */
 
       const mediaLines = form.media
-        .map((item) =>
-          makeMediaToken(item.type, item.url, item.caption)
-        )
+        .map((item) => makeMediaToken(item.type, item.url, item.caption))
         .join("\n");
 
       /*
@@ -418,18 +426,16 @@ export default function BlogsManage() {
 
       await loadBlogs();
       closeForm();
+    } catch (err) {
+      console.error("Failed to save blog:", err);
 
-      } catch (err) {
-        console.error("Failed to save blog:", err);
+      const message =
+        err?.response?.data?.detail ||
+        "Failed to save blog. Please try again.";
 
-        const message =
-          err?.response?.data?.detail ||
-          "Failed to save blog. Please try again.";
-
-        setError(message);
-        toast.error(message);
-      } finally {
-
+      setError(message);
+      toast.error(message);
+    } finally {
       setSaving(false);
     }
   };
@@ -445,563 +451,562 @@ export default function BlogsManage() {
 
     if (!confirmed) return;
 
-   try {
-        setError("");
-        await deleteBlog(blog.id);
+    try {
+      setError("");
+      await deleteBlog(blog.id);
 
-        setBlogs((prev) =>
-          prev.filter((item) => item.id !== blog.id)
-        );
+      setBlogs((prev) => prev.filter((item) => item.id !== blog.id));
 
-        toast.success("Blog deleted successfully.");
-      } catch (err) {
-        console.error("Failed to delete blog:", err);
+      toast.success("Blog deleted successfully.");
+    } catch (err) {
+      console.error("Failed to delete blog:", err);
 
-        const message =
-          err?.response?.data?.detail ||
-          "Failed to delete blog. Please try again.";
+      const message =
+        err?.response?.data?.detail ||
+        "Failed to delete blog. Please try again.";
 
-        setError(message);
-        toast.error(message);
-      }
-        };
+      setError(message);
+      toast.error(message);
+    }
+  };
 
   // --------------------------------------------------
   // UI
   // --------------------------------------------------
 
   return (
-     <>
-    <ToastContainer
-      position="top-right"
-      autoClose={3500}
-      hideProgressBar={false}
-      newestOnTop
-      closeOnClick
-      pauseOnHover
-      draggable
-      theme="light"
-    />
-    <div className="min-h-screen bg-ivory p-6">
-      {/* HEADER */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-navy">Blogs</h1>
+    <>
+      <ToastContainer
+        position="top-right"
+        autoClose={3500}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+        draggable
+        theme="light"
+      />
 
-          <p className="text-sm text-navy/60 mt-1">
-            Create and manage travel blogs.
-          </p>
+      <div className="min-h-screen bg-ivory p-6">
+        {/* HEADER */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-navy">Blogs</h1>
+
+            <p className="text-sm text-navy/60 mt-1">
+              Create and manage travel blogs.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={openCreateForm}
+            className="flex items-center gap-2 bg-secondary hover:bg-secondary/90 text-white px-5 py-2.5 rounded-lg font-semibold transition"
+          >
+            <Plus size={18} />
+            Add Blog
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={openCreateForm}
-          className="flex items-center gap-2 bg-secondary hover:bg-secondary/90 text-white px-5 py-2.5 rounded-lg font-semibold transition"
-        >
-          <Plus size={18} />
-          Add Blog
-        </button>
-      </div>
-
-      {/* ERROR */}
-      {error && !showForm && (
-        <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
-      {/* BLOG LIST */}
-      <div className="bg-white rounded-xl shadow-sm border border-navy/10 overflow-hidden">
-        {loading ? (
-          <div className="p-10 text-center text-navy/50">
-            Loading blogs...
+        {/* ERROR */}
+        {error && !showForm && (
+          <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
           </div>
-        ) : blogs.length === 0 ? (
-          <div className="p-10 text-center">
-            <p className="text-navy/60">No blogs found.</p>
+        )}
 
-            <button
-              type="button"
-              onClick={openCreateForm}
-              className="mt-4 inline-flex items-center gap-2 bg-secondary text-white px-4 py-2 rounded-lg"
-            >
-              <Plus size={17} />
-              Create your first blog
-            </button>
-          </div>
-        ) : (
-          <div className="divide-y divide-navy/10">
-            {blogs.map((blog) => (
-              <div
-                key={blog.id}
-                className="p-5 flex flex-col md:flex-row gap-5 md:items-center"
+        {/* BLOG LIST */}
+        <div className="bg-white rounded-xl shadow-sm border border-navy/10 overflow-hidden">
+          {loading ? (
+            <div className="p-10 text-center text-navy/50">
+              Loading blogs...
+            </div>
+          ) : blogs.length === 0 ? (
+            <div className="p-10 text-center">
+              <p className="text-navy/60">No blogs found.</p>
+
+              <button
+                type="button"
+                onClick={openCreateForm}
+                className="mt-4 inline-flex items-center gap-2 bg-secondary text-white px-4 py-2 rounded-lg"
               >
-                {/* IMAGE */}
-                <div className="w-full md:w-32 h-24 rounded-lg overflow-hidden bg-navy/5 shrink-0">
-                  {blog.cover_image?.url ? (
-                    <img
-                      src={blog.cover_image.url}
-                      alt={blog.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-xs text-navy/40">
-                      No image
+                <Plus size={17} />
+                Create your first blog
+              </button>
+            </div>
+          ) : (
+            <div className="divide-y divide-navy/10">
+              {blogs.map((blog) => (
+                <div
+                  key={blog.id}
+                  className="p-5 flex flex-col md:flex-row gap-5 md:items-center"
+                >
+                  {/* IMAGE */}
+                  <div className="w-full md:w-32 h-24 rounded-lg overflow-hidden bg-navy/5 shrink-0">
+                    {blog.cover_image?.url ? (
+                      <img
+                        src={blog.cover_image.url}
+                        alt={blog.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xs text-navy/40">
+                        No image
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CONTENT */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <h2 className="font-semibold text-lg text-navy truncate">
+                        {blog.title}
+                      </h2>
+
+                      <span
+                        className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                          blog.status === "published"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
+                        {blog.status}
+                      </span>
+                    </div>
+
+                    {blog.excerpt && (
+                      <p className="text-sm text-navy/60 line-clamp-2">
+                        {blog.excerpt}
+                      </p>
+                    )}
+
+                    <div className="flex flex-wrap gap-4 mt-2 text-xs text-navy/40">
+                      <span>Slug: {blog.slug}</span>
+
+                      {blog.target_keyword && (
+                        <span>Keyword: {blog.target_keyword}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ACTIONS */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => openEditForm(blog)}
+                      className="p-2 rounded-lg border border-navy/10 text-navy hover:bg-navy/5 transition"
+                      title="Edit"
+                    >
+                      <Pencil size={17} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(blog)}
+                      className="p-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition"
+                      title="Delete"
+                    >
+                      <Trash2 size={17} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* CREATE / EDIT MODAL */}
+        {showForm && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl">
+              {/* MODAL HEADER */}
+              <div className="sticky top-0 z-10 bg-white border-b border-navy/10 px-6 py-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-navy">
+                    {editingId ? "Edit Blog" : "Create Blog"}
+                  </h2>
+
+                  <p className="text-xs text-navy/50 mt-1">
+                    Add SEO-friendly travel content.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={closeForm}
+                  disabled={saving}
+                  className="p-2 rounded-full hover:bg-navy/5 text-navy/70"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* FORM */}
+              <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                {/* TITLE */}
+                <div>
+                  <label className="block text-sm font-semibold text-navy mb-1.5">
+                    Title *
+                  </label>
+
+                  <input
+                    type="text"
+                    name="title"
+                    value={form.title}
+                    onChange={handleChange}
+                    placeholder="Best Places to Visit in Kerala"
+                    maxLength={220}
+                    className="w-full border border-navy/15 rounded-lg px-4 py-3 outline-none focus:border-secondary"
+                    required
+                  />
+                </div>
+
+                {/* EXCERPT */}
+                <div>
+                  <label className="block text-sm font-semibold text-navy mb-1.5">
+                    Excerpt
+                  </label>
+
+                  <textarea
+                    name="excerpt"
+                    value={form.excerpt}
+                    onChange={handleChange}
+                    placeholder="Short description of the blog..."
+                    rows={3}
+                    maxLength={400}
+                    className="w-full border border-navy/15 rounded-lg px-4 py-3 outline-none focus:border-secondary resize-none"
+                  />
+                </div>
+
+                {/* COVER IMAGE */}
+                <ImageUploadField
+                  value={form.cover_image}
+                  onChange={(image) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      cover_image: image,
+                    }))
+                  }
+                  onBusyChange={setCoverUploading}
+                  label="Cover Image"
+                />
+
+                {/* BLOG PHOTOS & VIDEOS */}
+                <div className="rounded-xl border border-navy/10 bg-navy/[0.02] p-4">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <p className="text-sm font-semibold text-navy">
+                        Blog Photos & Videos
+                      </p>
+
+                      <p className="text-xs text-navy/50 mt-1">
+                        Add photos one at a time (you can crop each one
+                        before it uploads) and add videos as YouTube
+                        links. They appear before the article text on
+                        the blog page.
+                      </p>
+                    </div>
+
+                    {form.media.length > 0 && (
+                      <span className="shrink-0 rounded-full bg-navy/5 px-2.5 py-1 text-xs font-semibold text-navy/60">
+                        {form.media.length}{" "}
+                        {form.media.length === 1 ? "file" : "files"}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* PHOTOS: crop, upload, then the slot clears for the next one */}
+                  <ImageUploadField
+                    value={null}
+                    onChange={addPhoto}
+                    onBusyChange={setMediaBusy}
+                    disabled={saving}
+                    label="Add a photo"
+                    size="lg"
+                    resetOnSuccess
+                  />
+
+                  {/* VIDEOS (YouTube links, nothing is uploaded) */}
+                  <div className="mt-4 rounded-lg border border-navy/10 bg-white p-3">
+                    <label
+                      htmlFor="blog-youtube-link"
+                      className="block text-xs font-semibold text-navy mb-1.5"
+                    >
+                      Add a YouTube video
+                    </label>
+
+                    <div className="flex gap-2">
+                      <input
+                        id="blog-youtube-link"
+                        type="url"
+                        inputMode="url"
+                        value={videoLink}
+                        onChange={(e) => {
+                          setVideoLink(e.target.value);
+                          if (videoError) setVideoError("");
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            addVideoLink();
+                          }
+                        }}
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        disabled={saving}
+                        className="min-w-0 flex-1 border border-navy/15 rounded-lg px-3 py-2 text-sm outline-none focus:border-secondary"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={addVideoLink}
+                        disabled={saving || !videoLink.trim()}
+                        className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-secondary px-4 py-2 text-sm font-semibold text-white transition hover:bg-secondary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Plus size={15} />
+                        Add video
+                      </button>
+                    </div>
+
+                    {videoError ? (
+                      <p className="mt-1.5 text-xs text-red-600">
+                        {videoError}
+                      </p>
+                    ) : (
+                      <p className="mt-1.5 text-xs text-navy/50">
+                        Paste any YouTube link (watch, youtu.be or
+                        Shorts). Only the link is saved.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* MEDIA PREVIEW */}
+                  {form.media.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-navy/50 mb-2">
+                        In this blog ({form.media.length})
+                      </p>
+
+                      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {form.media.map((media, index) => {
+                          const youTubeId =
+                            media.type === "video"
+                              ? getYouTubeId(media.url)
+                              : "";
+
+                          return (
+                            <li
+                              key={`${media.url}-${index}`}
+                              className="overflow-hidden rounded-lg border border-navy/10 bg-white"
+                            >
+                              <div className="relative aspect-video w-full bg-navy/5">
+                                {youTubeId ? (
+                                  <>
+                                    <img
+                                      src={getYouTubeThumbnail(youTubeId)}
+                                      alt=""
+                                      loading="lazy"
+                                      className="h-full w-full object-cover"
+                                    />
+
+                                    <span
+                                      className="pointer-events-none absolute inset-0 flex items-center justify-center"
+                                      aria-hidden="true"
+                                    >
+                                      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-navy-dark/70 text-ivory">
+                                        <Play
+                                          size={18}
+                                          className="ml-0.5 fill-current"
+                                        />
+                                      </span>
+                                    </span>
+                                  </>
+                                ) : media.type === "video" ? (
+                                  /* Older blogs that still have an uploaded video */
+                                  <video
+                                    src={getVideoSrc(media.url)}
+                                    poster={getVideoPoster(media.url)}
+                                    preload="metadata"
+                                    muted
+                                    playsInline
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  /* object-contain so a cropped photo is shown whole */
+                                  <img
+                                    src={media.url}
+                                    alt=""
+                                    loading="lazy"
+                                    className="h-full w-full object-contain"
+                                  />
+                                )}
+
+                                {/* TYPE BADGE */}
+                                <span className="absolute left-2 top-2 rounded-full bg-navy-dark/70 px-2 py-0.5 text-[10px] font-semibold uppercase text-ivory">
+                                  {youTubeId ? "YouTube" : media.type}
+                                </span>
+
+                                {/* REMOVE */}
+                                <button
+                                  type="button"
+                                  onClick={() => removeMedia(index)}
+                                  aria-label={`Remove ${media.type}`}
+                                  className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-navy-dark/70 text-ivory hover:bg-red-600"
+                                >
+                                  <X size={14} />
+                                </button>
+
+                                {/* REORDER */}
+                                <div className="absolute bottom-2 right-2 flex gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => moveMedia(index, -1)}
+                                    disabled={index === 0}
+                                    aria-label="Move earlier"
+                                    className="flex h-7 w-7 items-center justify-center rounded-full bg-navy-dark/70 text-ivory hover:bg-navy-dark disabled:opacity-40"
+                                  >
+                                    <ChevronUp size={14} />
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => moveMedia(index, 1)}
+                                    disabled={index === form.media.length - 1}
+                                    aria-label="Move later"
+                                    className="flex h-7 w-7 items-center justify-center rounded-full bg-navy-dark/70 text-ivory hover:bg-navy-dark disabled:opacity-40"
+                                  >
+                                    <ChevronDown size={14} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* CAPTION */}
+                              <input
+                                type="text"
+                                value={media.caption}
+                                onChange={(e) =>
+                                  changeMediaCaption(index, e.target.value)
+                                }
+                                placeholder="Caption (optional)"
+                                maxLength={200}
+                                className="w-full border-t border-navy/10 px-3 py-2 text-sm outline-none focus:bg-navy/[0.03]"
+                              />
+                            </li>
+                          );
+                        })}
+                      </ul>
                     </div>
                   )}
                 </div>
 
                 {/* CONTENT */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <h2 className="font-semibold text-lg text-navy truncate">
-                      {blog.title}
-                    </h2>
+                <div>
+                  <label className="block text-sm font-semibold text-navy mb-1.5">
+                    Content *
+                  </label>
 
-                    <span
-                      className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                        blog.status === "published"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-yellow-100 text-yellow-700"
-                      }`}
-                    >
-                      {blog.status}
-                    </span>
-                  </div>
-
-                  {blog.excerpt && (
-                    <p className="text-sm text-navy/60 line-clamp-2">
-                      {blog.excerpt}
-                    </p>
-                  )}
-
-                  <div className="flex flex-wrap gap-4 mt-2 text-xs text-navy/40">
-                    <span>Slug: {blog.slug}</span>
-
-                    {blog.target_keyword && (
-                      <span>Keyword: {blog.target_keyword}</span>
-                    )}
-                  </div>
+                  <textarea
+                    name="content"
+                    value={form.content}
+                    onChange={handleChange}
+                    placeholder="Write your complete blog content..."
+                    rows={12}
+                    className="w-full border border-navy/15 rounded-lg px-4 py-3 outline-none focus:border-secondary resize-y"
+                    required
+                  />
                 </div>
 
-                {/* ACTIONS */}
-                <div className="flex items-center gap-2 shrink-0">
+                {/* TARGET KEYWORD */}
+                <div>
+                  <label className="block text-sm font-semibold text-navy mb-1.5">
+                    Target Keyword
+                  </label>
+
+                  <input
+                    type="text"
+                    name="target_keyword"
+                    value={form.target_keyword}
+                    onChange={handleChange}
+                    placeholder="kerala tourist places"
+                    maxLength={150}
+                    className="w-full border border-navy/15 rounded-lg px-4 py-3 outline-none focus:border-secondary"
+                  />
+                </div>
+
+                {/* META DESCRIPTION */}
+                <div>
+                  <label className="block text-sm font-semibold text-navy mb-1.5">
+                    Meta Description
+                  </label>
+
+                  <textarea
+                    name="meta_description"
+                    value={form.meta_description}
+                    onChange={handleChange}
+                    placeholder="Discover the best places to visit in Kerala..."
+                    maxLength={300}
+                    rows={3}
+                    className="w-full border border-navy/15 rounded-lg px-4 py-3 outline-none focus:border-secondary resize-none"
+                  />
+                </div>
+
+                {/* STATUS */}
+                <div>
+                  <label className="block text-sm font-semibold text-navy mb-1.5">
+                    Status
+                  </label>
+
+                  <select
+                    name="status"
+                    value={form.status}
+                    onChange={handleChange}
+                    className="w-full border border-navy/15 rounded-lg px-4 py-3 bg-white outline-none focus:border-secondary"
+                  >
+                    <option value="draft">Draft</option>
+
+                    <option value="published">Published</option>
+                  </select>
+                </div>
+
+                {/* FORM ERROR */}
+                {error && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {error}
+                  </div>
+                )}
+
+                {/* FORM ACTIONS */}
+                <div className="flex justify-end gap-3 pt-3 border-t border-navy/10">
                   <button
                     type="button"
-                    onClick={() => openEditForm(blog)}
-                    className="p-2 rounded-lg border border-navy/10 text-navy hover:bg-navy/5 transition"
-                    title="Edit"
+                    onClick={closeForm}
+                    disabled={saving}
+                    className="px-5 py-2.5 rounded-lg border border-navy/15 text-navy hover:bg-navy/5 transition"
                   >
-                    <Pencil size={17} />
+                    Cancel
                   </button>
 
                   <button
-                    type="button"
-                    onClick={() => handleDelete(blog)}
-                    className="p-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition"
-                    title="Delete"
+                    type="submit"
+                    disabled={saving || uploading}
+                    className="px-6 py-2.5 rounded-lg bg-secondary hover:bg-secondary/90 text-white font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    <Trash2 size={17} />
+                    {saving
+                      ? "Saving..."
+                      : uploading
+                      ? "Uploading..."
+                      : editingId
+                      ? "Update Blog"
+                      : "Create Blog"}
                   </button>
                 </div>
-              </div>
-            ))}
+              </form>
+            </div>
           </div>
         )}
       </div>
-
-      {/* CREATE / EDIT MODAL */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl">
-            {/* MODAL HEADER */}
-            <div className="sticky top-0 z-10 bg-white border-b border-navy/10 px-6 py-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-navy">
-                  {editingId ? "Edit Blog" : "Create Blog"}
-                </h2>
-
-                <p className="text-xs text-navy/50 mt-1">
-                  Add SEO-friendly travel content.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={closeForm}
-                disabled={saving}
-                className="p-2 rounded-full hover:bg-navy/5 text-navy/70"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* FORM */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
-              {/* TITLE */}
-              <div>
-                <label className="block text-sm font-semibold text-navy mb-1.5">
-                  Title *
-                </label>
-
-                <input
-                  type="text"
-                  name="title"
-                  value={form.title}
-                  onChange={handleChange}
-                  placeholder="Best Places to Visit in Kerala"
-                  maxLength={220}
-                  className="w-full border border-navy/15 rounded-lg px-4 py-3 outline-none focus:border-secondary"
-                  required
-                />
-              </div>
-
-              {/* EXCERPT */}
-              <div>
-                <label className="block text-sm font-semibold text-navy mb-1.5">
-                  Excerpt
-                </label>
-
-                <textarea
-                  name="excerpt"
-                  value={form.excerpt}
-                  onChange={handleChange}
-                  placeholder="Short description of the blog..."
-                  rows={3}
-                  maxLength={400}
-                  className="w-full border border-navy/15 rounded-lg px-4 py-3 outline-none focus:border-secondary resize-none"
-                />
-              </div>
-
-              {/* COVER IMAGE */}
-              <ImageUploadField
-                value={form.cover_image}
-                onChange={(image) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    cover_image: image,
-                  }))
-                }
-                onBusyChange={setCoverUploading}
-                label="Cover Image"
-              />
-
-              {/* BLOG PHOTOS & VIDEOS */}
-              <div className="rounded-xl border border-navy/10 bg-navy/[0.02] p-4">
-                <div className="flex items-start justify-between gap-3 mb-1">
-                  <div>
-                    <p className="text-sm font-semibold text-navy">
-                      Blog Photos & Videos
-                    </p>
-
-                    <p className="text-xs text-navy/50 mt-1">
-                      Upload photos, and add videos as YouTube
-                      links. They appear before the article text
-                      on the blog page.
-                    </p>
-                  </div>
-
-                  {form.media.length > 0 && (
-                    <span className="shrink-0 rounded-full bg-navy/5 px-2.5 py-1 text-xs font-semibold text-navy/60">
-                      {form.media.length}{" "}
-                      {form.media.length === 1 ? "file" : "files"}
-                    </span>
-                  )}
-                </div>
-
-                {/* PHOTOS (uploaded) */}
-                <BlogMediaUploader
-                  onInsert={addMedia}
-                  onBusyChange={setMediaBusy}
-                  disabled={saving}
-                />
-
-                {/* VIDEOS (YouTube links, nothing is uploaded) */}
-                <div className="mt-4 rounded-lg border border-navy/10 bg-white p-3">
-                  <label
-                    htmlFor="blog-youtube-link"
-                    className="block text-xs font-semibold text-navy mb-1.5"
-                  >
-                    Add a YouTube video
-                  </label>
-
-                  <div className="flex gap-2">
-                    <input
-                      id="blog-youtube-link"
-                      type="url"
-                      inputMode="url"
-                      value={videoLink}
-                      onChange={(e) => {
-                        setVideoLink(e.target.value);
-                        if (videoError) setVideoError("");
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addVideoLink();
-                        }
-                      }}
-                      placeholder="https://www.youtube.com/watch?v=..."
-                      disabled={saving}
-                      className="min-w-0 flex-1 border border-navy/15 rounded-lg px-3 py-2 text-sm outline-none focus:border-secondary"
-                    />
-
-                    <button
-                      type="button"
-                      onClick={addVideoLink}
-                      disabled={saving || !videoLink.trim()}
-                      className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-secondary px-4 py-2 text-sm font-semibold text-white transition hover:bg-secondary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <Plus size={15} />
-                      Add video
-                    </button>
-                  </div>
-
-                  {videoError ? (
-                    <p className="mt-1.5 text-xs text-red-600">
-                      {videoError}
-                    </p>
-                  ) : (
-                    <p className="mt-1.5 text-xs text-navy/50">
-                      Paste any YouTube link (watch, youtu.be or
-                      Shorts). Only the link is saved.
-                    </p>
-                  )}
-                </div>
-
-                {/* MEDIA PREVIEW */}
-                {form.media.length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-navy/50 mb-2">
-                      In this blog ({form.media.length})
-                    </p>
-
-                    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {form.media.map((media, index) => {
-                        const youTubeId =
-                          media.type === "video"
-                            ? getYouTubeId(media.url)
-                            : "";
-
-                        return (
-                          <li
-                            key={`${media.url}-${index}`}
-                            className="overflow-hidden rounded-lg border border-navy/10 bg-white"
-                          >
-                            <div className="relative aspect-video w-full bg-navy/5">
-                              {youTubeId ? (
-                                <>
-                                  <img
-                                    src={getYouTubeThumbnail(youTubeId)}
-                                    alt=""
-                                    loading="lazy"
-                                    className="h-full w-full object-cover"
-                                  />
-
-                                  <span
-                                    className="pointer-events-none absolute inset-0 flex items-center justify-center"
-                                    aria-hidden="true"
-                                  >
-                                    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-navy-dark/70 text-ivory">
-                                      <Play
-                                        size={18}
-                                        className="ml-0.5 fill-current"
-                                      />
-                                    </span>
-                                  </span>
-                                </>
-                              ) : media.type === "video" ? (
-                                /* Older blogs that still have an uploaded video */
-                                <video
-                                  src={getVideoSrc(media.url)}
-                                  poster={getVideoPoster(media.url)}
-                                  preload="metadata"
-                                  muted
-                                  playsInline
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <img
-                                  src={media.url}
-                                  alt=""
-                                  loading="lazy"
-                                  className="h-full w-full object-cover"
-                                />
-                              )}
-
-                              {/* TYPE BADGE */}
-                              <span className="absolute left-2 top-2 rounded-full bg-navy-dark/70 px-2 py-0.5 text-[10px] font-semibold uppercase text-ivory">
-                                {youTubeId ? "YouTube" : media.type}
-                              </span>
-
-                              {/* REMOVE */}
-                              <button
-                                type="button"
-                                onClick={() => removeMedia(index)}
-                                aria-label={`Remove ${media.type}`}
-                                className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-navy-dark/70 text-ivory hover:bg-red-600"
-                              >
-                                <X size={14} />
-                              </button>
-
-                              {/* REORDER */}
-                              <div className="absolute bottom-2 right-2 flex gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => moveMedia(index, -1)}
-                                  disabled={index === 0}
-                                  aria-label="Move earlier"
-                                  className="flex h-7 w-7 items-center justify-center rounded-full bg-navy-dark/70 text-ivory hover:bg-navy-dark disabled:opacity-40"
-                                >
-                                  <ChevronUp size={14} />
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => moveMedia(index, 1)}
-                                  disabled={
-                                    index === form.media.length - 1
-                                  }
-                                  aria-label="Move later"
-                                  className="flex h-7 w-7 items-center justify-center rounded-full bg-navy-dark/70 text-ivory hover:bg-navy-dark disabled:opacity-40"
-                                >
-                                  <ChevronDown size={14} />
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* CAPTION */}
-                            <input
-                              type="text"
-                              value={media.caption}
-                              onChange={(e) =>
-                                changeMediaCaption(index, e.target.value)
-                              }
-                              placeholder="Caption (optional)"
-                              maxLength={200}
-                              className="w-full border-t border-navy/10 px-3 py-2 text-sm outline-none focus:bg-navy/[0.03]"
-                            />
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              {/* CONTENT */}
-              <div>
-                <label className="block text-sm font-semibold text-navy mb-1.5">
-                  Content *
-                </label>
-
-                <textarea
-                  name="content"
-                  value={form.content}
-                  onChange={handleChange}
-                  placeholder="Write your complete blog content..."
-                  rows={12}
-                  className="w-full border border-navy/15 rounded-lg px-4 py-3 outline-none focus:border-secondary resize-y"
-                  required
-                />
-              </div>
-
-              {/* TARGET KEYWORD */}
-              <div>
-                <label className="block text-sm font-semibold text-navy mb-1.5">
-                  Target Keyword
-                </label>
-
-                <input
-                  type="text"
-                  name="target_keyword"
-                  value={form.target_keyword}
-                  onChange={handleChange}
-                  placeholder="kerala tourist places"
-                  maxLength={150}
-                  className="w-full border border-navy/15 rounded-lg px-4 py-3 outline-none focus:border-secondary"
-                />
-              </div>
-
-              {/* META DESCRIPTION */}
-              <div>
-                <label className="block text-sm font-semibold text-navy mb-1.5">
-                  Meta Description
-                </label>
-
-                <textarea
-                  name="meta_description"
-                  value={form.meta_description}
-                  onChange={handleChange}
-                  placeholder="Discover the best places to visit in Kerala..."
-                  maxLength={300}
-                  rows={3}
-                  className="w-full border border-navy/15 rounded-lg px-4 py-3 outline-none focus:border-secondary resize-none"
-                />
-              </div>
-
-              {/* STATUS */}
-              <div>
-                <label className="block text-sm font-semibold text-navy mb-1.5">
-                  Status
-                </label>
-
-                <select
-                  name="status"
-                  value={form.status}
-                  onChange={handleChange}
-                  className="w-full border border-navy/15 rounded-lg px-4 py-3 bg-white outline-none focus:border-secondary"
-                >
-                  <option value="draft">Draft</option>
-
-                  <option value="published">Published</option>
-                </select>
-              </div>
-
-              {/* FORM ERROR */}
-              {error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {error}
-                </div>
-              )}
-
-              {/* FORM ACTIONS */}
-              <div className="flex justify-end gap-3 pt-3 border-t border-navy/10">
-                <button
-                  type="button"
-                  onClick={closeForm}
-                  disabled={saving}
-                  className="px-5 py-2.5 rounded-lg border border-navy/15 text-navy hover:bg-navy/5 transition"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={saving || uploading}
-                  className="px-6 py-2.5 rounded-lg bg-secondary hover:bg-secondary/90 text-white font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {saving
-                    ? "Saving..."
-                    : uploading
-                    ? "Uploading..."
-                    : editingId
-                    ? "Update Blog"
-                    : "Create Blog"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  </>
+    </>
   );
 }
-
-
-
-
 
 
 
