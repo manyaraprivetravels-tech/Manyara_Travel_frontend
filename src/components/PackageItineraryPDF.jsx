@@ -1,5 +1,6 @@
 
 
+
 import { getSiteSettings } from "../api/content"; // same API the Footer / Contact page use
 
 /* =====================================================================
@@ -196,22 +197,6 @@ const DESIGN = {
            </div>`
         : "";
 
-    // ---- The ONE contact block -------------------------------------
-    const pill = whatsappPill(co);
-    const addr = addressBlock(co, C.body, C.roseDeep, "center");
-    // const closingHTML = co.cells.length
-    //   ? `<div data-stretch style="margin-top:38px;">
-    //        <div data-atom style="background:${C.roseWash};border:1px solid ${C.roseLine};border-radius:22px;padding:28px 26px 26px;text-align:center;box-sizing:border-box;">
-    //          <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:.3em;color:${C.gold};">READY TO BOOK?</div>
-    //          <div style="font-family:${SERIF};font-size:30px;font-weight:600;color:${C.roseDeep};line-height:1.2;margin:5px 0 8px;">Plan This Journey With Us</div>
-    //          <div style="font-family:${SANS};font-size:12px;line-height:1.6;color:${C.body};margin-bottom:18px;">Our travel specialists will tailor dates, stays and experiences to you.</div>
-    //          ${contactGrid(co, "#fff", C.roseLine, 14, "center")}
-    //          ${pill ? `<div style="margin-top:18px;">${pill}</div>` : ""}
-    //          ${addr ? `<div style="margin-top:14px;">${addr}</div>` : ""}
-    //        </div>
-    //      </div>`
-    //   : "";
-
     return `
       ${coverHTML}
       <div style="padding:0 ${CONTENT_X}px;">
@@ -221,7 +206,6 @@ const DESIGN = {
         ${coverageHTML}
         ${policyHTML("Please Note", "Terms & Conditions", terms)}
         ${policyHTML("Good to Know", "Cancellation Policy", cancellation)}
-        ${closingHTML}
       </div>`;
   },
 
@@ -229,6 +213,12 @@ const DESIGN = {
     const lineL = `<div style="flex:1;height:1px;background:linear-gradient(to right,rgba(232,210,180,0),${C.champagne});"></div>`;
     const lineR = `<div style="flex:1;height:1px;background:linear-gradient(to left,rgba(232,210,180,0),${C.champagne});"></div>`;
     const dia = `<div style="flex:none;width:5px;height:5px;background:${C.gold};transform:rotate(45deg);"></div>`;
+
+    // Contact details live here only: email, phone, website (clickable).
+    const contact = ctx.co.cells
+      .filter((c) => c.label !== "WHATSAPP")
+      .map((c) => `<a href="${escapeHTML(c.href)}" style="color:${C.roseDeep};text-decoration:none;">${escapeHTML(c.text)}</a>`)
+      .join(`<span style="color:${C.gold};padding:0 8px;">&#9670;</span>`);
 
     const out = [];
     for (let p = 1; p < totalPages; p++) {
@@ -242,6 +232,8 @@ const DESIGN = {
           ${lineL}
           ${dia}
           <span style="flex:none;white-space:nowrap;font-family:${SANS};font-size:9px;font-weight:600;letter-spacing:.24em;color:${C.gold};">PAGE ${p + 1} OF ${totalPages}</span>
+          ${dia}
+          <span style="flex:none;white-space:nowrap;font-family:${SANS};font-size:9.5px;font-weight:500;color:${C.muted};">${contact}</span>
           ${dia}
           ${lineR}
         </div>`);
@@ -1026,6 +1018,11 @@ function slugify(value) {
 }
 
 export default generatePackagePDF;
+
+
+
+
+
 
 
 
