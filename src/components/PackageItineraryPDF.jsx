@@ -67,139 +67,150 @@ function getGeometry() {
 }
 
 /* =====================================================================
-   DESIGN C - "Magazine Arch"
-   Split cover with an arch-shaped photo, big gold day numerals,
-   open hairline layout (no boxes), two-column contact panel,
-   minimal header and a page-number-led footer.
+   DESIGN B - "Soft Frame"
+   Rounded photo on cream, centred title card overlapping the photo,
+   soft cards, centred ornament headings, centred brand header and a
+   quiet page-number footer.
    ===================================================================== */
 const DESIGN = {
   build(ctx) {
     const { pkg, title, eyebrow, has, itinerary, facilities, inclusions, exclusions, terms, cancellation, durationText, co } = ctx;
 
-    const heading = (label, text, atom = true) => `
-      <div ${atom ? "data-atom data-keep" : ""} style="margin:0 0 16px;">
-        <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:.3em;text-transform:uppercase;color:${C.gold};margin-bottom:4px;">${escapeHTML(label)}</div>
-        <div style="font-family:${SERIF};font-size:32px;font-weight:600;color:${C.roseDeep};line-height:1.2;">${escapeHTML(text)}</div>
-        <div style="height:1px;margin-top:10px;background:linear-gradient(to right,${C.champagne},rgba(232,210,180,0));"></div>
+    const ornament = (w = 120) => `
+      <div style="display:flex;align-items:center;gap:10px;width:${w}px;margin:0 auto;">
+        <div style="flex:1;height:1px;background:linear-gradient(to right,rgba(232,210,180,0),${C.champagne});"></div>
+        <div style="width:7px;height:7px;background:${C.gold};transform:rotate(45deg);"></div>
+        <div style="flex:1;height:1px;background:linear-gradient(to left,rgba(232,210,180,0),${C.champagne});"></div>
       </div>`;
 
-    // ---- Cover: text left, arch photo right --------------------------
-    const ARCH_W = 330;
-    const ARCH_H = 540;
-    const ARCH_R = `${ARCH_W / 2}px ${ARCH_W / 2}px 26px 26px`;
-    const photo = photoBox(ctx.coverImage, ctx.coverSize, ARCH_W, ARCH_H, `border-radius:${ARCH_R};`);
-    const titleSize = title.length <= 12 ? 62 : title.length <= 22 ? 48 : 38;
+    const heading = (label, text, atom = true) => `
+      <div ${atom ? "data-atom data-keep" : ""} style="margin:0 0 18px;text-align:center;">
+        <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:.3em;text-transform:uppercase;color:${C.gold};margin-bottom:5px;">${escapeHTML(label)}</div>
+        <div style="font-family:${SERIF};font-size:32px;font-weight:600;color:${C.roseDeep};line-height:1.2;margin-bottom:10px;">${escapeHTML(text)}</div>
+        ${ornament(110)}
+      </div>`;
 
-    const statBlock = (label, value, color, sub) => `
-      <div style="padding:12px 0;border-top:1px solid ${C.champagne};">
+    // ---- Cover -------------------------------------------------------
+    const PHOTO_W = PAGE_W - 56;
+    const PHOTO_H = 470;
+    const photo = photoBox(ctx.coverImage, ctx.coverSize, PHOTO_W, PHOTO_H, "border-radius:28px;");
+    const titleSize = title.length <= 14 ? 42 : title.length <= 26 ? 34 : 28;
+
+    const stat = (label, value, color, sub) => `
+      <div style="flex:1;text-align:center;padding:0 10px;">
         <div style="font-family:${SANS};font-size:9px;font-weight:600;letter-spacing:.26em;color:${C.gold};">${escapeHTML(label)}</div>
-        <div style="font-family:${SANS};font-size:24px;font-weight:600;color:${color};margin-top:5px;line-height:1.2;">${escapeHTML(value)}${
-          sub ? ` <span style="font-size:11px;font-weight:400;color:${C.muted};">${escapeHTML(sub)}</span>` : ""
-        }</div>
+        <div style="font-family:${SANS};font-size:19px;font-weight:600;color:${color};margin-top:6px;line-height:1.25;">${escapeHTML(value)}</div>
+        ${sub ? `<div style="font-family:${SANS};font-size:10px;color:${C.muted};margin-top:3px;">${escapeHTML(sub)}</div>` : ""}
       </div>`;
 
     const stats = [];
-    if (durationText) stats.push(statBlock("DURATION", durationText, C.ink, ""));
-    if (has(pkg.price)) stats.push(statBlock("STARTING FROM", `\u20B9${formatPrice(pkg.price)}`, C.rose, "per person"));
+    if (durationText) stats.push(stat("DURATION", durationText, C.ink, ""));
+    if (has(pkg.price)) stats.push(stat("STARTING FROM", `\u20B9${formatPrice(pkg.price)}`, C.rose, "per person"));
+    const statsHTML = stats.length
+      ? `<div style="display:flex;align-items:center;margin-top:18px;padding-top:18px;border-top:1px solid ${C.line};">
+           ${stats.join(`<div style="width:1px;align-self:stretch;background:${C.line};"></div>`)}
+         </div>`
+      : "";
 
     const coverHTML = `
-      <div data-atom style="position:relative;width:${PAGE_W}px;height:660px;overflow:hidden;box-sizing:border-box;padding:46px ${CONTENT_X}px 0;background:${C.cream};">
-        <div style="position:absolute;right:-110px;top:-110px;width:440px;height:440px;border-radius:50%;background:${C.roseSoft};"></div>
-        <div style="position:absolute;left:-130px;bottom:-150px;width:380px;height:380px;border-radius:50%;background:${C.champagneSoft};opacity:.7;"></div>
-        <div style="position:relative;display:flex;gap:38px;align-items:stretch;height:${ARCH_H}px;">
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between;">
-            <div>${logoChip(ctx, 32, { pad: "7px 14px", shadow: "0 4px 14px rgba(0,0,0,.10)" })}</div>
-            <div>
-              <div style="font-family:${SANS};font-size:11px;font-weight:600;letter-spacing:.32em;text-transform:uppercase;color:${C.gold};margin-bottom:12px;">${escapeHTML(eyebrow)}</div>
-              <div style="font-family:${SERIF};font-size:${titleSize}px;font-weight:600;line-height:1.08;color:${C.roseDeep};">${escapeHTML(title)}</div>
-              <div style="width:56px;height:3px;border-radius:3px;background:${C.rose};margin-top:18px;"></div>
-            </div>
-            <div>${stats.join("")}</div>
+      <div data-atom style="width:${PAGE_W}px;padding:28px 28px 0;box-sizing:border-box;">
+        <div style="position:relative;width:${PHOTO_W}px;height:${PHOTO_H}px;border-radius:28px;overflow:hidden;background:linear-gradient(135deg,${C.roseSoft},${C.champagneSoft});">
+          ${photo}
+          <div style="position:absolute;left:0;top:24px;width:${PHOTO_W}px;text-align:center;">
+            ${logoChip(ctx, 30, { pad: "7px 16px", radius: 12 })}
           </div>
-          <div style="position:relative;flex:none;width:${ARCH_W}px;height:${ARCH_H}px;">
-            <div style="position:absolute;left:14px;top:14px;width:${ARCH_W}px;height:${ARCH_H}px;box-sizing:border-box;border:1.5px solid ${C.champagne};border-radius:${ARCH_R};"></div>
-            <div style="position:absolute;left:0;top:0;width:${ARCH_W}px;height:${ARCH_H}px;border-radius:${ARCH_R};overflow:hidden;background:linear-gradient(160deg,${C.roseSoft},${C.champagneSoft});">
-              ${photo}
-            </div>
-          </div>
+        </div>
+        <div style="position:relative;width:580px;margin:-74px auto 0;background:#fff;border:1px solid ${C.champagne};border-radius:22px;box-shadow:0 14px 34px rgba(80,40,60,.12);padding:26px 32px 22px;box-sizing:border-box;text-align:center;">
+          <div style="font-family:${SANS};font-size:10.5px;font-weight:600;letter-spacing:.32em;text-transform:uppercase;color:${C.gold};margin-bottom:8px;">${escapeHTML(eyebrow)}</div>
+          <div style="font-family:${SERIF};font-size:${titleSize}px;font-weight:600;line-height:1.15;color:${C.roseDeep};margin-bottom:14px;">${escapeHTML(title)}</div>
+          ${ornament(120)}
+          ${statsHTML}
         </div>
       </div>`;
 
     const aboutHTML = pkg.description
-      ? `<div data-stretch style="margin-top:34px;">
+      ? `<div data-stretch style="margin-top:40px;">
            ${heading("The Experience", "About This Journey")}
            ${paragraph(pkg.description, 13, C.body, 1.8)}
          </div>`
       : "";
 
-    // ---- Itinerary: open rows with big gold numerals -----------------
-    const dayRow = (day, index) => {
+    // ---- Itinerary: soft cards -------------------------------------
+    const dayCard = (day, index) => {
       const n = has(day?.day) ? day.day : index + 1;
       const label = String(n).padStart(2, "0");
-      const last = index === itinerary.length - 1;
       const description = day?.description ? String(day.description).trim() : "";
 
       return `
-        <div data-atom data-padstretch style="display:flex;gap:20px;padding:20px 0 ${last ? 20 : 20}px;border-top:1px solid ${C.line};${last ? `border-bottom:1px solid ${C.line};` : ""}">
-          <div style="flex:none;width:68px;">
-            <div style="font-family:${SANS};font-size:8px;font-weight:600;letter-spacing:.26em;color:${C.gold};">DAY</div>
-            <div style="font-family:${SANS};font-size:34px;font-weight:600;line-height:1.05;color:#D9BF98;margin-top:2px;">${escapeHTML(label)}</div>
-          </div>
-          <div style="flex:1;min-width:0;">
-            <div style="font-family:${SERIF};font-size:23px;font-weight:600;color:${C.ink};line-height:1.25;">${escapeHTML(day?.title || `Day ${n}`)}</div>
-            ${
-              description
-                ? `<div style="font-family:${SANS};font-size:12.5px;line-height:1.7;color:${C.body};margin-top:7px;white-space:pre-line;">${escapeHTML(description)}</div>`
-                : ""
-            }
-            ${dayImage(ctx, index, CONTENT_W - 92, 250, { radius: 10, top: 14 })}
-          </div>
+        <div data-atom data-stretch style="margin-bottom:16px;background:#fff;border:1px solid ${C.roseLine};border-radius:18px;padding:18px 22px 20px;box-shadow:0 4px 14px rgba(120,60,90,.06);box-sizing:border-box;">
+          <div style="display:inline-block;background:${C.roseSoft};border:1px solid ${C.roseLine};border-radius:999px;padding:3px 12px;font-family:${SANS};font-size:9px;font-weight:600;letter-spacing:.24em;color:${C.rose};">DAY ${escapeHTML(label)}</div>
+          <div style="font-family:${SERIF};font-size:23px;font-weight:600;color:${C.ink};line-height:1.25;margin-top:8px;">${escapeHTML(day?.title || `Day ${n}`)}</div>
+          ${
+            description
+              ? `<div style="font-family:${SANS};font-size:12.5px;line-height:1.7;color:${C.body};margin-top:8px;white-space:pre-line;">${escapeHTML(description)}</div>`
+              : ""
+          }
+          ${dayImage(ctx, index, CONTENT_W - 46, 260, { radius: 12, top: 14, center: true })}
         </div>`;
     };
 
     const itineraryHTML = itinerary.length
-      ? `<div data-stretch style="margin-top:38px;">
+      ? `<div data-stretch style="margin-top:42px;">
            ${heading("Your Journey", "Day-by-Day Itinerary")}
-           ${itinerary.map(dayRow).join("")}
+           ${itinerary.map(dayCard).join("")}
          </div>`
       : "";
 
     // ---- Facilities / coverage / policies ---------------------------
     const facilitiesHTML = facilities.length
-      ? `<div data-stretch style="margin-top:36px;">
+      ? `<div data-stretch style="margin-top:30px;">
            <div data-atom>
              ${heading("Comforts", "Facilities", false)}
-             ${itemGrid(facilities, DIAMOND, columnsFor(facilities.length, 3))}
+             <div style="background:#fff;border:1px solid ${C.champagne};border-radius:16px;padding:18px 20px 9px;">
+               ${itemGrid(facilities, DIAMOND, columnsFor(facilities.length, 3))}
+             </div>
            </div>
          </div>`
       : "";
 
-    const column = (title2, body, titleColor, side) => `
-      <div style="flex:1;min-width:0;${side === "left" ? "padding-right:26px;" : "padding-left:26px;"}">
-        <div style="font-family:${SERIF};font-size:23px;font-weight:600;color:${titleColor};margin-bottom:10px;line-height:1.2;">${escapeHTML(title2)}</div>
-        ${body}
-      </div>`;
-
-    const cols = [];
-    if (inclusions.length) cols.push(column("Inclusions", itemGrid(inclusions, TICK, 1), C.roseDeep, cols.length ? "right" : "left"));
-    if (exclusions.length) cols.push(column("Exclusions", itemGrid(exclusions, CROSS, 1), C.ink, cols.length ? "right" : "left"));
-
-    const coverageHTML = cols.length
-      ? `<div data-stretch style="margin-top:36px;">
-           ${heading("The Details", "What\u2019s Included")}
-           <div data-atom style="display:flex;align-items:stretch;">
-             ${cols.join(`<div style="width:1px;background:${C.line};"></div>`)}
-           </div>
-         </div>`
+    const incPanel = inclusions.length
+      ? panel("Inclusions", itemGrid(inclusions, TICK, 1), C.roseSoft, C.roseLine, C.roseDeep)
       : "";
+    const excPanel = exclusions.length
+      ? panel("Exclusions", itemGrid(exclusions, CROSS, 1), "#fff", C.line, C.ink)
+      : "";
+
+    const coverageHTML =
+      incPanel || excPanel
+        ? `<div data-stretch style="margin-top:38px;">
+             ${heading("The Details", "What\u2019s Included")}
+             <div data-atom style="display:flex;gap:16px;align-items:stretch;">${incPanel}${excPanel}</div>
+           </div>`
+        : "";
 
     const policyHTML = (label, text, items) =>
       items.length
-        ? `<div data-stretch style="margin-top:36px;">
+        ? `<div data-stretch style="margin-top:38px;">
              ${heading(label, text)}
              ${items.map(policyPoint).join("")}
            </div>`
         : "";
+
+    // ---- The ONE contact block -------------------------------------
+    const pill = whatsappPill(co);
+    const addr = addressBlock(co, C.body, C.roseDeep, "center");
+    // const closingHTML = co.cells.length
+    //   ? `<div data-stretch style="margin-top:38px;">
+    //        <div data-atom style="background:${C.roseWash};border:1px solid ${C.roseLine};border-radius:22px;padding:28px 26px 26px;text-align:center;box-sizing:border-box;">
+    //          <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:.3em;color:${C.gold};">READY TO BOOK?</div>
+    //          <div style="font-family:${SERIF};font-size:30px;font-weight:600;color:${C.roseDeep};line-height:1.2;margin:5px 0 8px;">Plan This Journey With Us</div>
+    //          <div style="font-family:${SANS};font-size:12px;line-height:1.6;color:${C.body};margin-bottom:18px;">Our travel specialists will tailor dates, stays and experiences to you.</div>
+    //          ${contactGrid(co, "#fff", C.roseLine, 14, "center")}
+    //          ${pill ? `<div style="margin-top:18px;">${pill}</div>` : ""}
+    //          ${addr ? `<div style="margin-top:14px;">${addr}</div>` : ""}
+    //        </div>
+    //      </div>`
+    //   : "";
 
     return `
       ${coverHTML}
@@ -210,26 +221,29 @@ const DESIGN = {
         ${coverageHTML}
         ${policyHTML("Please Note", "Terms & Conditions", terms)}
         ${policyHTML("Good to Know", "Cancellation Policy", cancellation)}
+        ${closingHTML}
       </div>`;
   },
 
   bars(root, { PAGE_H, totalPages, ctx }) {
-    const pad2 = (n) => String(n).padStart(2, "0");
-    // Contact details live here only: email, phone, website (clickable).
-    const contact = ctx.co.cells
-      .filter((c) => c.label !== "WHATSAPP")
-      .map((c) => `<a href="${escapeHTML(c.href)}" style="color:${C.roseDeep};text-decoration:none;">${escapeHTML(c.text)}</a>`)
-      .join(`<span style="color:${C.gold};padding:0 8px;">&#9670;</span>`);
+    const lineL = `<div style="flex:1;height:1px;background:linear-gradient(to right,rgba(232,210,180,0),${C.champagne});"></div>`;
+    const lineR = `<div style="flex:1;height:1px;background:linear-gradient(to left,rgba(232,210,180,0),${C.champagne});"></div>`;
+    const dia = `<div style="flex:none;width:5px;height:5px;background:${C.gold};transform:rotate(45deg);"></div>`;
+
     const out = [];
     for (let p = 1; p < totalPages; p++) {
       out.push(`
-        <div style="position:absolute;left:0;top:${p * PAGE_H}px;width:${PAGE_W}px;height:${BAR_TOP_H}px;box-sizing:border-box;padding:0 ${CONTENT_X}px;display:flex;align-items:center;justify-content:space-between;background:${C.cream};border-bottom:1px solid ${C.champagne};">
-          ${logoChip(ctx, 18, { pad: "4px 10px", radius: 8, shadow: "" })}
-          <span style="font-family:${SANS};font-size:9px;font-weight:600;letter-spacing:.22em;color:${C.gold};text-transform:uppercase;white-space:nowrap;max-width:420px;overflow:hidden;text-overflow:ellipsis;">${escapeHTML(ctx.title)}${ctx.durationText ? ` &nbsp;&middot;&nbsp; ${escapeHTML(ctx.durationText)}` : ""}</span>
+        <div style="position:absolute;left:0;top:${p * PAGE_H}px;width:${PAGE_W}px;height:${BAR_TOP_H}px;box-sizing:border-box;padding:0 ${CONTENT_X}px;display:flex;align-items:center;gap:16px;background:${C.cream};">
+          ${lineL}
+          <span style="flex:none;white-space:nowrap;font-family:${SERIF};font-size:15px;font-weight:600;letter-spacing:.26em;color:${C.rose};text-transform:uppercase;">Manyara <span style="font-family:${SANS};font-size:7.5px;font-weight:600;letter-spacing:.4em;color:${C.gold};">PRIVÉ VACATIONS</span></span>
+          ${lineR}
         </div>
-        <div style="position:absolute;left:0;top:${(p + 1) * PAGE_H - BAR_BOTTOM_H}px;width:${PAGE_W}px;height:${BAR_BOTTOM_H}px;box-sizing:border-box;padding:0 ${CONTENT_X}px;display:flex;align-items:center;justify-content:space-between;background:${C.cream};border-top:1px solid ${C.champagne};">
-          <span style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:.2em;color:${C.rose};white-space:nowrap;">${pad2(p + 1)} <span style="color:${C.champagne};">/</span> ${pad2(totalPages)}</span>
-          <span style="white-space:nowrap;font-family:${SANS};font-size:9.5px;font-weight:500;color:${C.muted};">${contact}</span>
+        <div style="position:absolute;left:0;top:${(p + 1) * PAGE_H - BAR_BOTTOM_H}px;width:${PAGE_W}px;height:${BAR_BOTTOM_H}px;box-sizing:border-box;padding:0 ${CONTENT_X}px;display:flex;align-items:center;gap:12px;background:${C.cream};">
+          ${lineL}
+          ${dia}
+          <span style="flex:none;white-space:nowrap;font-family:${SANS};font-size:9px;font-weight:600;letter-spacing:.24em;color:${C.gold};">PAGE ${p + 1} OF ${totalPages}</span>
+          ${dia}
+          ${lineR}
         </div>`);
     }
     root.insertAdjacentHTML("beforeend", out.join(""));
@@ -1012,9 +1026,6 @@ function slugify(value) {
 }
 
 export default generatePackagePDF;
-
-
-
 
 
 
