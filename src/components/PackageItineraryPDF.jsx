@@ -2,6 +2,16 @@
 
 import { getSiteSettings } from "../api/content"; // same API the Footer / Contact page use
 
+/* =====================================================================
+   PackageItineraryPDF
+   Light, airy brochure PDF built from the website theme
+   (cream #FFF8F5 page, raspberry-rose accent, champagne + gold details,
+   Cormorant Garamond headings, Inter body).
+
+   Contact details appear ONCE (a single "Plan this journey" block at the
+   end). Running header / footer carry only brand + page number.
+   ===================================================================== */
+
 const BRAND = "Manyara Privé Vacations";
 const TAGLINE = "Curated journeys. Effortless luxury.";
 const SITE_URL = "https://manyaraprivevacations.com";
@@ -10,11 +20,11 @@ const LOGO_PATH = "/images/Manyara_3.webp"; // same logo the site Footer uses
 const DEFAULT_ADDRESS = "India";
 const DEFAULT_COUNTRY_CODE = "91"; // used when a phone number is saved without a country code
 
-// Palette mirrors tailwind.config.js (light, rose-led theme)
+// Palette mirrors tailwind.config.js + the site's theme-color (#FFF8F5)
 const C = {
   ink: "#2F2A33",
   body: "#4A4A52",
-  muted: "#6E6973",
+  muted: "#7A747E",
   rose: "#C8135E",
   roseDeep: "#AB1050",
   roseBright: "#E8286F",
@@ -26,11 +36,9 @@ const C = {
   gold: "#B08D57",
   line: "#EAE5E8",
   surface: "#FBF6F8",
+  cream: "#FFF8F5",
   logoBg: "#EEF1F5", // same chip colour the site footer puts behind the logo
 };
-
-const ROSE_BG = "linear-gradient(135deg,#D63C80,#E8548F 55%,#F27AA8)";
-
 
 const SERIF = `'Cormorant Garamond','Playfair Display',Georgia,serif`;
 const SANS = `Inter,system-ui,Arial,sans-serif`;
@@ -43,18 +51,11 @@ const PAGE_W = 794;
 const CONTENT_X = 48;
 const CONTENT_W = PAGE_W - CONTENT_X * 2; // 698
 
-const BAR_TOP_H = 38; // running header bar (pages 2+)
-const BAR_BOTTOM_H = 34; // running footer bar (every page except the last)
-const TOP_SPACE = 58; // content starts this far below the top of pages 2+
-const BOTTOM_SPACE = 52; // content ends this far above the bottom of a page
-const MAX_STRETCH = 32; // max extra space added between blocks to fill a page
-
-const HERO_IMG_MAX_W = CONTENT_W - 6; // 3px white border on each side
-const HERO_IMG_MAX_H = 360;
-const DAY_IMG_W = 258; // itinerary image column (4:3 -> 258 x 194)
-const DAY_IMG_MAX_H = 216; // images are never cropped, only scaled to fit
-
-
+const BAR_TOP_H = 44; // running header (pages 2+)
+const BAR_BOTTOM_H = 36; // running footer (pages 2+)
+const TOP_SPACE = 68; // content starts this far below the top of pages 2+
+const BOTTOM_SPACE = 58; // content ends this far above the bottom of a page
+const MAX_STRETCH = 28; // max extra space added between blocks to fill a page
 
 function getGeometry() {
   const isMobile =
@@ -64,6 +65,180 @@ function getGeometry() {
   const pageH = Math.floor((PAGE_W * scale * 297) / 210) / scale;
   return { scale, pageH };
 }
+
+/* =====================================================================
+   DESIGN C - "Magazine Arch"
+   Split cover with an arch-shaped photo, big gold day numerals,
+   open hairline layout (no boxes), two-column contact panel,
+   minimal header and a page-number-led footer.
+   ===================================================================== */
+const DESIGN = {
+  build(ctx) {
+    const { pkg, title, eyebrow, has, itinerary, facilities, inclusions, exclusions, terms, cancellation, durationText, co } = ctx;
+
+    const heading = (label, text, atom = true) => `
+      <div ${atom ? "data-atom data-keep" : ""} style="margin:0 0 16px;">
+        <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:.3em;text-transform:uppercase;color:${C.gold};margin-bottom:4px;">${escapeHTML(label)}</div>
+        <div style="font-family:${SERIF};font-size:32px;font-weight:600;color:${C.roseDeep};line-height:1.2;">${escapeHTML(text)}</div>
+        <div style="height:1px;margin-top:10px;background:linear-gradient(to right,${C.champagne},rgba(232,210,180,0));"></div>
+      </div>`;
+
+    // ---- Cover: text left, arch photo right --------------------------
+    const ARCH_W = 330;
+    const ARCH_H = 540;
+    const ARCH_R = `${ARCH_W / 2}px ${ARCH_W / 2}px 26px 26px`;
+    const photo = photoBox(ctx.coverImage, ctx.coverSize, ARCH_W, ARCH_H, `border-radius:${ARCH_R};`);
+    const titleSize = title.length <= 12 ? 62 : title.length <= 22 ? 48 : 38;
+
+    const statBlock = (label, value, color, sub) => `
+      <div style="padding:12px 0;border-top:1px solid ${C.champagne};">
+        <div style="font-family:${SANS};font-size:9px;font-weight:600;letter-spacing:.26em;color:${C.gold};">${escapeHTML(label)}</div>
+        <div style="font-family:${SANS};font-size:24px;font-weight:600;color:${color};margin-top:5px;line-height:1.2;">${escapeHTML(value)}${
+          sub ? ` <span style="font-size:11px;font-weight:400;color:${C.muted};">${escapeHTML(sub)}</span>` : ""
+        }</div>
+      </div>`;
+
+    const stats = [];
+    if (durationText) stats.push(statBlock("DURATION", durationText, C.ink, ""));
+    if (has(pkg.price)) stats.push(statBlock("STARTING FROM", `\u20B9${formatPrice(pkg.price)}`, C.rose, "per person"));
+
+    const coverHTML = `
+      <div data-atom style="position:relative;width:${PAGE_W}px;height:660px;overflow:hidden;box-sizing:border-box;padding:46px ${CONTENT_X}px 0;background:${C.cream};">
+        <div style="position:absolute;right:-110px;top:-110px;width:440px;height:440px;border-radius:50%;background:${C.roseSoft};"></div>
+        <div style="position:absolute;left:-130px;bottom:-150px;width:380px;height:380px;border-radius:50%;background:${C.champagneSoft};opacity:.7;"></div>
+        <div style="position:relative;display:flex;gap:38px;align-items:stretch;height:${ARCH_H}px;">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between;">
+            <div>${logoChip(ctx, 32, { pad: "7px 14px", shadow: "0 4px 14px rgba(0,0,0,.10)" })}</div>
+            <div>
+              <div style="font-family:${SANS};font-size:11px;font-weight:600;letter-spacing:.32em;text-transform:uppercase;color:${C.gold};margin-bottom:12px;">${escapeHTML(eyebrow)}</div>
+              <div style="font-family:${SERIF};font-size:${titleSize}px;font-weight:600;line-height:1.08;color:${C.roseDeep};">${escapeHTML(title)}</div>
+              <div style="width:56px;height:3px;border-radius:3px;background:${C.rose};margin-top:18px;"></div>
+            </div>
+            <div>${stats.join("")}</div>
+          </div>
+          <div style="position:relative;flex:none;width:${ARCH_W}px;height:${ARCH_H}px;">
+            <div style="position:absolute;left:14px;top:14px;width:${ARCH_W}px;height:${ARCH_H}px;box-sizing:border-box;border:1.5px solid ${C.champagne};border-radius:${ARCH_R};"></div>
+            <div style="position:absolute;left:0;top:0;width:${ARCH_W}px;height:${ARCH_H}px;border-radius:${ARCH_R};overflow:hidden;background:linear-gradient(160deg,${C.roseSoft},${C.champagneSoft});">
+              ${photo}
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    const aboutHTML = pkg.description
+      ? `<div data-stretch style="margin-top:34px;">
+           ${heading("The Experience", "About This Journey")}
+           ${paragraph(pkg.description, 13, C.body, 1.8)}
+         </div>`
+      : "";
+
+    // ---- Itinerary: open rows with big gold numerals -----------------
+    const dayRow = (day, index) => {
+      const n = has(day?.day) ? day.day : index + 1;
+      const label = String(n).padStart(2, "0");
+      const last = index === itinerary.length - 1;
+      const description = day?.description ? String(day.description).trim() : "";
+
+      return `
+        <div data-atom data-padstretch style="display:flex;gap:20px;padding:20px 0 ${last ? 20 : 20}px;border-top:1px solid ${C.line};${last ? `border-bottom:1px solid ${C.line};` : ""}">
+          <div style="flex:none;width:68px;">
+            <div style="font-family:${SANS};font-size:8px;font-weight:600;letter-spacing:.26em;color:${C.gold};">DAY</div>
+            <div style="font-family:${SANS};font-size:34px;font-weight:600;line-height:1.05;color:#D9BF98;margin-top:2px;">${escapeHTML(label)}</div>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-family:${SERIF};font-size:23px;font-weight:600;color:${C.ink};line-height:1.25;">${escapeHTML(day?.title || `Day ${n}`)}</div>
+            ${
+              description
+                ? `<div style="font-family:${SANS};font-size:12.5px;line-height:1.7;color:${C.body};margin-top:7px;white-space:pre-line;">${escapeHTML(description)}</div>`
+                : ""
+            }
+            ${dayImage(ctx, index, CONTENT_W - 92, 250, { radius: 10, top: 14 })}
+          </div>
+        </div>`;
+    };
+
+    const itineraryHTML = itinerary.length
+      ? `<div data-stretch style="margin-top:38px;">
+           ${heading("Your Journey", "Day-by-Day Itinerary")}
+           ${itinerary.map(dayRow).join("")}
+         </div>`
+      : "";
+
+    // ---- Facilities / coverage / policies ---------------------------
+    const facilitiesHTML = facilities.length
+      ? `<div data-stretch style="margin-top:36px;">
+           <div data-atom>
+             ${heading("Comforts", "Facilities", false)}
+             ${itemGrid(facilities, DIAMOND, columnsFor(facilities.length, 3))}
+           </div>
+         </div>`
+      : "";
+
+    const column = (title2, body, titleColor, side) => `
+      <div style="flex:1;min-width:0;${side === "left" ? "padding-right:26px;" : "padding-left:26px;"}">
+        <div style="font-family:${SERIF};font-size:23px;font-weight:600;color:${titleColor};margin-bottom:10px;line-height:1.2;">${escapeHTML(title2)}</div>
+        ${body}
+      </div>`;
+
+    const cols = [];
+    if (inclusions.length) cols.push(column("Inclusions", itemGrid(inclusions, TICK, 1), C.roseDeep, cols.length ? "right" : "left"));
+    if (exclusions.length) cols.push(column("Exclusions", itemGrid(exclusions, CROSS, 1), C.ink, cols.length ? "right" : "left"));
+
+    const coverageHTML = cols.length
+      ? `<div data-stretch style="margin-top:36px;">
+           ${heading("The Details", "What\u2019s Included")}
+           <div data-atom style="display:flex;align-items:stretch;">
+             ${cols.join(`<div style="width:1px;background:${C.line};"></div>`)}
+           </div>
+         </div>`
+      : "";
+
+    const policyHTML = (label, text, items) =>
+      items.length
+        ? `<div data-stretch style="margin-top:36px;">
+             ${heading(label, text)}
+             ${items.map(policyPoint).join("")}
+           </div>`
+        : "";
+
+    return `
+      ${coverHTML}
+      <div style="padding:0 ${CONTENT_X}px;">
+        ${aboutHTML}
+        ${itineraryHTML}
+        ${facilitiesHTML}
+        ${coverageHTML}
+        ${policyHTML("Please Note", "Terms & Conditions", terms)}
+        ${policyHTML("Good to Know", "Cancellation Policy", cancellation)}
+      </div>`;
+  },
+
+  bars(root, { PAGE_H, totalPages, ctx }) {
+    const pad2 = (n) => String(n).padStart(2, "0");
+    // Contact details live here only: email, phone, website (clickable).
+    const contact = ctx.co.cells
+      .filter((c) => c.label !== "WHATSAPP")
+      .map((c) => `<a href="${escapeHTML(c.href)}" style="color:${C.roseDeep};text-decoration:none;">${escapeHTML(c.text)}</a>`)
+      .join(`<span style="color:${C.gold};padding:0 8px;">&#9670;</span>`);
+    const out = [];
+    for (let p = 1; p < totalPages; p++) {
+      out.push(`
+        <div style="position:absolute;left:0;top:${p * PAGE_H}px;width:${PAGE_W}px;height:${BAR_TOP_H}px;box-sizing:border-box;padding:0 ${CONTENT_X}px;display:flex;align-items:center;justify-content:space-between;background:${C.cream};border-bottom:1px solid ${C.champagne};">
+          ${logoChip(ctx, 18, { pad: "4px 10px", radius: 8, shadow: "" })}
+          <span style="font-family:${SANS};font-size:9px;font-weight:600;letter-spacing:.22em;color:${C.gold};text-transform:uppercase;white-space:nowrap;max-width:420px;overflow:hidden;text-overflow:ellipsis;">${escapeHTML(ctx.title)}${ctx.durationText ? ` &nbsp;&middot;&nbsp; ${escapeHTML(ctx.durationText)}` : ""}</span>
+        </div>
+        <div style="position:absolute;left:0;top:${(p + 1) * PAGE_H - BAR_BOTTOM_H}px;width:${PAGE_W}px;height:${BAR_BOTTOM_H}px;box-sizing:border-box;padding:0 ${CONTENT_X}px;display:flex;align-items:center;justify-content:space-between;background:${C.cream};border-top:1px solid ${C.champagne};">
+          <span style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:.2em;color:${C.rose};white-space:nowrap;">${pad2(p + 1)} <span style="color:${C.champagne};">/</span> ${pad2(totalPages)}</span>
+          <span style="white-space:nowrap;font-family:${SANS};font-size:9.5px;font-weight:500;color:${C.muted};">${contact}</span>
+        </div>`);
+    }
+    root.insertAdjacentHTML("beforeend", out.join(""));
+  },
+};
+
+/* =====================================================================
+   SHARED ENGINE  (identical in every version - design lives above)
+   ===================================================================== */
 
 /**
  * @param pkg           package object
@@ -78,9 +253,7 @@ export const generatePackagePDF = async (pkg, siteSettings = null) => {
   const { default: html2pdf } = await import("html2pdf.js");
   const { scale: SCALE, pageH: PAGE_H } = getGeometry();
 
-  // ---------------------------------------------------------
-  // Normalize data
-  // ---------------------------------------------------------
+  // ---- Normalize data ------------------------------------------------
   const has = (v) => v !== null && v !== undefined && v !== "";
 
   const itinerary = (Array.isArray(pkg.itinerary) ? [...pkg.itinerary] : []).sort(
@@ -96,417 +269,68 @@ export const generatePackagePDF = async (pkg, siteSettings = null) => {
   const images = Array.isArray(pkg.images) ? pkg.images : [];
   const rawCover = images.length ? getImageUrl(images[0]) : null;
 
+  const title = pkg.title || "Travel Package";
+  const destination = has(pkg.destination) ? String(pkg.destination).trim() : "";
+  // "Dubai" above a title that is also "Dubai" looks like a typo: use a neutral eyebrow instead.
+  const eyebrow =
+    destination && destination.toLowerCase() !== String(title).trim().toLowerCase()
+      ? destination
+      : "Curated Journey";
+
   const durationText = has(pkg.duration_days)
     ? `${pkg.duration_days} Days${has(pkg.duration_nights) ? ` / ${pkg.duration_nights} Nights` : ""}`
     : "";
 
-  // ---------------------------------------------------------
-  // Company details: dynamic, same source as Footer.jsx
-  // ---------------------------------------------------------
+  // ---- Company details: dynamic, same source as Footer.jsx ----------
   const settings = siteSettings || (await fetchSettings());
   const co = buildCompany(settings);
 
-  // ---------------------------------------------------------
-  // Fonts + images MUST be ready before building / measuring.
-  // ---------------------------------------------------------
+  // ---- Fonts + images MUST be ready before building / measuring -----
   await ensureFonts();
 
   const logoUrl = typeof window !== "undefined" ? `${window.location.origin}${LOGO_PATH}` : null;
-  const coverUrl = optimizeUrl(rawCover, 1600);
+  const coverUrl = optimizeUrl(rawCover, 1800);
   const dayUrls = itinerary.map((d) => optimizeUrl(getImageUrl(d?.image), 900));
   const sizes = await preloadImages([logoUrl, coverUrl, ...dayUrls]);
 
-  const logoSize = logoUrl && sizes.has(logoUrl) ? sizes.get(logoUrl) : null;
   const coverImage = coverUrl && sizes.has(coverUrl) ? coverUrl : null;
-
-  const coverSize = coverImage ? sizes.get(coverImage) : null;
-  let heroImgW = 0;
-  let heroImgH = 0;
-  if (coverSize && coverSize.w && coverSize.h) {
-    const fit = Math.min(HERO_IMG_MAX_W / coverSize.w, HERO_IMG_MAX_H / coverSize.h);
-    heroImgW = Math.round(coverSize.w * fit);
-    heroImgH = Math.round(coverSize.h * fit);
-  }
-
-  // Logo chip. Same chip colour as the website footer. Falls back to a text
-  // wordmark if the logo file cannot be loaded.
-  const logoChip = (height, { pad = "9px 18px" } = {}) => {
-    if (logoSize && logoSize.w && logoSize.h) {
-      const w = Math.round((logoSize.w / logoSize.h) * height);
-      return `
-        <div style="display:inline-block;background:${C.logoBg};border-radius:12px;padding:${pad};box-shadow:0 6px 18px rgba(0,0,0,.20);">
-          <img src="${escapeHTML(logoUrl)}" crossorigin="anonymous" alt="${escapeHTML(BRAND)}"
-               style="display:block;width:${w}px;height:${height}px;" />
-        </div>`;
-    }
-    return `
-      <div style="display:inline-block;background:${C.logoBg};border-radius:12px;padding:${pad};box-shadow:0 6px 18px rgba(0,0,0,.20);text-align:center;">
-        <div style="font-family:${SERIF};font-size:${Math.round(height * 0.62)}px;font-weight:600;letter-spacing:.3em;color:${C.rose};text-transform:uppercase;padding-left:.3em;line-height:1.2;">Manyara</div>
-        <div style="font-family:${SANS};font-size:${Math.max(7, Math.round(height * 0.2))}px;font-weight:500;letter-spacing:.5em;color:${C.gold};margin-top:2px;padding-left:.5em;">PRIVÉ VACATIONS</div>
-      </div>`;
+  const ctx = {
+    pkg,
+    title,
+    eyebrow,
+    has,
+    itinerary,
+    facilities,
+    inclusions,
+    exclusions,
+    terms,
+    cancellation,
+    durationText,
+    co,
+    logoUrl,
+    logoSize: logoUrl && sizes.has(logoUrl) ? sizes.get(logoUrl) : null,
+    coverImage,
+    coverSize: coverImage ? sizes.get(coverImage) : null,
+    dayUrls,
+    sizes,
   };
 
-
-
-  const heading = (eyebrow, text, atom = true) => `
-    <div ${atom ? "data-atom data-keep" : ""} style="margin:0 0 12px;">
-      <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:.3em;text-transform:uppercase;color:${C.gold};margin-bottom:4px;">
-        ${escapeHTML(eyebrow)}
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;">
-        <div style="font-family:${SERIF};font-size:32px;font-weight:600;color:${C.roseDeep};line-height:1.2;white-space:nowrap;">
-          ${escapeHTML(text)}
-        </div>
-        <div style="flex:1;height:1px;background:linear-gradient(to right,${C.champagne},rgba(232,210,180,0));"></div>
-        <div style="width:7px;height:7px;background:${C.gold};transform:rotate(45deg);"></div>
-      </div>
-    </div>`;
-
-  /* lead = number of leading words shown in bold ("Refunds:" -> 1) */
-  const paragraph = (text, size, color, lineHeight, { lead = 0, leadColor = C.ink } = {}) =>
-    `<div data-lines ${
-      lead ? `data-lead="${lead}" data-leadstyle="font-weight:600;color:${leadColor};"` : ""
-    } style="font-family:${SANS};font-size:${size}px;line-height:${lineHeight};color:${color};margin:0 0 8px;white-space:pre-line;">${escapeHTML(text)}</div>`;
-
-  const summaryCard = (label, value, accent = C.ink, sub = "") => `
-    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;border:1px solid ${C.champagne};background:${C.champagneSoft};border-radius:12px;padding:14px 18px;text-align:center;box-sizing:border-box;">
-      <div style="font-family:${SANS};font-size:9px;font-weight:600;letter-spacing:.26em;color:${C.gold};">
-        ${escapeHTML(label)}
-      </div>
-      <div style="font-family:${SERIF};font-size:26px;font-weight:600;color:${accent};margin-top:3px;line-height:1.2;">
-        ${escapeHTML(value)}
-      </div>
-      ${
-        sub
-          ? `<div style="font-family:${SANS};font-size:10px;color:${C.muted};margin-top:2px;">${escapeHTML(sub)}</div>`
-          : ""
-      }
-    </div>`;
-
-  // Markers are drawn with plain shapes (no font glyphs), so they always
-  // sit centred in their circle.
-  const diamond = `<span style="flex:none;width:6px;height:6px;margin-top:7px;background:${C.gold};transform:rotate(45deg);"></span>`;
-  const tick = `<span style="flex:none;position:relative;width:16px;height:16px;margin-top:1px;border-radius:50%;background:${C.rose};"><span style="position:absolute;left:5.5px;top:2.5px;width:4px;height:8px;border:solid #fff;border-width:0 1.8px 1.8px 0;transform:rotate(45deg);"></span></span>`;
-  const cross = `<span style="flex:none;position:relative;width:16px;height:16px;margin-top:1px;box-sizing:border-box;border-radius:50%;border:1px solid ${C.muted};"><span style="position:absolute;left:3.5px;top:6px;width:7px;height:1.5px;background:${C.muted};transform:rotate(45deg);"></span><span style="position:absolute;left:3.5px;top:6px;width:7px;height:1.5px;background:${C.muted};transform:rotate(-45deg);"></span></span>`;
-
-  const columnsFor = (count, max) => (count <= 2 ? Math.max(1, count) : count === 4 ? 2 : max);
-
-  const itemGrid = (items, marker, columns) => `
-    <div style="display:flex;flex-wrap:wrap;">
-      ${items
-        .map(
-          (item) => `
-          <div style="flex:0 0 ${(100 / columns).toFixed(4)}%;box-sizing:border-box;padding:0 12px 9px 0;display:flex;gap:9px;align-items:flex-start;">
-            ${marker}
-            <span style="min-width:0;font-family:${SANS};font-size:12.5px;line-height:1.5;color:${C.body};">${escapeHTML(item)}</span>
-          </div>`
-        )
-        .join("")}
-    </div>`;
-
-  const panel = (title, body, bg, border, titleColor) => `
-    <div style="flex:1;min-width:0;background:${bg};border:1px solid ${border};border-radius:12px;padding:16px 16px 8px;box-sizing:border-box;">
-      <div style="font-family:${SERIF};font-size:22px;font-weight:600;color:${titleColor};margin-bottom:10px;line-height:1.2;">
-        ${escapeHTML(title)}
-      </div>
-      ${body}
-    </div>`;
-
-  /*
-    Clickable contact cells. 1-3 cells sit in one row, 4 cells make a 2 x 2
-    grid, so long emails and the website never break in the middle of a word.
-  */
-  const contactGrid = (bg, border, radius = 12) => {
-    const cols = co.cells.length >= 4 ? 2 : Math.max(1, co.cells.length);
-
-    return `
-      <div style="display:flex;flex-wrap:wrap;border:1px solid ${border};border-radius:${radius}px;overflow:hidden;background:${bg};">
-        ${co.cells
-          .map((cell, i) => {
-            const edges =
-              (i % cols !== 0 ? `border-left:1px solid ${border};` : "") +
-              (i >= cols ? `border-top:1px solid ${border};` : "");
-
-            return `
-              <a href="${escapeHTML(cell.href)}" style="display:block;flex:0 0 ${(100 / cols).toFixed(4)}%;min-width:0;box-sizing:border-box;padding:10px 12px;text-decoration:none;${edges}">
-                <div style="font-family:${SANS};font-size:8.5px;font-weight:600;letter-spacing:.22em;color:${C.gold};">${escapeHTML(cell.label)}</div>
-                <div style="font-family:${SANS};font-size:11.5px;font-weight:500;color:${C.roseDeep};margin-top:3px;line-height:1.35;word-break:break-word;">${escapeHTML(cell.text)}</div>
-              </a>`;
-          })
-          .join("")}
-      </div>`;
-  };
-
-  const addressBlock = (color, linkColor) =>
-    co.address
-      ? `<div style="font-family:${SANS};font-size:11.5px;line-height:1.55;color:${color};">
-           ${escapeHTML(co.address)}${co.landmark ? `<br><span style="font-size:10.5px;opacity:.8;">${escapeHTML(co.landmark)}</span>` : ""}
-           ${
-             co.mapsHref
-               ? `<br><a href="${escapeHTML(co.mapsHref)}" style="color:${linkColor};text-decoration:none;font-weight:600;font-size:10.5px;letter-spacing:.04em;">View on Google Maps &rarr;</a>`
-               : ""
-           }
-         </div>`
-      : "";
-
-  // ---------------------------------------------------------
-  // COVER (page 1): logo on top, the cover photo (never cropped), title
-  // ---------------------------------------------------------
-  const heroHTML = `
-    <div data-atom style="width:${PAGE_W}px;background:${ROSE_BG};box-sizing:border-box;">
-      <div style="height:4px;background:linear-gradient(90deg,${C.gold},${C.champagne},${C.gold});"></div>
-
-      <div style="display:flex;justify-content:center;padding-top:22px;">
-        ${logoChip(36, { pad: "8px 16px" })}
-      </div>
-
-      ${
-        coverImage && heroImgH
-          ? `<div style="display:flex;justify-content:center;padding-top:20px;">
-               <div style="box-sizing:content-box;width:${heroImgW}px;height:${heroImgH}px;border-radius:14px;overflow:hidden;border:3px solid rgba(255,255,255,.92);box-shadow:0 10px 28px rgba(0,0,0,.22);">
-                 <img src="${escapeHTML(coverImage)}" crossorigin="anonymous" alt=""
-                      style="display:block;width:${heroImgW}px;height:${heroImgH}px;" />
-               </div>
-             </div>`
-          : ""
-      }
-
-      <div style="padding:22px ${CONTENT_X}px 28px;box-sizing:border-box;text-align:center;color:#fff;">
-        ${
-          pkg.destination
-            ? `<div style="font-family:${SANS};font-size:11px;font-weight:600;letter-spacing:.32em;text-transform:uppercase;color:${C.champagne};margin-bottom:10px;">${escapeHTML(pkg.destination)}</div>`
-            : ""
-        }
-        <div style="font-family:${SERIF};font-size:44px;font-weight:600;line-height:1.15;color:#fff;">
-          ${escapeHTML(pkg.title || "Travel Package")}
-        </div>
-        <div style="width:72px;height:3px;background:${C.champagne};margin:16px auto 0;border-radius:3px;"></div>
-      </div>
-    </div>`;
-
-  const coverBodyHTML = `
-    <div style="padding:22px ${CONTENT_X}px 0;">
-      ${
-        co.cells.length
-          ? `<div data-atom data-stretch style="margin-bottom:14px;">${contactGrid("#fff", C.champagne, 12)}</div>`
-          : ""
-      }
-      ${
-        durationText || has(pkg.price)
-          ? `<div data-atom data-stretch style="display:flex;gap:14px;">
-               ${durationText ? summaryCard("DURATION", durationText) : ""}
-               ${
-                 has(pkg.price)
-                   ? summaryCard("STARTING FROM", `\u20B9${formatPrice(pkg.price)}`, C.rose, "per person")
-                   : ""
-               }
-             </div>`
-          : ""
-      }
-      ${
-        pkg.description
-          ? `<div data-stretch style="margin-top:24px;">
-               ${heading("The Experience", "About This Journey")}
-               ${paragraph(pkg.description, 13, C.body, 1.75)}
-             </div>`
-          : ""
-      }
-    </div>`;
-
-  // ---------------------------------------------------------
-  // ITINERARY: one compact card per day (photo left, text right)
-  // ---------------------------------------------------------
-  const dayCard = (day, index) => {
-    const n = has(day?.day) ? day.day : index + 1;
-    const label = String(n).padStart(2, "0");
-
-    const url = dayUrls[index];
-    const size = url ? sizes.get(url) : null;
-    const description = day?.description ? String(day.description).trim() : "";
-
-    let imageHTML = "";
-    if (url && size && size.w && size.h) {
-      const fit = Math.min(DAY_IMG_W / size.w, DAY_IMG_MAX_H / size.h);
-      const w = Math.round(size.w * fit);
-      const h = Math.round(size.h * fit);
-
-      imageHTML = `
-        <div style="flex:none;width:${DAY_IMG_W}px;">
-          <div style="width:${w}px;height:${h}px;border-radius:10px;overflow:hidden;">
-            <img src="${escapeHTML(url)}" crossorigin="anonymous" alt=""
-                 style="display:block;width:${w}px;height:${h}px;" />
-          </div>
-        </div>`;
-    }
-
-    return `
-      <div data-atom data-stretch style="margin-bottom:14px;display:flex;align-items:center;gap:18px;box-sizing:border-box;background:#fff;border:1px solid ${C.champagne};border-left:4px solid ${C.rose};border-radius:14px;padding:14px;">
-        ${imageHTML}
-        <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div style="flex:none;width:46px;height:46px;box-sizing:border-box;border-radius:12px;background:${C.roseSoft};border:1px solid ${C.roseLine};display:flex;flex-direction:column;align-items:center;justify-content:center;">
-              <span style="font-family:${SANS};font-size:7.5px;font-weight:600;letter-spacing:.2em;color:${C.gold};line-height:1;padding-left:.2em;">DAY</span>
-              <span style="font-family:${SANS};font-size:18px;font-weight:600;color:${C.rose};line-height:1.1;margin-top:3px;">${escapeHTML(label)}</span>
-            </div>
-            <div style="flex:1;min-width:0;font-family:${SERIF};font-size:21px;font-weight:600;color:${C.ink};line-height:1.2;">
-              ${escapeHTML(day?.title || `Day ${n}`)}
-            </div>
-          </div>
-          ${
-            description
-              ? `<div style="font-family:${SANS};font-size:12.5px;line-height:1.65;color:${C.body};margin-top:10px;white-space:pre-line;">${escapeHTML(description)}</div>`
-              : ""
-          }
-        </div>
-      </div>`;
-  };
-
-  const itineraryHTML = itinerary.length
-    ? `<div data-stretch style="margin-top:26px;">
-         ${heading("Your Journey", "Day-by-Day Itinerary")}
-         ${itinerary.map(dayCard).join("")}
-       </div>`
-    : "";
-
-  // ---------------------------------------------------------
-  // FACILITIES / INCLUSIONS / EXCLUSIONS
-  // ---------------------------------------------------------
-  const facilitiesHTML = facilities.length
-    ? `<div data-stretch style="margin-top:12px;">
-         <div data-atom>
-           ${heading("Comforts", "Facilities", false)}
-           <div style="background:${C.champagneSoft};border:1px solid ${C.champagne};border-radius:12px;padding:16px 16px 7px;">
-             ${itemGrid(facilities, diamond, columnsFor(facilities.length, 3))}
-           </div>
-         </div>
-       </div>`
-    : "";
-
-  const incPanel = inclusions.length
-    ? panel("Inclusions", itemGrid(inclusions, tick, 1), C.roseSoft, C.roseLine, C.roseDeep)
-    : "";
-  const excPanel = exclusions.length
-    ? panel("Exclusions", itemGrid(exclusions, cross, 1), C.surface, C.line, C.ink)
-    : "";
-
-  const coverageHTML =
-    incPanel || excPanel
-      ? `<div data-stretch style="margin-top:22px;">
-           ${heading("The Details", "What\u2019s Included")}
-           <div data-atom style="display:flex;gap:14px;align-items:stretch;">${incPanel}${excPanel}</div>
-         </div>`
-      : "";
-
-  // ---------------------------------------------------------
-  // POLICIES: one paragraph per point, with the label in bold
-  // ---------------------------------------------------------
-  const policyPoint = (text) => {
-    const match = text.match(/^([^:\n]{2,50}):\s+\S/);
-    const lead = match ? `${match[1]}:`.split(/\s+/).length : 0;
-    return paragraph(text, 11.5, C.muted, 1.7, { lead, leadColor: C.ink });
-  };
-
-  const policyHTML = (eyebrow, title, items) =>
-    items.length
-      ? `<div data-stretch style="margin-top:22px;">
-           ${heading(eyebrow, title)}
-           ${items.map(policyPoint).join("")}
-         </div>`
-      : "";
-
-  // ---------------------------------------------------------
-  // BOOKING CARD (call to action with full contact details)
-  // ---------------------------------------------------------
-  const whatsappPill = co.whatsappHref
-    ? `<a href="${escapeHTML(co.whatsappHref)}" style="flex:none;display:inline-block;background:${C.rose};color:#fff;border-radius:999px;padding:9px 18px;font-family:${SANS};font-size:11px;font-weight:600;letter-spacing:.05em;text-decoration:none;white-space:nowrap;">Chat on WhatsApp &rarr;</a>`
-    : "";
-
-  const addressHTML = addressBlock(C.body, C.roseDeep);
-
-  const bookHTML =
-    co.cells.length || co.address
-      ? `<div data-stretch style="margin-top:26px;">
-           <div data-atom style="background:${C.champagneSoft};border:1px solid ${C.champagne};border-left:4px solid ${C.rose};border-radius:14px;padding:20px 22px;box-sizing:border-box;">
-             <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:.3em;color:${C.gold};">READY TO BOOK?</div>
-             <div style="font-family:${SERIF};font-size:26px;font-weight:600;color:${C.roseDeep};line-height:1.2;margin:4px 0 6px;">Plan This Journey With Us</div>
-             <div style="font-family:${SANS};font-size:12px;line-height:1.6;color:${C.body};margin-bottom:14px;">
-               Our travel specialists will tailor dates, stays and experiences to you. Reach out any time.
-             </div>
-             ${
-               co.cells.length
-                 ? `<div style="margin-bottom:${addressHTML || whatsappPill ? 14 : 0}px;">${contactGrid("#fff", C.roseLine, 10)}</div>`
-                 : ""
-             }
-             ${
-               addressHTML || whatsappPill
-                 ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
-                      <div style="flex:1;min-width:0;">${addressHTML}</div>
-                      ${whatsappPill}
-                    </div>`
-                 : ""
-             }
-           </div>
-         </div>`
-      : "";
-
-  // ---------------------------------------------------------
-  // CLOSING FOOTER: same rose as the cover, logo + contact details.
-  // Fills the rest of the last page, so no white gap is left.
-  // ---------------------------------------------------------
-  const footerHTML = `
-    <div data-footer style="width:${PAGE_W}px;margin-top:28px;padding:30px 48px;background:${ROSE_BG};border-top:4px solid ${C.gold};text-align:center;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;align-items:center;">
-      ${logoChip(40)}
-      <div style="width:40px;height:1px;background:${C.champagne};margin:16px auto 12px;"></div>
-      <div style="font-family:${SERIF};font-size:20px;font-style:italic;font-weight:500;color:${C.champagne};line-height:1.3;">${escapeHTML(TAGLINE)}</div>
-      <div style="font-family:${SANS};font-size:11px;color:#fff;margin-top:14px;line-height:1.9;">
-        ${co.cells
-          .map((c) => `<a href="${escapeHTML(c.href)}" style="color:#fff;text-decoration:none;font-weight:500;">${escapeHTML(c.text)}</a>`)
-          .join(`<span style="color:${C.champagne};padding:0 9px;">&#9670;</span>`)}
-      </div>
-      ${
-        co.address
-          ? `<div style="font-family:${SANS};font-size:10.5px;color:rgba(255,255,255,.85);margin-top:4px;line-height:1.6;max-width:560px;">
-               ${
-                 co.mapsHref
-                   ? `<a href="${escapeHTML(co.mapsHref)}" style="color:rgba(255,255,255,.9);text-decoration:none;">${escapeHTML(co.address)}</a>`
-                   : escapeHTML(co.address)
-               }
-             </div>`
-          : ""
-      }
-      <div style="font-family:${SANS};font-size:10px;color:rgba(255,255,255,.7);margin-top:12px;">
-        Thank you for choosing ${escapeHTML(BRAND)}.
-      </div>
-    </div>`;
-
-  // ---------------------------------------------------------
-  // Off-screen container
-  // ---------------------------------------------------------
+  // ---- Off-screen container -----------------------------------------
   const container = document.createElement("div");
   Object.assign(container.style, {
     position: "absolute",
     left: "-10000px",
     top: "0",
     width: `${PAGE_W}px`,
-    backgroundColor: "#ffffff",
+    backgroundColor: C.cream,
     zIndex: "999999",
     pointerEvents: "none",
     overflow: "visible",
   });
 
   container.innerHTML = `
-    <div style="position:relative;width:${PAGE_W}px;background:#fff;color:${C.body};font-family:${SANS};line-height:1.5;box-sizing:border-box;">
-      ${heroHTML}
-      ${coverBodyHTML}
-      <div style="padding:0 ${CONTENT_X}px;">
-        ${itineraryHTML}
-        ${facilitiesHTML}
-        ${coverageHTML}
-        ${policyHTML("Please Note", "Terms & Conditions", terms)}
-        ${policyHTML("Good to Know", "Cancellation Policy", cancellation)}
-        ${bookHTML}
-      </div>
-      ${footerHTML}
+    <div style="position:relative;width:${PAGE_W}px;background:${C.cream};color:${C.body};font-family:${SANS};line-height:1.5;box-sizing:border-box;">
+      ${DESIGN.build(ctx)}
     </div>`;
 
   document.body.appendChild(container);
@@ -521,15 +345,11 @@ export const generatePackagePDF = async (pkg, siteSettings = null) => {
     splitParagraphsIntoLines(pdfContent);
     paginate(pdfContent, PAGE_H);
     balancePages(pdfContent, PAGE_H);
-    const totalPages = placeFooter(pdfContent, PAGE_H);
-    addRunningBars(pdfContent, {
-      PAGE_H,
-      totalPages,
-      title: pkg.title || "Travel Package",
-    });
+    const totalPages = finishLayout(pdfContent, PAGE_H);
+    DESIGN.bars(pdfContent, { PAGE_H, totalPages, ctx });
     await nextFrame();
 
-    const fileName = `${slugify(pkg.title || "package")}-itinerary.pdf`;
+    const fileName = `${slugify(title)}-itinerary.pdf`;
 
     await html2pdf()
       .set({
@@ -542,7 +362,7 @@ export const generatePackagePDF = async (pkg, siteSettings = null) => {
           useCORS: true,
           allowTaint: false,
           logging: false,
-          backgroundColor: "#ffffff",
+          backgroundColor: C.cream,
           imageTimeout: 15000,
           scrollX: 0,
           scrollY: 0,
@@ -573,6 +393,139 @@ export const generatePackagePDF = async (pkg, siteSettings = null) => {
     container.remove();
   }
 };
+
+// ---------------------------------------------------------
+// Building blocks shared by the designs
+// ---------------------------------------------------------
+
+// Markers are drawn with plain shapes (no font glyphs) so they always sit centred.
+const DIAMOND = `<span style="flex:none;width:6px;height:6px;margin-top:7px;background:${C.gold};transform:rotate(45deg);"></span>`;
+const TICK = `<span style="flex:none;position:relative;width:16px;height:16px;margin-top:1px;border-radius:50%;background:${C.rose};"><span style="position:absolute;left:5.5px;top:2.5px;width:4px;height:8px;border:solid #fff;border-width:0 1.8px 1.8px 0;transform:rotate(45deg);"></span></span>`;
+const CROSS = `<span style="flex:none;position:relative;width:16px;height:16px;margin-top:1px;box-sizing:border-box;border-radius:50%;border:1px solid ${C.muted};"><span style="position:absolute;left:3.5px;top:6px;width:7px;height:1.5px;background:${C.muted};transform:rotate(45deg);"></span><span style="position:absolute;left:3.5px;top:6px;width:7px;height:1.5px;background:${C.muted};transform:rotate(-45deg);"></span></span>`;
+
+/* lead = number of leading words shown in bold ("Refunds:" -> 1) */
+const paragraph = (text, size, color, lineHeight, { lead = 0, leadColor = C.ink } = {}) =>
+  `<div data-lines ${
+    lead ? `data-lead="${lead}" data-leadstyle="font-weight:600;color:${leadColor};"` : ""
+  } style="font-family:${SANS};font-size:${size}px;line-height:${lineHeight};color:${color};margin:0 0 8px;white-space:pre-line;">${escapeHTML(text)}</div>`;
+
+const policyPoint = (text) => {
+  const match = text.match(/^([^:\n]{2,50}):\s+\S/);
+  const lead = match ? `${match[1]}:`.split(/\s+/).length : 0;
+  return paragraph(text, 11.5, C.muted, 1.7, { lead, leadColor: C.ink });
+};
+
+const columnsFor = (count, max) => (count <= 2 ? Math.max(1, count) : count === 4 ? 2 : max);
+
+const itemGrid = (items, marker, columns) => `
+  <div style="display:flex;flex-wrap:wrap;">
+    ${items
+      .map(
+        (item) => `
+        <div style="flex:0 0 ${(100 / columns).toFixed(4)}%;box-sizing:border-box;padding:0 12px 9px 0;display:flex;gap:9px;align-items:flex-start;">
+          ${marker}
+          <span style="min-width:0;font-family:${SANS};font-size:12.5px;line-height:1.5;color:${C.body};">${escapeHTML(item)}</span>
+        </div>`
+      )
+      .join("")}
+  </div>`;
+
+const panel = (title, body, bg, border, titleColor) => `
+  <div style="flex:1;min-width:0;background:${bg};border:1px solid ${border};border-radius:14px;padding:18px 18px 9px;box-sizing:border-box;">
+    <div style="font-family:${SERIF};font-size:22px;font-weight:600;color:${titleColor};margin-bottom:10px;line-height:1.2;">
+      ${escapeHTML(title)}
+    </div>
+    ${body}
+  </div>`;
+
+/* Clickable contact cells: 1-3 in one row, 4 in a 2 x 2 grid. */
+const contactGrid = (co, bg, border, radius = 12, align = "left") => {
+  const cols = co.cells.length >= 4 ? 2 : Math.max(1, co.cells.length);
+
+  return `
+    <div style="display:flex;flex-wrap:wrap;border:1px solid ${border};border-radius:${radius}px;overflow:hidden;background:${bg};text-align:${align};">
+      ${co.cells
+        .map((cell, i) => {
+          const edges =
+            (i % cols !== 0 ? `border-left:1px solid ${border};` : "") +
+            (i >= cols ? `border-top:1px solid ${border};` : "");
+
+          return `
+            <a href="${escapeHTML(cell.href)}" style="display:block;flex:0 0 ${(100 / cols).toFixed(4)}%;min-width:0;box-sizing:border-box;padding:11px 14px;text-decoration:none;${edges}">
+              <div style="font-family:${SANS};font-size:8.5px;font-weight:600;letter-spacing:.22em;color:${C.gold};">${escapeHTML(cell.label)}</div>
+              <div style="font-family:${SANS};font-size:11.5px;font-weight:500;color:${C.roseDeep};margin-top:3px;line-height:1.35;word-break:break-word;">${escapeHTML(cell.text)}</div>
+            </a>`;
+        })
+        .join("")}
+    </div>`;
+};
+
+const addressBlock = (co, color, linkColor, align = "left") =>
+  co.address
+    ? `<div style="font-family:${SANS};font-size:11.5px;line-height:1.55;color:${color};text-align:${align};">
+         ${escapeHTML(co.address)}${co.landmark ? `<br><span style="font-size:10.5px;opacity:.8;">${escapeHTML(co.landmark)}</span>` : ""}
+         ${
+           co.mapsHref
+             ? `<br><a href="${escapeHTML(co.mapsHref)}" style="color:${linkColor};text-decoration:none;font-weight:600;font-size:10.5px;letter-spacing:.04em;">View on Google Maps &rarr;</a>`
+             : ""
+         }
+       </div>`
+    : "";
+
+const whatsappPill = (co) =>
+  co.whatsappHref
+    ? `<a href="${escapeHTML(co.whatsappHref)}" style="display:inline-block;background:${C.rose};color:#fff;border-radius:999px;padding:9px 20px;font-family:${SANS};font-size:11px;font-weight:600;letter-spacing:.05em;text-decoration:none;white-space:nowrap;">Chat on WhatsApp &rarr;</a>`
+    : "";
+
+/* Logo on the same light chip the site footer uses; text wordmark as fallback. */
+const logoChip = (ctx, height, { pad = "8px 16px", radius = 12, shadow = "0 6px 18px rgba(0,0,0,.18)" } = {}) => {
+  const box = `display:inline-block;background:${C.logoBg};border-radius:${radius}px;padding:${pad};${shadow ? `box-shadow:${shadow};` : ""}`;
+  if (ctx.logoSize && ctx.logoSize.w && ctx.logoSize.h) {
+    const w = Math.round((ctx.logoSize.w / ctx.logoSize.h) * height);
+    return `
+      <div style="${box}">
+        <img src="${escapeHTML(ctx.logoUrl)}" crossorigin="anonymous" alt="${escapeHTML(BRAND)}"
+             style="display:block;width:${w}px;height:${height}px;" />
+      </div>`;
+  }
+  return `
+    <div style="${box}text-align:center;">
+      <div style="font-family:${SERIF};font-size:${Math.round(height * 0.62)}px;font-weight:600;letter-spacing:.3em;color:${C.rose};text-transform:uppercase;padding-left:.3em;line-height:1.2;">Manyara</div>
+      <div style="font-family:${SANS};font-size:${Math.max(6, Math.round(height * 0.2))}px;font-weight:500;letter-spacing:.5em;color:${C.gold};margin-top:2px;padding-left:.5em;">PRIVÉ VACATIONS</div>
+    </div>`;
+};
+
+/* Photo that fills w x h (centre-cropped by scaling, so it works in html2canvas). */
+function photoBox(url, size, w, h, extraStyle = "") {
+  if (!url || !size || !size.w || !size.h) return "";
+  const k = Math.max(w / size.w, h / size.h);
+  const iw = Math.round(size.w * k);
+  const ih = Math.round(size.h * k);
+  const left = Math.round((w - iw) / 2);
+  const top = Math.round((h - ih) / 2);
+  return `
+    <div style="position:relative;width:${w}px;height:${h}px;overflow:hidden;${extraStyle}">
+      <img src="${escapeHTML(url)}" crossorigin="anonymous" alt=""
+           style="position:absolute;left:${left}px;top:${top}px;width:${iw}px;height:${ih}px;display:block;" />
+    </div>`;
+}
+
+/* Itinerary photo: never cropped, only scaled to fit maxW x maxH. */
+function dayImage(ctx, index, maxW, maxH, { radius = 12, top = 12, center = false } = {}) {
+  const url = ctx.dayUrls[index];
+  const size = url ? ctx.sizes.get(url) : null;
+  if (!url || !size || !size.w || !size.h) return "";
+
+  const fit = Math.min(maxW / size.w, maxH / size.h);
+  const w = Math.round(size.w * fit);
+  const h = Math.round(size.h * fit);
+
+  return `
+    <div style="margin:${top}px ${center ? "auto" : "0"} 0;width:${w}px;height:${h}px;border-radius:${radius}px;overflow:hidden;">
+      <img src="${escapeHTML(url)}" crossorigin="anonymous" alt=""
+           style="display:block;width:${w}px;height:${h}px;" />
+    </div>`;
+}
 
 // ---------------------------------------------------------
 // Company details
@@ -806,8 +759,13 @@ function paginate(root, PAGE_H) {
   });
 }
 
-
-
+/**
+ * Spread the spare room at the bottom of a page over the blocks above it, so
+ * pages end evenly instead of leaving a gap.
+ *  - data-stretch     : a spacer is added before the block
+ *  - data-padstretch  : the block itself grows (its padding-bottom), which
+ *                       keeps things like a timeline line unbroken
+ */
 function balancePages(root, PAGE_H) {
   const breaks = Array.from(root.querySelectorAll("[data-page-break]"));
 
@@ -823,7 +781,7 @@ function balancePages(root, PAGE_H) {
     const spare = end - spacerTop - 4;
     if (spare < 8) return;
 
-    const targets = Array.from(root.querySelectorAll("[data-stretch]")).filter((el) => {
+    const targets = Array.from(root.querySelectorAll("[data-stretch],[data-padstretch]")).filter((el) => {
       const t = topOf(root, el);
       return t >= start + 8 && t < spacerTop - 1;
     });
@@ -833,9 +791,14 @@ function balancePages(root, PAGE_H) {
     const before = topOf(root, anchor);
 
     targets.forEach((el) => {
-      const extra = document.createElement("div");
-      extra.style.height = `${per}px`;
-      el.parentNode.insertBefore(extra, el);
+      if (el.hasAttribute("data-padstretch")) {
+        const current = parseFloat(getComputedStyle(el).paddingBottom) || 0;
+        el.style.paddingBottom = `${current + per}px`;
+      } else {
+        const extra = document.createElement("div");
+        extra.style.height = `${per}px`;
+        el.parentNode.insertBefore(extra, el);
+      }
     });
 
     // Margin collapsing can make the shift differ slightly: cancel the drift
@@ -850,58 +813,18 @@ function balancePages(root, PAGE_H) {
   });
 }
 
+/** Counts pages from the last block and fixes the document height. */
+function finishLayout(root, PAGE_H) {
+  let bottom = 0;
+  root.querySelectorAll("[data-atom]").forEach((el) => {
+    bottom = Math.max(bottom, topOf(root, el) + el.getBoundingClientRect().height);
+  });
 
-
-function placeFooter(root, PAGE_H) {
-  const footer = root.querySelector("[data-footer]");
-  if (!footer) return Math.max(1, Math.ceil(root.scrollHeight / PAGE_H));
-
-  let t = topOf(root, footer);
-  let h = footer.getBoundingClientRect().height;
-  let page = Math.max(0, Math.floor((t + 0.5) / PAGE_H));
-
-  // Footer is allowed to use the bottom padding area, but not to cross the page.
-  if (t + h > (page + 1) * PAGE_H + 0.5 || t < pageStartOf(PAGE_H, page) - 0.5) {
-    pushTo(root, footer, pageStartOf(PAGE_H, page + 1));
-    t = topOf(root, footer);
-    h = footer.getBoundingClientRect().height;
-    page = Math.max(0, Math.floor((t + 0.5) / PAGE_H));
-  }
-
-  const extra = (page + 1) * PAGE_H - (t + h);
-  if (extra > 0) footer.style.minHeight = `${h + extra}px`;
-
-  const totalPages = page + 1;
+  const totalPages = Math.max(1, Math.floor((bottom - 0.5) / PAGE_H) + 1);
   // 1px short so rounding can never create an extra blank page.
   root.style.height = `${totalPages * PAGE_H - 1}px`;
   root.style.overflow = "hidden";
   return totalPages;
-}
-
-
-
-function addRunningBars(root, { PAGE_H, totalPages, title }) {
-  const bars = [];
-
-  for (let p = 0; p < totalPages; p++) {
-    if (p >= 1) {
-      bars.push(`
-        <div style="position:absolute;left:0;top:${p * PAGE_H}px;width:${PAGE_W}px;height:${BAR_TOP_H}px;box-sizing:border-box;padding:0 ${CONTENT_X}px;display:flex;align-items:center;justify-content:space-between;background:${ROSE_BG};border-bottom:2px solid ${C.gold};">
-          <span style="font-family:${SERIF};font-size:14px;font-weight:600;letter-spacing:.22em;color:#fff;text-transform:uppercase;white-space:nowrap;">Manyara <span style="font-family:${SANS};font-size:8px;font-weight:500;letter-spacing:.4em;color:${C.champagne};">PRIVÉ VACATIONS</span></span>
-          <span style="font-family:${SERIF};font-size:14px;font-style:italic;font-weight:500;color:${C.champagneSoft};max-width:330px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${escapeHTML(title)}</span>
-        </div>`);
-    }
-
-    if (p < totalPages - 1) {
-      bars.push(`
-        <div style="position:absolute;left:0;top:${(p + 1) * PAGE_H - BAR_BOTTOM_H}px;width:${PAGE_W}px;height:${BAR_BOTTOM_H}px;box-sizing:border-box;padding:0 ${CONTENT_X}px;display:flex;align-items:center;justify-content:space-between;background:${C.roseWash};border-top:1px solid ${C.champagne};">
-          <a href="${escapeHTML(SITE_URL)}" style="font-family:${SANS};font-size:9.5px;font-weight:500;letter-spacing:.04em;color:${C.roseDeep};text-decoration:none;white-space:nowrap;">${escapeHTML(SITE_LABEL)}</a>
-          <span style="font-family:${SANS};font-size:9px;font-weight:600;letter-spacing:.18em;color:${C.gold};white-space:nowrap;">PAGE ${p + 1} / ${totalPages}</span>
-        </div>`);
-    }
-  }
-
-  root.insertAdjacentHTML("beforeend", bars.join(""));
 }
 
 // ---------------------------------------------------------
@@ -1023,7 +946,6 @@ function normalizeListItem(item) {
 const BREAK_CHARS = /[\r\n\u2022\u25AA\u25CF]/; // new line, or a bullet character
 const stripBullet = (text) => text.replace(/^[\s\-\u2013\u2014*\u00B7]+/, "").trim();
 
-
 function splitText(text) {
   const value = String(text || "");
   const parts = BREAK_CHARS.test(value)
@@ -1132,15 +1054,6 @@ export default generatePackagePDF;
 
 
 
-
-
-
-
-
-
-
-
-
 // import { getSiteSettings } from "../api/content"; // same API the Footer / Contact page use
 
 // const BRAND = "Manyara Privé Vacations";
@@ -1149,6 +1062,7 @@ export default generatePackagePDF;
 // const SITE_LABEL = "manyaraprivevacations.com";
 // const LOGO_PATH = "/images/Manyara_3.webp"; // same logo the site Footer uses
 // const DEFAULT_ADDRESS = "India";
+// const DEFAULT_COUNTRY_CODE = "91"; // used when a phone number is saved without a country code
 
 // // Palette mirrors tailwind.config.js (light, rose-led theme)
 // const C = {
@@ -1169,9 +1083,10 @@ export default generatePackagePDF;
 //   logoBg: "#EEF1F5", // same chip colour the site footer puts behind the logo
 // };
 
-// const ROSE_BG = "linear-gradient(135deg,#D63C80,#E8548F 55%,#F27AA8)"; // lighter rose used on cover, header and footer
+// const ROSE_BG = "linear-gradient(135deg,#D63C80,#E8548F 55%,#F27AA8)";
 
-// const SERIF = `"Cormorant Garamond","Playfair Display",Georgia,serif`;
+
+// const SERIF = `'Cormorant Garamond','Playfair Display',Georgia,serif`;
 // const SANS = `Inter,system-ui,Arial,sans-serif`;
 
 // const FONT_URL =
@@ -1179,20 +1094,22 @@ export default generatePackagePDF;
 
 // // ---- Page geometry (CSS px at 794px = A4 width) ----------------------
 // const PAGE_W = 794;
-// const PAD_TOP = 40; // running header height on pages 2+
-// const PAD_BOTTOM = 40; // running footer height on every page except the last
 // const CONTENT_X = 48;
-// const DAY_BAR = 19;
-// const IMG_BOX_W = PAGE_W - CONTENT_X * 2 - DAY_BAR;
-// const DAY_IMG_MAX_H = 280; // never cropped, only scaled down
-// const HERO_IMG_MAX_W = PAGE_W - CONTENT_X * 2;
-// const HERO_IMG_MAX_H = 320;
+// const CONTENT_W = PAGE_W - CONTENT_X * 2; // 698
 
-// /**
-//  * html2pdf slices at floor(canvasWidth * 297/210) canvas px per page,
-//  * so the CSS page height is derived from the same numbers.
-//  * Lower scale on phones (iOS canvas area limit).
-//  */
+// const BAR_TOP_H = 38; // running header bar (pages 2+)
+// const BAR_BOTTOM_H = 34; // running footer bar (every page except the last)
+// const TOP_SPACE = 58; // content starts this far below the top of pages 2+
+// const BOTTOM_SPACE = 52; // content ends this far above the bottom of a page
+// const MAX_STRETCH = 32; // max extra space added between blocks to fill a page
+
+// const HERO_IMG_MAX_W = CONTENT_W - 6; // 3px white border on each side
+// const HERO_IMG_MAX_H = 360;
+// const DAY_IMG_W = 258; // itinerary image column (4:3 -> 258 x 194)
+// const DAY_IMG_MAX_H = 216; // images are never cropped, only scaled to fit
+
+
+
 // function getGeometry() {
 //   const isMobile =
 //     typeof navigator !== "undefined" &&
@@ -1249,8 +1166,8 @@ export default generatePackagePDF;
 //   await ensureFonts();
 
 //   const logoUrl = typeof window !== "undefined" ? `${window.location.origin}${LOGO_PATH}` : null;
-//   const coverUrl = optimizeUrl(rawCover, 1800);
-//   const dayUrls = itinerary.map((d) => optimizeUrl(getImageUrl(d?.image), 1600));
+//   const coverUrl = optimizeUrl(rawCover, 1600);
+//   const dayUrls = itinerary.map((d) => optimizeUrl(getImageUrl(d?.image), 900));
 //   const sizes = await preloadImages([logoUrl, coverUrl, ...dayUrls]);
 
 //   const logoSize = logoUrl && sizes.has(logoUrl) ? sizes.get(logoUrl) : null;
@@ -1265,9 +1182,8 @@ export default generatePackagePDF;
 //     heroImgH = Math.round(coverSize.h * fit);
 //   }
 
-//   // Logo chip. Same chip colour as the website footer, so the logo looks
-//   // identical to the site. Falls back to a white text wordmark (the chip
-//   // always sits on rose or on the photo).
+//   // Logo chip. Same chip colour as the website footer. Falls back to a text
+//   // wordmark if the logo file cannot be loaded.
 //   const logoChip = (height, { pad = "9px 18px" } = {}) => {
 //     if (logoSize && logoSize.w && logoSize.h) {
 //       const w = Math.round((logoSize.w / logoSize.h) * height);
@@ -1284,12 +1200,8 @@ export default generatePackagePDF;
 //       </div>`;
 //   };
 
-//   // ---------------------------------------------------------
-//   // HTML builders
-//   // data-atom  = must not be split across pages
-//   // data-keep  = keep together with the next atom (headings)
-//   // data-lines = paragraph that is split into line atoms
-//   // ---------------------------------------------------------
+
+
 //   const heading = (eyebrow, text, atom = true) => `
 //     <div ${atom ? "data-atom data-keep" : ""} style="margin:0 0 12px;">
 //       <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:.3em;text-transform:uppercase;color:${C.gold};margin-bottom:4px;">
@@ -1304,31 +1216,43 @@ export default generatePackagePDF;
 //       </div>
 //     </div>`;
 
-//   const paragraph = (text, size, color, lineHeight) =>
-//     `<div data-lines style="font-family:${SANS};font-size:${size}px;line-height:${lineHeight};color:${color};margin:0 0 8px;white-space:pre-line;">${escapeHTML(text)}</div>`;
+//   /* lead = number of leading words shown in bold ("Refunds:" -> 1) */
+//   const paragraph = (text, size, color, lineHeight, { lead = 0, leadColor = C.ink } = {}) =>
+//     `<div data-lines ${
+//       lead ? `data-lead="${lead}" data-leadstyle="font-weight:600;color:${leadColor};"` : ""
+//     } style="font-family:${SANS};font-size:${size}px;line-height:${lineHeight};color:${color};margin:0 0 8px;white-space:pre-line;">${escapeHTML(text)}</div>`;
 
-//   const summaryCard = (label, value, accent = C.ink) => `
-//     <div style="flex:1;border:1px solid ${C.champagne};background:${C.champagneSoft};border-radius:12px;padding:14px 18px;text-align:center;">
+//   const summaryCard = (label, value, accent = C.ink, sub = "") => `
+//     <div style="flex:1;display:flex;flex-direction:column;justify-content:center;border:1px solid ${C.champagne};background:${C.champagneSoft};border-radius:12px;padding:14px 18px;text-align:center;box-sizing:border-box;">
 //       <div style="font-family:${SANS};font-size:9px;font-weight:600;letter-spacing:.26em;color:${C.gold};">
 //         ${escapeHTML(label)}
 //       </div>
 //       <div style="font-family:${SERIF};font-size:26px;font-weight:600;color:${accent};margin-top:3px;line-height:1.2;">
 //         ${escapeHTML(value)}
 //       </div>
+//       ${
+//         sub
+//           ? `<div style="font-family:${SANS};font-size:10px;color:${C.muted};margin-top:2px;">${escapeHTML(sub)}</div>`
+//           : ""
+//       }
 //     </div>`;
 
+//   // Markers are drawn with plain shapes (no font glyphs), so they always
+//   // sit centred in their circle.
 //   const diamond = `<span style="flex:none;width:6px;height:6px;margin-top:7px;background:${C.gold};transform:rotate(45deg);"></span>`;
-//   const tick = `<span style="flex:none;width:16px;height:16px;margin-top:1px;border-radius:50%;background:${C.rose};color:#fff;font-size:9px;line-height:16px;text-align:center;font-family:${SANS};">&#10003;</span>`;
-//   const cross = `<span style="flex:none;width:16px;height:16px;margin-top:1px;border-radius:50%;border:1px solid ${C.muted};color:${C.muted};font-size:8px;line-height:14px;text-align:center;font-family:${SANS};">&#10005;</span>`;
+//   const tick = `<span style="flex:none;position:relative;width:16px;height:16px;margin-top:1px;border-radius:50%;background:${C.rose};"><span style="position:absolute;left:5.5px;top:2.5px;width:4px;height:8px;border:solid #fff;border-width:0 1.8px 1.8px 0;transform:rotate(45deg);"></span></span>`;
+//   const cross = `<span style="flex:none;position:relative;width:16px;height:16px;margin-top:1px;box-sizing:border-box;border-radius:50%;border:1px solid ${C.muted};"><span style="position:absolute;left:3.5px;top:6px;width:7px;height:1.5px;background:${C.muted};transform:rotate(45deg);"></span><span style="position:absolute;left:3.5px;top:6px;width:7px;height:1.5px;background:${C.muted};transform:rotate(-45deg);"></span></span>`;
+
+//   const columnsFor = (count, max) => (count <= 2 ? Math.max(1, count) : count === 4 ? 2 : max);
 
 //   const itemGrid = (items, marker, columns) => `
 //     <div style="display:flex;flex-wrap:wrap;">
 //       ${items
 //         .map(
 //           (item) => `
-//           <div style="width:${100 / columns}%;box-sizing:border-box;padding:0 12px 8px 0;display:flex;gap:9px;align-items:flex-start;">
+//           <div style="flex:0 0 ${(100 / columns).toFixed(4)}%;box-sizing:border-box;padding:0 12px 9px 0;display:flex;gap:9px;align-items:flex-start;">
 //             ${marker}
-//             <span style="font-family:${SANS};font-size:12.5px;line-height:1.5;color:${C.body};">${escapeHTML(item)}</span>
+//             <span style="min-width:0;font-family:${SANS};font-size:12.5px;line-height:1.5;color:${C.body};">${escapeHTML(item)}</span>
 //           </div>`
 //         )
 //         .join("")}
@@ -1342,19 +1266,30 @@ export default generatePackagePDF;
 //       ${body}
 //     </div>`;
 
-//   // Clickable contact cells (email / phone / whatsapp / website)
-//   const contactCells = (bg, border) =>
-//     co.cells
-//       .map(
-//         (cell, i) => `
-//         <a href="${escapeHTML(cell.href)}" style="flex:1;min-width:0;display:block;text-decoration:none;box-sizing:border-box;padding:10px 14px;background:${bg};${
-//           i > 0 ? `border-left:1px solid ${border};` : ""
-//         }">
-//           <div style="font-family:${SANS};font-size:8.5px;font-weight:600;letter-spacing:.24em;color:${C.gold};">${escapeHTML(cell.label)}</div>
-//           <div style="font-family:${SANS};font-size:11.5px;font-weight:500;color:${C.roseDeep};margin-top:3px;line-height:1.35;word-break:break-all;">${escapeHTML(cell.text)}</div>
-//         </a>`
-//       )
-//       .join("");
+//   /*
+//     Clickable contact cells. 1-3 cells sit in one row, 4 cells make a 2 x 2
+//     grid, so long emails and the website never break in the middle of a word.
+//   */
+//   const contactGrid = (bg, border, radius = 12) => {
+//     const cols = co.cells.length >= 4 ? 2 : Math.max(1, co.cells.length);
+
+//     return `
+//       <div style="display:flex;flex-wrap:wrap;border:1px solid ${border};border-radius:${radius}px;overflow:hidden;background:${bg};">
+//         ${co.cells
+//           .map((cell, i) => {
+//             const edges =
+//               (i % cols !== 0 ? `border-left:1px solid ${border};` : "") +
+//               (i >= cols ? `border-top:1px solid ${border};` : "");
+
+//             return `
+//               <a href="${escapeHTML(cell.href)}" style="display:block;flex:0 0 ${(100 / cols).toFixed(4)}%;min-width:0;box-sizing:border-box;padding:10px 12px;text-decoration:none;${edges}">
+//                 <div style="font-family:${SANS};font-size:8.5px;font-weight:600;letter-spacing:.22em;color:${C.gold};">${escapeHTML(cell.label)}</div>
+//                 <div style="font-family:${SANS};font-size:11.5px;font-weight:500;color:${C.roseDeep};margin-top:3px;line-height:1.35;word-break:break-word;">${escapeHTML(cell.text)}</div>
+//               </a>`;
+//           })
+//           .join("")}
+//       </div>`;
+//   };
 
 //   const addressBlock = (color, linkColor) =>
 //     co.address
@@ -1369,22 +1304,28 @@ export default generatePackagePDF;
 //       : "";
 
 //   // ---------------------------------------------------------
-//   // COVER (page 1): rich rose hero, logo sits on the main image
+//   // COVER (page 1): logo on top, the cover photo (never cropped), title
 //   // ---------------------------------------------------------
 //   const heroHTML = `
 //     <div data-atom style="width:${PAGE_W}px;background:${ROSE_BG};box-sizing:border-box;">
 //       <div style="height:4px;background:linear-gradient(90deg,${C.gold},${C.champagne},${C.gold});"></div>
+
+//       <div style="display:flex;justify-content:center;padding-top:22px;">
+//         ${logoChip(36, { pad: "8px 16px" })}
+//       </div>
+
 //       ${
 //         coverImage && heroImgH
-//           ? `<div style="display:flex;justify-content:center;padding-top:26px;">
-//                <div style="width:${heroImgW + 6}px;height:${heroImgH + 6}px;box-sizing:border-box;padding:11px;border-radius:14px;overflow:hidden;border:3px solid rgba(255,255,255,.92);box-shadow:0 10px 28px rgba(0,0,0,.22);background-image:url('${escapeHTML(coverImage)}');background-size:100% 100%;background-repeat:no-repeat;background-position:center;">
-//                  ${logoChip(30, { pad: "7px 14px" })}
+//           ? `<div style="display:flex;justify-content:center;padding-top:20px;">
+//                <div style="box-sizing:content-box;width:${heroImgW}px;height:${heroImgH}px;border-radius:14px;overflow:hidden;border:3px solid rgba(255,255,255,.92);box-shadow:0 10px 28px rgba(0,0,0,.22);">
+//                  <img src="${escapeHTML(coverImage)}" crossorigin="anonymous" alt=""
+//                       style="display:block;width:${heroImgW}px;height:${heroImgH}px;" />
 //                </div>
 //              </div>`
-//           : `<div style="padding-top:28px;text-align:center;">${logoChip(44)}</div>`
+//           : ""
 //       }
 
-//       <div style="padding:24px ${CONTENT_X}px 30px;box-sizing:border-box;text-align:center;color:#fff;">
+//       <div style="padding:22px ${CONTENT_X}px 28px;box-sizing:border-box;text-align:center;color:#fff;">
 //         ${
 //           pkg.destination
 //             ? `<div style="font-family:${SANS};font-size:11px;font-weight:600;letter-spacing:.32em;text-transform:uppercase;color:${C.champagne};margin-bottom:10px;">${escapeHTML(pkg.destination)}</div>`
@@ -1397,27 +1338,28 @@ export default generatePackagePDF;
 //       </div>
 //     </div>`;
 
-//   // Contact strip directly under the main image block
 //   const coverBodyHTML = `
 //     <div style="padding:22px ${CONTENT_X}px 0;">
 //       ${
 //         co.cells.length
-//           ? `<div data-atom style="display:flex;border:1px solid ${C.champagne};border-radius:12px;overflow:hidden;margin-bottom:14px;">
-//                ${contactCells("#fff", C.champagne)}
-//              </div>`
+//           ? `<div data-atom data-stretch style="margin-bottom:14px;">${contactGrid("#fff", C.champagne, 12)}</div>`
 //           : ""
 //       }
 //       ${
 //         durationText || has(pkg.price)
-//           ? `<div data-atom style="display:flex;gap:14px;">
+//           ? `<div data-atom data-stretch style="display:flex;gap:14px;">
 //                ${durationText ? summaryCard("DURATION", durationText) : ""}
-//                ${has(pkg.price) ? summaryCard("STARTING FROM", `\u20B9${formatPrice(pkg.price)}`, C.rose) : ""}
+//                ${
+//                  has(pkg.price)
+//                    ? summaryCard("STARTING FROM", `\u20B9${formatPrice(pkg.price)}`, C.rose, "per person")
+//                    : ""
+//                }
 //              </div>`
 //           : ""
 //       }
 //       ${
 //         pkg.description
-//           ? `<div style="margin-top:24px;">
+//           ? `<div data-stretch style="margin-top:24px;">
 //                ${heading("The Experience", "About This Journey")}
 //                ${paragraph(pkg.description, 13, C.body, 1.75)}
 //              </div>`
@@ -1426,10 +1368,8 @@ export default generatePackagePDF;
 //     </div>`;
 
 //   // ---------------------------------------------------------
-//   // ITINERARY
+//   // ITINERARY: one compact card per day (photo left, text right)
 //   // ---------------------------------------------------------
-//   const BAR = `border-left:3px solid ${C.rose};padding-left:16px;`;
-
 //   const dayCard = (day, index) => {
 //     const n = has(day?.day) ? day.day : index + 1;
 //     const label = String(n).padStart(2, "0");
@@ -1440,13 +1380,13 @@ export default generatePackagePDF;
 
 //     let imageHTML = "";
 //     if (url && size && size.w && size.h) {
-//       const fit = Math.min(IMG_BOX_W / size.w, DAY_IMG_MAX_H / size.h);
+//       const fit = Math.min(DAY_IMG_W / size.w, DAY_IMG_MAX_H / size.h);
 //       const w = Math.round(size.w * fit);
 //       const h = Math.round(size.h * fit);
 
 //       imageHTML = `
-//         <div style="margin-top:10px;width:${IMG_BOX_W}px;display:flex;justify-content:center;">
-//           <div style="width:${w}px;height:${h}px;border-radius:12px;overflow:hidden;">
+//         <div style="flex:none;width:${DAY_IMG_W}px;">
+//           <div style="width:${w}px;height:${h}px;border-radius:10px;overflow:hidden;">
 //             <img src="${escapeHTML(url)}" crossorigin="anonymous" alt=""
 //                  style="display:block;width:${w}px;height:${h}px;" />
 //           </div>
@@ -1454,31 +1394,29 @@ export default generatePackagePDF;
 //     }
 
 //     return `
-//       <div style="margin-bottom:22px;">
-//         <div data-atom ${description ? "data-keep" : ""} style="${BAR}padding-bottom:${description ? 8 : 0}px;">
-//           <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px;">
-//             <span style="font-family:${SERIF};font-size:34px;font-weight:600;color:${C.rose};line-height:1.1;">${escapeHTML(label)}</span>
-//             <span style="font-family:${SANS};font-size:9px;font-weight:600;letter-spacing:.28em;color:${C.gold};">DAY</span>
+//       <div data-atom data-stretch style="margin-bottom:14px;display:flex;align-items:center;gap:18px;box-sizing:border-box;background:#fff;border:1px solid ${C.champagne};border-left:4px solid ${C.rose};border-radius:14px;padding:14px;">
+//         ${imageHTML}
+//         <div style="flex:1;min-width:0;">
+//           <div style="display:flex;align-items:center;gap:12px;">
+//             <div style="flex:none;width:46px;height:46px;box-sizing:border-box;border-radius:12px;background:${C.roseSoft};border:1px solid ${C.roseLine};display:flex;flex-direction:column;align-items:center;justify-content:center;">
+//               <span style="font-family:${SANS};font-size:7.5px;font-weight:600;letter-spacing:.2em;color:${C.gold};line-height:1;padding-left:.2em;">DAY</span>
+//               <span style="font-family:${SANS};font-size:18px;font-weight:600;color:${C.rose};line-height:1.1;margin-top:3px;">${escapeHTML(label)}</span>
+//             </div>
+//             <div style="flex:1;min-width:0;font-family:${SERIF};font-size:21px;font-weight:600;color:${C.ink};line-height:1.2;">
+//               ${escapeHTML(day?.title || `Day ${n}`)}
+//             </div>
 //           </div>
 //           ${
-//             day?.title
-//               ? `<div style="font-family:${SERIF};font-size:22px;font-weight:600;color:${C.ink};margin:0;line-height:1.25;">${escapeHTML(day.title)}</div>`
+//             description
+//               ? `<div style="font-family:${SANS};font-size:12.5px;line-height:1.65;color:${C.body};margin-top:10px;white-space:pre-line;">${escapeHTML(description)}</div>`
 //               : ""
 //           }
-//           ${imageHTML}
 //         </div>
-//         ${
-//           description
-//             ? `<div data-lines
-//                     data-linestyle="margin-left:-19px;padding-left:16px;border-left:3px solid ${C.rose};"
-//                     style="font-family:${SANS};font-size:12px;line-height:1.65;color:${C.body};white-space:pre-line;padding-left:19px;box-sizing:border-box;margin:0;">${escapeHTML(description)}</div>`
-//             : ""
-//         }
 //       </div>`;
 //   };
 
 //   const itineraryHTML = itinerary.length
-//     ? `<div style="margin-top:26px;">
+//     ? `<div data-stretch style="margin-top:26px;">
 //          ${heading("Your Journey", "Day-by-Day Itinerary")}
 //          ${itinerary.map(dayCard).join("")}
 //        </div>`
@@ -1488,11 +1426,11 @@ export default generatePackagePDF;
 //   // FACILITIES / INCLUSIONS / EXCLUSIONS
 //   // ---------------------------------------------------------
 //   const facilitiesHTML = facilities.length
-//     ? `<div style="margin-top:12px;">
+//     ? `<div data-stretch style="margin-top:12px;">
 //          <div data-atom>
 //            ${heading("Comforts", "Facilities", false)}
-//            <div style="background:${C.champagneSoft};border:1px solid ${C.champagne};border-radius:12px;padding:16px 16px 8px;">
-//              ${itemGrid(facilities, diamond, 3)}
+//            <div style="background:${C.champagneSoft};border:1px solid ${C.champagne};border-radius:12px;padding:16px 16px 7px;">
+//              ${itemGrid(facilities, diamond, columnsFor(facilities.length, 3))}
 //            </div>
 //          </div>
 //        </div>`
@@ -1507,30 +1445,42 @@ export default generatePackagePDF;
 
 //   const coverageHTML =
 //     incPanel || excPanel
-//       ? `<div style="margin-top:22px;">
+//       ? `<div data-stretch style="margin-top:22px;">
 //            ${heading("The Details", "What\u2019s Included")}
 //            <div data-atom style="display:flex;gap:14px;align-items:stretch;">${incPanel}${excPanel}</div>
 //          </div>`
 //       : "";
 
 //   // ---------------------------------------------------------
-//   // POLICIES
+//   // POLICIES: one paragraph per point, with the label in bold
 //   // ---------------------------------------------------------
+//   const policyPoint = (text) => {
+//     const match = text.match(/^([^:\n]{2,50}):\s+\S/);
+//     const lead = match ? `${match[1]}:`.split(/\s+/).length : 0;
+//     return paragraph(text, 11.5, C.muted, 1.7, { lead, leadColor: C.ink });
+//   };
+
 //   const policyHTML = (eyebrow, title, items) =>
 //     items.length
-//       ? `<div style="margin-top:22px;">
+//       ? `<div data-stretch style="margin-top:22px;">
 //            ${heading(eyebrow, title)}
-//            ${items.map((t) => paragraph(t, 11.5, C.muted, 1.7)).join("")}
+//            ${items.map(policyPoint).join("")}
 //          </div>`
 //       : "";
 
 //   // ---------------------------------------------------------
-//   // BOOKING / CONTACT CARD (the one place with full contact details)
+//   // BOOKING CARD (call to action with full contact details)
 //   // ---------------------------------------------------------
+//   const whatsappPill = co.whatsappHref
+//     ? `<a href="${escapeHTML(co.whatsappHref)}" style="flex:none;display:inline-block;background:${C.rose};color:#fff;border-radius:999px;padding:9px 18px;font-family:${SANS};font-size:11px;font-weight:600;letter-spacing:.05em;text-decoration:none;white-space:nowrap;">Chat on WhatsApp &rarr;</a>`
+//     : "";
+
+//   const addressHTML = addressBlock(C.body, C.roseDeep);
+
 //   const bookHTML =
 //     co.cells.length || co.address
-//       ? `<div style="margin-top:26px;">
-//            <div data-atom style="background:${C.champagneSoft};border:1px solid ${C.champagne};border-left:4px solid ${C.rose};border-radius:14px;padding:20px 22px;">
+//       ? `<div data-stretch style="margin-top:26px;">
+//            <div data-atom style="background:${C.champagneSoft};border:1px solid ${C.champagne};border-left:4px solid ${C.rose};border-radius:14px;padding:20px 22px;box-sizing:border-box;">
 //              <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:.3em;color:${C.gold};">READY TO BOOK?</div>
 //              <div style="font-family:${SERIF};font-size:26px;font-weight:600;color:${C.roseDeep};line-height:1.2;margin:4px 0 6px;">Plan This Journey With Us</div>
 //              <div style="font-family:${SANS};font-size:12px;line-height:1.6;color:${C.body};margin-bottom:14px;">
@@ -1538,18 +1488,23 @@ export default generatePackagePDF;
 //              </div>
 //              ${
 //                co.cells.length
-//                  ? `<div style="display:flex;border:1px solid ${C.roseLine};border-radius:10px;overflow:hidden;margin-bottom:${co.address ? 14 : 0}px;">
-//                       ${contactCells("#fff", C.roseLine)}
+//                  ? `<div style="margin-bottom:${addressHTML || whatsappPill ? 14 : 0}px;">${contactGrid("#fff", C.roseLine, 10)}</div>`
+//                  : ""
+//              }
+//              ${
+//                addressHTML || whatsappPill
+//                  ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+//                       <div style="flex:1;min-width:0;">${addressHTML}</div>
+//                       ${whatsappPill}
 //                     </div>`
 //                  : ""
 //              }
-//              ${addressBlock(C.body, C.roseDeep)}
 //            </div>
 //          </div>`
 //       : "";
 
 //   // ---------------------------------------------------------
-//   // CLOSING FOOTER: same rose as the cover, logo + full contact details.
+//   // CLOSING FOOTER: same rose as the cover, logo + contact details.
 //   // Fills the rest of the last page, so no white gap is left.
 //   // ---------------------------------------------------------
 //   const footerHTML = `
@@ -1619,6 +1574,7 @@ export default generatePackagePDF;
 
 //     splitParagraphsIntoLines(pdfContent);
 //     paginate(pdfContent, PAGE_H);
+//     balancePages(pdfContent, PAGE_H);
 //     const totalPages = placeFooter(pdfContent, PAGE_H);
 //     addRunningBars(pdfContent, {
 //       PAGE_H,
@@ -1651,6 +1607,16 @@ export default generatePackagePDF;
 //         pagebreak: { mode: ["css"] },
 //       })
 //       .from(pdfContent)
+//       .toPdf()
+//       .get("pdf")
+//       .then((pdf) => {
+//         // Rounding can leave a stray blank page at the end: drop it.
+//         let count = pdf.internal.getNumberOfPages();
+//         while (count > totalPages && count > 1) {
+//           pdf.deletePage(count);
+//           count -= 1;
+//         }
+//       })
 //       .save();
 
 //     return fileName;
@@ -1691,20 +1657,34 @@ export default generatePackagePDF;
 //       : "";
 
 //   const phoneDigits = phone.replace(/\D/g, "");
-//   const waDigits = whatsapp.replace(/\D/g, "");
+//   const waDigitsRaw = whatsapp.replace(/\D/g, "");
+
+//   // Numbers saved without a country code get the default one.
+//   const withCode = (digits) => (digits.length === 10 ? `${DEFAULT_COUNTRY_CODE}${digits}` : digits);
+//   const telDigits = withCode(phoneDigits);
+//   const waDigits = withCode(waDigitsRaw);
+
+//   const telHref = telDigits ? `tel:+${telDigits}` : "";
+//   const whatsappHref = waDigits
+//     ? `https://wa.me/${waDigits}?text=${encodeURIComponent(
+//         `Hello ${BRAND}, I would like to know more about your travel packages.`
+//       )}`
+//     : "";
+
+//   // Call and WhatsApp are often the same number: show it once.
+//   const sameNumber =
+//     phoneDigits && waDigitsRaw && phoneDigits.slice(-10) === waDigitsRaw.slice(-10);
 
 //   const cells = [];
 //   if (email) cells.push({ label: "EMAIL", text: email, href: `mailto:${email}` });
-//   if (phoneDigits) cells.push({ label: "CALL US", text: phone, href: `tel:+${phoneDigits}` });
-//   if (waDigits) {
-//     cells.push({
-//       label: "WHATSAPP",
-//       text: whatsapp,
-//       href: `https://wa.me/${waDigits}?text=${encodeURIComponent(
-//         `Hello ${BRAND}, I would like to know more about your travel packages.`
-//       )}`,
-//     });
+
+//   if (sameNumber) {
+//     cells.push({ label: "CALL / WHATSAPP", text: phone, href: telHref });
+//   } else {
+//     if (telDigits) cells.push({ label: "CALL US", text: phone, href: telHref });
+//     if (waDigits) cells.push({ label: "WHATSAPP", text: whatsapp, href: whatsappHref });
 //   }
+
 //   cells.push({ label: "WEBSITE", text: SITE_LABEL, href: SITE_URL });
 
 //   let mapsHref = getMapsLink(data?.address_url, rawAddress);
@@ -1712,7 +1692,7 @@ export default generatePackagePDF;
 //     mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 //   }
 
-//   return { email, phone, address, landmark, mapsHref, cells };
+//   return { email, phone, address, landmark, mapsHref, whatsappHref, cells };
 // }
 
 // /** Same Google Maps conversion logic as Footer.jsx / Contact.jsx. */
@@ -1774,8 +1754,9 @@ export default generatePackagePDF;
 // // ---------------------------------------------------------
 
 // /**
-//  * Replace every [data-lines] block with one atom per rendered line,
-//  * so a page break can fall BETWEEN lines instead of through one.
+//  * Replace every [data-lines] block with one atom per rendered line, so a
+//  * page break can fall BETWEEN lines instead of through one. Optional
+//  * data-lead="N" makes the first N words bold (policy labels).
 //  */
 // function splitParagraphsIntoLines(root) {
 //   root.querySelectorAll("[data-lines]").forEach((p) => {
@@ -1785,14 +1766,18 @@ export default generatePackagePDF;
 //       .filter(Boolean);
 //     if (!rows.length) return;
 
-//     const lineStyle = p.getAttribute("data-linestyle") || "";
+//     const leadCount = Number(p.getAttribute("data-lead") || 0);
+//     const leadStyle = p.getAttribute("data-leadstyle") || "font-weight:600;";
 
 //     p.style.whiteSpace = "normal";
 //     p.innerHTML = rows
-//       .map((r) =>
-//         r
+//       .map((row, r) =>
+//         row
 //           .split(/\s+/)
-//           .map((w) => `<span>${escapeHTML(w)}</span>`)
+//           .map((word, i) => {
+//             const isLead = r === 0 && i < leadCount;
+//             return `<span data-r="${r}"${isLead ? ` data-b="1" style="${leadStyle}"` : ""}>${escapeHTML(word)}</span>`;
+//           })
 //           .join(" ")
 //       )
 //       .join("<br>");
@@ -1800,31 +1785,39 @@ export default generatePackagePDF;
 //     const groups = [];
 //     p.querySelectorAll("span").forEach((s) => {
 //       const top = s.getBoundingClientRect().top;
+//       const word = { text: s.textContent, bold: s.hasAttribute("data-b") };
 //       const last = groups[groups.length - 1];
-//       if (last && Math.abs(last.top - top) < 4) last.words.push(s.textContent);
-//       else groups.push({ top, words: [s.textContent] });
+
+//       if (last && Math.abs(last.top - top) < 4) last.words.push(word);
+//       else groups.push({ top, row: Number(s.getAttribute("data-r")), words: [word] });
 //     });
 
 //     p.innerHTML = groups
-//       .map(
-//         (g) =>
-//           `<div data-atom style="white-space:nowrap;${lineStyle}">${escapeHTML(g.words.join(" "))}</div>`
-//       )
+//       .map((g, i) => {
+//         const gap = i > 0 && g.row !== groups[i - 1].row ? "margin-top:6px;" : "";
+//         const html = g.words
+//           .map((w) => (w.bold ? `<span style="${leadStyle}">${escapeHTML(w.text)}</span>` : escapeHTML(w.text)))
+//           .join(" ");
+
+//         return `<div data-atom style="white-space:nowrap;${gap}">${html}</div>`;
+//       })
 //       .join("");
 //   });
 // }
 
 // const rootTopOf = (root) => root.getBoundingClientRect().top;
 // const topOf = (root, el) => el.getBoundingClientRect().top - rootTopOf(root);
-// const pageStartOf = (PAGE_H, n) => (n === 0 ? 0 : n * PAGE_H + PAD_TOP);
-// const pageEndOf = (PAGE_H, n) => (n + 1) * PAGE_H - PAD_BOTTOM;
+// const pageStartOf = (PAGE_H, n) => (n === 0 ? 0 : n * PAGE_H + TOP_SPACE);
+// const pageEndOf = (PAGE_H, n) => (n + 1) * PAGE_H - BOTTOM_SPACE;
 
-// function pushTo(root, el, target) {
+// /** Pushes `el` down to `target` with a spacer. isBreak marks a real page break. */
+// function pushTo(root, el, target, isBreak = false) {
 //   const gap = target - topOf(root, el);
 //   if (gap <= 0.5) return;
 
 //   const spacer = document.createElement("div");
 //   spacer.style.height = `${gap}px`;
+//   if (isBreak) spacer.setAttribute("data-page-break", "1");
 //   el.parentNode.insertBefore(spacer, el);
 
 //   const drift = target - topOf(root, el);
@@ -1834,7 +1827,7 @@ export default generatePackagePDF;
 // /**
 //  * Push atoms that would cross a page edge to the start of the next
 //  * page. Usable area of page n (n >= 1):
-//  *   [n * PAGE_H + PAD_TOP, (n + 1) * PAGE_H - PAD_BOTTOM]
+//  *   [n * PAGE_H + TOP_SPACE, (n + 1) * PAGE_H - BOTTOM_SPACE]
 //  */
 // function paginate(root, PAGE_H) {
 //   const items = Array.from(root.querySelectorAll("[data-atom]"));
@@ -1846,7 +1839,7 @@ export default generatePackagePDF;
 //     const rect = el.getBoundingClientRect();
 //     let height = rect.height;
 
-//     // Headings / day headers stay with whatever comes next.
+//     // Headings stay with whatever comes next.
 //     const next = items[i + 1];
 //     if (el.hasAttribute("data-keep") && next) {
 //       height = next.getBoundingClientRect().bottom - rect.top;
@@ -1862,16 +1855,57 @@ export default generatePackagePDF;
 //     const fits = height <= pageEndOf(PAGE_H, page) - pageStartOf(PAGE_H, page);
 
 //     if (fits && t + height > pageEndOf(PAGE_H, page) + 0.5) {
-//       pushTo(root, el, pageStartOf(PAGE_H, page + 1));
+//       pushTo(root, el, pageStartOf(PAGE_H, page + 1), true);
 //     }
 //   });
 // }
 
-// /**
-//  * The brand footer sits at the very bottom of the last page. Any room
-//  * left on that page is absorbed by the (light, centred) footer itself, so
-//  * the document never ends in empty white space. Returns the page count.
-//  */
+
+
+// function balancePages(root, PAGE_H) {
+//   const breaks = Array.from(root.querySelectorAll("[data-page-break]"));
+
+//   breaks.forEach((spacer) => {
+//     const anchor = spacer.nextElementSibling;
+//     if (!anchor) return;
+
+//     const spacerTop = topOf(root, spacer);
+//     const pageIdx = Math.max(0, Math.floor((spacerTop + 0.5) / PAGE_H));
+//     const start = pageStartOf(PAGE_H, pageIdx);
+//     const end = pageEndOf(PAGE_H, pageIdx);
+
+//     const spare = end - spacerTop - 4;
+//     if (spare < 8) return;
+
+//     const targets = Array.from(root.querySelectorAll("[data-stretch]")).filter((el) => {
+//       const t = topOf(root, el);
+//       return t >= start + 8 && t < spacerTop - 1;
+//     });
+//     if (!targets.length) return;
+
+//     const per = Math.min(MAX_STRETCH, spare / targets.length);
+//     const before = topOf(root, anchor);
+
+//     targets.forEach((el) => {
+//       const extra = document.createElement("div");
+//       extra.style.height = `${per}px`;
+//       el.parentNode.insertBefore(extra, el);
+//     });
+
+//     // Margin collapsing can make the shift differ slightly: cancel the drift
+//     // so the next page still starts in the same place.
+//     for (let pass = 0; pass < 2; pass++) {
+//       const drift = topOf(root, anchor) - before;
+//       if (Math.abs(drift) <= 0.5) break;
+
+//       const current = parseFloat(spacer.style.height) || spacer.getBoundingClientRect().height;
+//       spacer.style.height = `${Math.max(0, current - drift)}px`;
+//     }
+//   });
+// }
+
+
+
 // function placeFooter(root, PAGE_H) {
 //   const footer = root.querySelector("[data-footer]");
 //   if (!footer) return Math.max(1, Math.ceil(root.scrollHeight / PAGE_H));
@@ -1898,27 +1932,23 @@ export default generatePackagePDF;
 //   return totalPages;
 // }
 
-// /**
-//  * Running header (pages 2+): slim rose bar with the brand, matching the
-//  * cover. Running footer (every page except the last): light strip with
-//  * the website and page number. Full contact details are on the cover and
-//  * in the closing footer, so they are not repeated on every page.
-//  */
+
+
 // function addRunningBars(root, { PAGE_H, totalPages, title }) {
 //   const bars = [];
 
 //   for (let p = 0; p < totalPages; p++) {
 //     if (p >= 1) {
 //       bars.push(`
-//         <div style="position:absolute;left:0;top:${p * PAGE_H}px;width:${PAGE_W}px;height:${PAD_TOP}px;box-sizing:border-box;padding:0 ${CONTENT_X}px;display:flex;align-items:center;justify-content:space-between;background:${ROSE_BG};border-bottom:2px solid ${C.gold};">
+//         <div style="position:absolute;left:0;top:${p * PAGE_H}px;width:${PAGE_W}px;height:${BAR_TOP_H}px;box-sizing:border-box;padding:0 ${CONTENT_X}px;display:flex;align-items:center;justify-content:space-between;background:${ROSE_BG};border-bottom:2px solid ${C.gold};">
 //           <span style="font-family:${SERIF};font-size:14px;font-weight:600;letter-spacing:.22em;color:#fff;text-transform:uppercase;white-space:nowrap;">Manyara <span style="font-family:${SANS};font-size:8px;font-weight:500;letter-spacing:.4em;color:${C.champagne};">PRIVÉ VACATIONS</span></span>
-//           <span style="font-family:${SERIF};font-size:13px;font-style:italic;font-weight:500;color:${C.champagneSoft};max-width:330px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${escapeHTML(title)}</span>
+//           <span style="font-family:${SERIF};font-size:14px;font-style:italic;font-weight:500;color:${C.champagneSoft};max-width:330px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${escapeHTML(title)}</span>
 //         </div>`);
 //     }
 
 //     if (p < totalPages - 1) {
 //       bars.push(`
-//         <div style="position:absolute;left:0;top:${(p + 1) * PAGE_H - PAD_BOTTOM}px;width:${PAGE_W}px;height:${PAD_BOTTOM}px;box-sizing:border-box;padding:0 ${CONTENT_X}px;display:flex;align-items:center;justify-content:space-between;background:${C.roseWash};border-top:1px solid ${C.champagne};">
+//         <div style="position:absolute;left:0;top:${(p + 1) * PAGE_H - BAR_BOTTOM_H}px;width:${PAGE_W}px;height:${BAR_BOTTOM_H}px;box-sizing:border-box;padding:0 ${CONTENT_X}px;display:flex;align-items:center;justify-content:space-between;background:${C.roseWash};border-top:1px solid ${C.champagne};">
 //           <a href="${escapeHTML(SITE_URL)}" style="font-family:${SANS};font-size:9.5px;font-weight:500;letter-spacing:.04em;color:${C.roseDeep};text-decoration:none;white-space:nowrap;">${escapeHTML(SITE_LABEL)}</a>
 //           <span style="font-family:${SANS};font-size:9px;font-weight:600;letter-spacing:.18em;color:${C.gold};white-space:nowrap;">PAGE ${p + 1} / ${totalPages}</span>
 //         </div>`);
@@ -2044,20 +2074,43 @@ export default generatePackagePDF;
 //   return String(item).trim();
 // }
 
-// /** Also handles ["Hotel, Breakfast, WiFi"] and "Hotel, Breakfast, WiFi". */
+// const BREAK_CHARS = /[\r\n\u2022\u25AA\u25CF]/; // new line, or a bullet character
+// const stripBullet = (text) => text.replace(/^[\s\-\u2013\u2014*\u00B7]+/, "").trim();
+
+
+// function splitText(text) {
+//   const value = String(text || "");
+//   const parts = BREAK_CHARS.test(value)
+//     ? value.split(/\r?\n|[\u2022\u25AA\u25CF]/)
+//     : value.split(/[,;]/);
+
+//   return parts.map(stripBullet).filter(Boolean);
+// }
+
 // function normalizeList(value) {
+//   if (Array.isArray(value)) {
+//     const items = value.map(normalizeListItem).filter(Boolean);
+
+//     // A single saved string: treat it like plain text.
+//     if (items.length === 1) return splitText(items[0]);
+
+//     return items.flatMap((item) =>
+//       BREAK_CHARS.test(item) ? splitText(item) : [stripBullet(item)]
+//     );
+//   }
+
+//   if (typeof value === "string") return splitText(value);
+//   return [];
+// }
+
+// /** Each line of a policy becomes its own point. */
+// function normalizePolicy(value) {
 //   const source = Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
 
 //   return source
-//     .flatMap((item) => normalizeListItem(item).split(","))
-//     .map((part) => part.trim())
+//     .flatMap((item) => normalizeListItem(item).split(/\r?\n+/))
+//     .map(stripBullet)
 //     .filter(Boolean);
-// }
-
-// function normalizePolicy(value) {
-//   if (Array.isArray(value)) return value.map(normalizeListItem).filter(Boolean);
-//   if (typeof value === "string" && value.trim()) return [value.trim()];
-//   return [];
 // }
 
 // function escapeHTML(value) {
@@ -2091,6 +2144,10 @@ export default generatePackagePDF;
 // }
 
 // export default generatePackagePDF;
+
+
+
+
 
 
 
