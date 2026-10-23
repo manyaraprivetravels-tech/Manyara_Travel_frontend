@@ -1,6 +1,3 @@
-
-
-
 import { memo, useEffect, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -18,15 +15,24 @@ import { getSafeArray } from "../utils/packages";
 import { cld, cldSrcSet } from "../utils/cloudinary";
 import { getTestimonials } from "../api/content";
 import { useQuery } from "../hooks/useQuery";
+import useLoadMore from "../hooks/useLoadMore";
 import ReviewSubmitForm from "../components/ReviewSubmitForm";
 import Footer from "../components/Footer";
 import FAQSection from "../components/FAQSection";
+import LoadMoreButton from "../components/LoadMoreButton";
 
 /* ==================================================================
    HELPERS
 ================================================================== */
 
 const BRAND_NAME = "Manyara Prive Vacations";
+
+/*
+ * Reviews shown first, and added on each "Load more" click.
+ * The grid has 2 columns on large screens, so an even number
+ * avoids a half-empty last row.
+ */
+const PAGE_SIZE = 8;
 
 const cleanText = (value) =>
   typeof value === "string" ? value.trim() : "";
@@ -248,11 +254,18 @@ function ReviewCardSkeleton() {
    REVIEWS GRID
 
    items-start so cards of different heights don't stretch each other.
+   Shows PAGE_SIZE reviews first, then reveals more on "Load more".
 ================================================================== */
 
 const GRID = "grid grid-cols-1 items-start gap-5 sm:gap-6 lg:grid-cols-2";
 
 function ReviewsGrid({ reviews, loading, error }) {
+  /* Hooks must run before any early return below. */
+  const { visible, remaining, loadMore } = useLoadMore(reviews, {
+    pageSize: PAGE_SIZE,
+    resetKey: String(reviews.length),
+  });
+
   if (loading) {
     return (
       <div className={GRID}>
@@ -301,11 +314,21 @@ function ReviewsGrid({ reviews, loading, error }) {
   }
 
   return (
-    <div className={GRID}>
-      {reviews.map((item, index) => (
-        <ReviewCard key={item?.id ?? item?.slug ?? index} item={item} />
-      ))}
-    </div>
+    <>
+      <div className={GRID}>
+        {visible.map((item, index) => (
+          <ReviewCard key={item?.id ?? item?.slug ?? index} item={item} />
+        ))}
+      </div>
+
+      <LoadMoreButton
+        shown={visible.length}
+        total={reviews.length}
+        remaining={remaining}
+        pageSize={PAGE_SIZE}
+        onClick={loadMore}
+      />
+    </>
   );
 }
 
@@ -465,8 +488,3 @@ export default function TestimonialsPage() {
     </>
   );
 }
-
-
-
-
-

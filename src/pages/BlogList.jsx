@@ -1,14 +1,19 @@
-
-
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Calendar, Newspaper, Play } from "lucide-react";
 import { getBlogs } from "../api/content";
+import useLoadMore from "../hooks/useLoadMore";
 import Footer from "../components/Footer";
 import Seo, { SITE_URL } from "../components/Seo";
 import FAQSection from "../components/FAQSection";
+import LoadMoreButton from "../components/LoadMoreButton";
 
-
+/*
+ * Stories shown first, and added on each "Load more" click.
+ * The grid has 3 columns on large screens, so a multiple of 3
+ * avoids a half-empty last row.
+ */
+const PAGE_SIZE = 9;
 
 /** 11-character video id from any common YouTube link, or "". */
 const getYouTubeId = (input) => {
@@ -77,6 +82,18 @@ export default function BlogList() {
       .catch(() => setPosts([]))
       .finally(() => setLoading(false));
   }, []);
+
+  /* ========================================================
+     LOAD MORE
+     Show the first PAGE_SIZE stories, then reveal more on
+     each "Load more" click. Goes back to the first batch
+     whenever the list of posts changes.
+     ======================================================== */
+
+  const { visible, remaining, loadMore } = useLoadMore(posts, {
+    pageSize: PAGE_SIZE,
+    resetKey: String(posts.length),
+  });
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -267,132 +284,144 @@ export default function BlogList() {
           )}
 
           {/* =====================================================
-              BLOG GRID
+              BLOG GRID + LOAD MORE
           ===================================================== */}
           {!loading && posts.length > 0 && (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {posts.map((post) => {
-                const coverUrl =
-                  typeof post?.cover_image === "string"
-                    ? post.cover_image
-                    : post?.cover_image?.url || "";
+            <>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {visible.map((post) => {
+                  const coverUrl =
+                    typeof post?.cover_image === "string"
+                      ? post.cover_image
+                      : post?.cover_image?.url || "";
 
-                const youTubeId = findFirstYouTubeId(post?.content);
-                const hasVideo = Boolean(youTubeId) || hasVideoToken(post?.content);
+                  const youTubeId = findFirstYouTubeId(post?.content);
+                  const hasVideo =
+                    Boolean(youTubeId) || hasVideoToken(post?.content);
 
-                // Cover image first; otherwise the video's thumbnail
-                const imageUrl =
-                  coverUrl || (youTubeId ? getYouTubeThumbnail(youTubeId) : "");
+                  // Cover image first; otherwise the video's thumbnail
+                  const imageUrl =
+                    coverUrl ||
+                    (youTubeId ? getYouTubeThumbnail(youTubeId) : "");
 
-                return (
-                  <Link
-                    to={`/blog/${post?.slug || post?.id}`}
-                    key={post?.id}
-                    className="group flex h-full flex-col overflow-hidden rounded-4xl border border-divider bg-card shadow-travel-card transition-all duration-300 ease-soft hover:-translate-y-1 hover:border-rose-200 hover:shadow-travel-hover"
-                  >
-                    {/* =================================================
-                        COVER IMAGE
-                    ================================================= */}
-                    <div className="relative aspect-[16/10] overflow-hidden bg-surface-strong">
-                      {imageUrl ? (
-                        <img
-                          src={imageUrl}
-                          loading="lazy"
-                          decoding="async"
-                          alt={post?.title || "Travel story"}
-                          className="h-full w-full object-cover transition-transform duration-700 ease-soft group-hover:scale-[1.045]"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-petal-gradient">
-                          <Newspaper
-                            className="h-9 w-9 text-primary/20"
-                            aria-hidden="true"
+                  return (
+                    <Link
+                      to={`/blog/${post?.slug || post?.id}`}
+                      key={post?.id}
+                      className="group flex h-full flex-col overflow-hidden rounded-4xl border border-divider bg-card shadow-travel-card transition-all duration-300 ease-soft hover:-translate-y-1 hover:border-rose-200 hover:shadow-travel-hover"
+                    >
+                      {/* =================================================
+                          COVER IMAGE
+                      ================================================= */}
+                      <div className="relative aspect-[16/10] overflow-hidden bg-surface-strong">
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            loading="lazy"
+                            decoding="async"
+                            alt={post?.title || "Travel story"}
+                            className="h-full w-full object-cover transition-transform duration-700 ease-soft group-hover:scale-[1.045]"
                           />
-                        </div>
-                      )}
-
-                      {/* Soft image overlay */}
-                      <div
-                        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-900/20 via-transparent to-transparent"
-                        aria-hidden="true"
-                      />
-
-                      {/* Editorial badge */}
-                      <div className="absolute left-4 top-4">
-                        <span className="inline-flex items-center rounded-full border border-white/70 bg-white/90 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-text-dark shadow-travel-card backdrop-blur-sm">
-                          Travel story
-                        </span>
-                      </div>
-
-                      {/* Video badge */}
-                      {hasVideo && (
-                        <div className="absolute bottom-4 left-4">
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-ink/70 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-white backdrop-blur-sm">
-                            <Play
-                              className="h-3 w-3 fill-current"
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-petal-gradient">
+                            <Newspaper
+                              className="h-9 w-9 text-primary/20"
                               aria-hidden="true"
                             />
-                            Video
+                          </div>
+                        )}
+
+                        {/* Soft image overlay */}
+                        <div
+                          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-900/20 via-transparent to-transparent"
+                          aria-hidden="true"
+                        />
+
+                        {/* Editorial badge */}
+                        <div className="absolute left-4 top-4">
+                          <span className="inline-flex items-center rounded-full border border-white/70 bg-white/90 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-text-dark shadow-travel-card backdrop-blur-sm">
+                            Travel story
                           </span>
                         </div>
-                      )}
-                    </div>
 
-                    {/* =================================================
-                        CONTENT
-                    ================================================= */}
-                    <div className="flex flex-1 flex-col p-5 sm:p-6">
-                      {/* Date */}
-                      {post?.published_at && (
-                        <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-muted">
-                          <Calendar
-                            className="h-3.5 w-3.5 text-primary"
-                            aria-hidden="true"
-                          />
-
-                          {new Date(post.published_at).toLocaleDateString(
-                            "en-IN",
-                            {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            }
-                          )}
-                        </p>
-                      )}
-
-                      {/* Title */}
-                      <h2 className="mt-3 line-clamp-2 font-display text-xl font-semibold leading-snug text-text-dark transition-colors duration-300 group-hover:text-link sm:text-[22px]">
-                        {post?.title}
-                      </h2>
-
-                      {/* Excerpt */}
-                      {post?.excerpt && (
-                        <p className="mt-3 line-clamp-3 flex-1 text-sm leading-6 text-text-secondary">
-                          {post.excerpt}
-                        </p>
-                      )}
-
-                      {/* Footer */}
-                      <div className="mt-5 flex items-center justify-between border-t border-divider pt-4">
-                        <span className="text-xs font-medium text-muted">
-                          Manyara Prive Vacations
-                        </span>
-
-                        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-link transition-all duration-300 group-hover:gap-2">
-                          Read story
-
-                          <ArrowRight
-                            className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
-                            aria-hidden="true"
-                          />
-                        </span>
+                        {/* Video badge */}
+                        {hasVideo && (
+                          <div className="absolute bottom-4 left-4">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-ink/70 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-white backdrop-blur-sm">
+                              <Play
+                                className="h-3 w-3 fill-current"
+                                aria-hidden="true"
+                              />
+                              Video
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+
+                      {/* =================================================
+                          CONTENT
+                      ================================================= */}
+                      <div className="flex flex-1 flex-col p-5 sm:p-6">
+                        {/* Date */}
+                        {post?.published_at && (
+                          <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-muted">
+                            <Calendar
+                              className="h-3.5 w-3.5 text-primary"
+                              aria-hidden="true"
+                            />
+
+                            {new Date(post.published_at).toLocaleDateString(
+                              "en-IN",
+                              {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              }
+                            )}
+                          </p>
+                        )}
+
+                        {/* Title */}
+                        <h2 className="mt-3 line-clamp-2 font-display text-xl font-semibold leading-snug text-text-dark transition-colors duration-300 group-hover:text-link sm:text-[22px]">
+                          {post?.title}
+                        </h2>
+
+                        {/* Excerpt */}
+                        {post?.excerpt && (
+                          <p className="mt-3 line-clamp-3 flex-1 text-sm leading-6 text-text-secondary">
+                            {post.excerpt}
+                          </p>
+                        )}
+
+                        {/* Footer */}
+                        <div className="mt-5 flex items-center justify-between border-t border-divider pt-4">
+                          <span className="text-xs font-medium text-muted">
+                            Manyara Prive Vacations
+                          </span>
+
+                          <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-link transition-all duration-300 group-hover:gap-2">
+                            Read story
+
+                            <ArrowRight
+                              className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+                              aria-hidden="true"
+                            />
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              <LoadMoreButton
+                shown={visible.length}
+                total={posts.length}
+                remaining={remaining}
+                pageSize={PAGE_SIZE}
+                onClick={loadMore}
+              />
+            </>
           )}
         </div>
       </section>
@@ -411,15 +440,3 @@ export default function BlogList() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
