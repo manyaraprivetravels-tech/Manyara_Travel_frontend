@@ -1,4 +1,5 @@
 
+
 import { getSiteSettings } from "../api/content"; // same API the Footer / Contact page use
 
 
@@ -307,7 +308,22 @@ export const generatePackagePDF = async (pkg, siteSettings = null) => {
   }
 
   // Loaded only when the user clicks "Download": keeps the main bundle small.
-  const { default: html2pdf } = await import("html2pdf.js");
+  // If the site was redeployed while this tab was open, the old chunk file no longer
+  // exists on the server: retry once, then ask for a refresh instead of a vague failure.
+  let html2pdf;
+  try {
+    ({ default: html2pdf } = await import("html2pdf.js"));
+  } catch (importError) {
+    console.warn("html2pdf chunk failed to load, retrying once:", importError);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      ({ default: html2pdf } = await import("html2pdf.js"));
+    } catch (retryError) {
+      throw new Error(
+        "The site was updated while this page was open. Please refresh the page (Ctrl+Shift+R) and try again."
+      );
+    }
+  }
   const { scale: SCALE, pageH: PAGE_H } = getGeometry();
 
   /* ---- Normalize data ---- */
@@ -1056,7 +1072,6 @@ function slugify(value) {
 }
 
 export default generatePackagePDF;
-
 
 
 
