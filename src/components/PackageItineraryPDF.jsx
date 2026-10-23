@@ -1,5 +1,4 @@
 
-
 import { getSiteSettings } from "../api/content"; // same API the Footer / Contact page use
 
 
@@ -72,7 +71,7 @@ function getGeometry() {
 
 /* ---------------------------------------------------------------------
    3. DESIGN  -  "Light Editorial"
-   Full-width cover photo + logo + contact chip, floating title card,
+   Full-width cover photo + logo, floating title card, contact strip,
    timeline itinerary (photo on the right), closing note with contact
    details, compact footer with contact details.
 --------------------------------------------------------------------- */
@@ -129,9 +128,8 @@ const DESIGN = {
       <div data-atom style="position:relative;width:${PAGE_W}px;">
         <div style="position:relative;width:${PAGE_W}px;height:${heroH}px;overflow:hidden;background:linear-gradient(135deg,${C.roseSoft},${C.champagneSoft});">
           ${heroPhoto}
-          <div style="position:absolute;left:${CONTENT_X}px;right:${CONTENT_X}px;top:26px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
+          <div style="position:absolute;left:${CONTENT_X}px;top:26px;">
             ${logoChip(ctx, 36, { pad: "8px 16px" })}
-            ${contactChip(ctx)}
           </div>
         </div>
 
@@ -141,6 +139,8 @@ const DESIGN = {
           <div style="width:56px;height:3px;border-radius:3px;background:${C.rose};margin-top:14px;"></div>
           ${statsHTML}
         </div>
+
+        ${contactStrip(ctx)}
       </div>`;
 
     /* ---------- ABOUT ---------- */
@@ -192,40 +192,38 @@ const DESIGN = {
          </div>`
       : "";
 
-    /* ---------- FACILITIES (open grid, diamond markers) ---------- */
+    /* ---------- FACILITIES ---------- */
     const facilitiesHTML = facilities.length
-      ? `<div data-stretch style="margin-top:36px;">
+      ? `<div data-stretch style="margin-top:34px;">
            <div data-atom>
              ${heading("Comforts", "Facilities", false)}
-             ${itemGrid(facilities, DIAMOND, columnsFor(facilities.length, 3))}
+             <div style="background:${C.white};border:1px solid ${C.champagne};border-radius:14px;padding:18px 18px 9px;">
+               ${itemGrid(facilities, DIAMOND, columnsFor(facilities.length, 3))}
+             </div>
            </div>
          </div>`
       : "";
 
-    /* ---------- INCLUSIONS / EXCLUSIONS (two columns, thin divider) ---------- */
-    const column = (title2, body, titleColor, side) => `
-      <div style="flex:1;min-width:0;${side === "left" ? "padding-right:26px;" : "padding-left:26px;"}">
-        <div style="font-family:${SERIF};${LINING}font-size:23px;font-weight:600;color:${titleColor};margin-bottom:10px;line-height:1.2;">${escapeHTML(title2)}</div>
-        ${body}
-      </div>`;
-
-    const cols = [];
-    if (inclusions.length) cols.push(column("Inclusions", itemGrid(inclusions, TICK, 1), C.roseDeep, cols.length ? "right" : "left"));
-    if (exclusions.length) cols.push(column("Exclusions", itemGrid(exclusions, CROSS, 1), C.ink, cols.length ? "right" : "left"));
-
-    const coverageHTML = cols.length
-      ? `<div data-stretch style="margin-top:36px;">
-           ${heading("The Details", "What\u2019s Included")}
-           <div data-atom style="display:flex;align-items:stretch;">
-             ${cols.join(`<div style="width:1px;background:${C.line};"></div>`)}
-           </div>
-         </div>`
+    /* ---------- INCLUSIONS / EXCLUSIONS ---------- */
+    const incPanel = inclusions.length
+      ? panel("Inclusions", itemGrid(inclusions, TICK, 1), C.roseSoft, C.roseLine, C.roseDeep)
       : "";
+    const excPanel = exclusions.length
+      ? panel("Exclusions", itemGrid(exclusions, CROSS, 1), C.white, C.line, C.ink)
+      : "";
+
+    const coverageHTML =
+      incPanel || excPanel
+        ? `<div data-stretch style="margin-top:34px;">
+             ${heading("The Details", "What\u2019s Included")}
+             <div data-atom style="display:flex;gap:14px;align-items:stretch;">${incPanel}${excPanel}</div>
+           </div>`
+        : "";
 
     /* ---------- POLICIES ---------- */
     const policyHTML = (label, text, items) =>
       items.length
-        ? `<div data-stretch style="margin-top:36px;">
+        ? `<div data-stretch style="margin-top:34px;">
              ${heading(label, text)}
              ${items.map(policyPoint).join("")}
            </div>`
@@ -319,11 +317,19 @@ export const generatePackagePDF = async (pkg, siteSettings = null) => {
     (a, b) => Number(a?.day ?? 0) - Number(b?.day ?? 0)
   );
 
-  const facilities = normalizeList(pkg.facilities);
-  const inclusions = normalizeList(pkg.inclusions);
-  const exclusions = normalizeList(pkg.exclusions);
-  const terms = normalizePolicy(pkg.terms_and_conditions);
-  const cancellation = normalizePolicy(pkg.cancellation_policy);
+  const pick = (...keys) => {
+    for (const k of keys) {
+      const v = pkg[k];
+      if (Array.isArray(v) ? v.length : has(v)) return v;
+    }
+    return null;
+  };
+
+  const facilities = normalizeList(pick("facilities", "amenities"));
+  const inclusions = normalizeList(pick("inclusions", "inclusion", "included"));
+  const exclusions = normalizeList(pick("exclusions", "exclusion", "excluded"));
+  const terms = normalizePolicy(pick("terms_and_conditions", "terms", "terms_conditions"));
+  const cancellation = normalizePolicy(pick("cancellation_policy", "cancellation"));
 
   const images = Array.isArray(pkg.images) ? pkg.images : [];
   const rawCover = images.length ? getImageUrl(images[0]) : null;
@@ -412,39 +418,64 @@ export const generatePackagePDF = async (pkg, siteSettings = null) => {
 
     const fileName = `${slugify(title)}-itinerary.pdf`;
 
-    await html2pdf()
-      .set({
-        margin: 0,
-        filename: fileName,
-        image: { type: "jpeg", quality: 0.98 },
-        enableLinks: true, // <a href> become clickable PDF links
-        html2canvas: {
-          scale: SCALE,
-          useCORS: true, // needed for Cloudinary images
-          allowTaint: false,
-          logging: false,
-          backgroundColor: C.cream,
-          imageTimeout: 15000,
-          scrollX: 0,
-          scrollY: 0,
-          windowWidth: PAGE_W,
-          windowHeight: Math.max(pdfContent.scrollHeight, 1123),
-        },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true },
-        pagebreak: { mode: ["css"] },
-      })
-      .from(pdfContent)
-      .toPdf()
-      .get("pdf")
-      .then((pdf) => {
-        // Rounding can leave a stray blank page at the end: drop it.
-        let count = pdf.internal.getNumberOfPages();
-        while (count > totalPages && count > 1) {
-          pdf.deletePage(count);
-          count -= 1;
-        }
-      })
-      .save();
+    const buildOptions = (links, scale) => ({
+      margin: 0,
+      filename: fileName,
+      image: { type: "jpeg", quality: 0.98 },
+      enableLinks: links, // <a href> become clickable PDF links
+      html2canvas: {
+        scale,
+        useCORS: true, // needed for Cloudinary images
+        allowTaint: false,
+        logging: false,
+        backgroundColor: C.cream,
+        imageTimeout: 15000,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: PAGE_W,
+        windowHeight: Math.max(pdfContent.scrollHeight, 1123),
+      },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true },
+      pagebreak: { mode: ["css"] },
+    });
+
+    const exportPdf = (options) =>
+      html2pdf()
+        .set(options)
+        .from(pdfContent)
+        .toPdf()
+        .get("pdf")
+        .then((pdf) => {
+          // Rounding can leave a stray blank page at the end: drop it.
+          let count = pdf.internal.getNumberOfPages();
+          while (count > totalPages && count > 1) {
+            pdf.deletePage(count);
+            count -= 1;
+          }
+        })
+        .save();
+
+    // 1) clickable links  2) same look without link annotations  3) lighter render.
+    // The first attempt that works wins, so one odd link or a memory limit never blocks the download.
+    const attempts = [
+      { links: true, scale: SCALE },
+      { links: false, scale: SCALE },
+      { links: false, scale: Math.min(SCALE, 1) },
+    ];
+
+    let lastError = null;
+    for (const attempt of attempts) {
+      try {
+        await exportPdf(buildOptions(attempt.links, attempt.scale));
+        lastError = null;
+        break;
+      } catch (error) {
+        lastError = error;
+        console.warn(`PDF attempt failed (links: ${attempt.links}, scale: ${attempt.scale}):`, error);
+        document.querySelectorAll(".html2pdf__overlay").forEach((el) => el.remove());
+      }
+    }
+    if (lastError) throw lastError;
 
     return fileName;
   } catch (error) {
@@ -491,6 +522,14 @@ const itemGrid = (items, marker, columns) => `
       .join("")}
   </div>`;
 
+const panel = (title, body, bg, border, titleColor) => `
+  <div style="flex:1;min-width:0;background:${bg};border:1px solid ${border};border-radius:14px;padding:18px 18px 9px;box-sizing:border-box;">
+    <div style="font-family:${SERIF};font-size:22px;font-weight:600;color:${titleColor};margin-bottom:10px;line-height:1.2;">
+      ${escapeHTML(title)}
+    </div>
+    ${body}
+  </div>`;
+
 /* Logo on the same light chip the site footer uses; text wordmark as fallback. */
 const logoChip = (ctx, height, { pad = "8px 16px", radius = 12, shadow = "0 6px 18px rgba(0,0,0,.18)" } = {}) => {
   const box = `display:inline-block;background:${C.logoBg};border-radius:${radius}px;padding:${pad};${shadow ? `box-shadow:${shadow};` : ""}`;
@@ -512,26 +551,29 @@ const logoChip = (ctx, height, { pad = "8px 16px", radius = 12, shadow = "0 6px 
 };
 
 /**
- * Contact chip for the top-right of the cover photo (same light chip style
- * as the logo). One clickable row per detail: email, phone, WhatsApp, website.
+ * Contact strip shown right under the cover title card (before the package info).
+ * Equal-height cells separated by thin dividers; every detail is a clickable link.
  */
-const contactChip = (ctx) => {
+const contactStrip = (ctx) => {
   const cells = ctx.co.cells;
   if (!cells.length) return "";
 
-  const rows = cells
+  const items = cells
     .map(
       (cell, i) => `
-        <a href="${escapeHTML(cell.href)}" style="display:flex;align-items:baseline;gap:10px;text-decoration:none;${i ? "margin-top:6px;" : ""}">
-          <span style="flex:none;width:58px;font-family:${SANS};font-size:7.5px;font-weight:600;letter-spacing:.18em;color:${C.gold};">${escapeHTML(cell.label)}</span>
-          <span style="font-family:${SANS};font-size:10.5px;font-weight:500;line-height:1.3;color:${C.roseDeep};white-space:nowrap;">${escapeHTML(cell.value)}</span>
+        <a href="${escapeHTML(cell.href)}" style="display:block;flex:1 1 auto;box-sizing:border-box;padding:0 16px;text-align:center;text-decoration:none;${i ? `border-left:1px solid ${C.roseLine};` : ""}">
+          <div style="font-family:${SANS};font-size:8px;font-weight:600;letter-spacing:.24em;color:${C.gold};">${escapeHTML(cell.label)}</div>
+          <div style="font-family:${SANS};font-size:11.5px;font-weight:500;line-height:1.35;color:${C.roseDeep};margin-top:4px;white-space:nowrap;">${escapeHTML(cell.value)}</div>
         </a>`
     )
     .join("");
 
   return `
-    <div style="flex:none;box-sizing:border-box;background:rgba(255,255,255,.95);border-radius:12px;padding:10px 16px;box-shadow:0 6px 18px rgba(0,0,0,.18);">
-      ${rows}
+    <div style="margin:16px ${CONTENT_X}px 0;box-sizing:border-box;padding:14px 14px 15px;background:${C.roseSoft};border:1px solid ${C.roseLine};border-radius:14px;">
+      <div style="font-family:${SANS};font-size:9px;font-weight:600;letter-spacing:.3em;text-align:center;color:${C.roseDeep};margin-bottom:11px;">PLAN THIS JOURNEY WITH US</div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+        ${items}
+      </div>
     </div>`;
 };
 
@@ -1014,11 +1056,6 @@ function slugify(value) {
 }
 
 export default generatePackagePDF;
-
-
-
-
-
 
 
 
@@ -2019,6 +2056,1081 @@ export default generatePackagePDF;
 // }
 
 // export default generatePackagePDF;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// // import { getSiteSettings } from "../api/content"; 
+
+// // const BRAND = "Manyara Privé Vacations";
+// // const TAGLINE = "Curated journeys. Effortless luxury.";
+// // const SITE_URL = "https://manyaraprivevacations.com";
+// // const SITE_LABEL = "manyaraprivevacations.com";
+// // const LOGO_PATH = "/images/Manyara_3.webp"; 
+// // const DEFAULT_ADDRESS = "India";
+// // const DEFAULT_COUNTRY_CODE = "91"; // used when a phone number is saved without a country code
+
+// // // Palette mirrors tailwind.config.js + the site's theme-color (#FFF8F5)
+// // const C = {
+// //   ink: "#2F2A33",
+// //   body: "#4A4A52",
+// //   muted: "#7A747E",
+// //   rose: "#C8135E",
+// //   roseDeep: "#AB1050",
+// //   roseBright: "#E8286F",
+// //   roseSoft: "#FEF4F8",
+// //   roseWash: "#FFF9FB",
+// //   roseLine: "#FCD6E4",
+// //   champagne: "#E8D2B4",
+// //   champagneSoft: "#F7EBDB",
+// //   gold: "#B08D57",
+// //   line: "#EAE5E8",
+// //   surface: "#FBF6F8",
+// //   cream: "#FFF8F5",
+// //   logoBg: "#EEF1F5", // same chip colour the site footer puts behind the logo
+// // };
+
+
+// // //const itinerary=(Array.isArray(pkg.itinerary)? [...pkg.itinerary]: []).sort((a,b)=>Number(a?.day??0)- Number(b?.day?? 0));
+
+
+// // const SERIF = `'Cormorant Garamond','Playfair Display',Georgia,serif`;
+// // const SANS = `Inter,system-ui,Arial,sans-serif`;
+
+// // const FONT_URL =
+// //   "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600&display=swap";
+
+// // // ---- Page geometry (CSS px at 794px = A4 width) ----------------------
+// // const PAGE_W = 794;
+// // const CONTENT_X = 48;
+// // const CONTENT_W = PAGE_W - CONTENT_X * 2; // 698
+
+// // const BAR_TOP_H = 44; // running header (pages 2+)
+// // const BAR_BOTTOM_H = 36; // running footer (pages 2+)
+// // const TOP_SPACE = 68; // content starts this far below the top of pages 2+
+// // const BOTTOM_SPACE = 58; // content ends this far above the bottom of a page
+// // const MAX_STRETCH = 28; // max extra space added between blocks to fill a page
+
+// // function getGeometry() {
+// //   const isMobile =
+// //     typeof navigator !== "undefined" &&
+// //     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+// //   const scale = isMobile ? 1.2 : 1.5;
+// //   const pageH = Math.floor((PAGE_W * scale * 297) / 210) / scale;
+// //   return { scale, pageH };
+// // }
+
+
+// // const DESIGN = {
+// //   build(ctx) {
+// //     const { pkg, title, eyebrow, has, itinerary, facilities, inclusions, exclusions, terms, cancellation, durationText, co } = ctx;
+
+// //     const heading = (label, text, atom = true) => `
+// //       <div ${atom ? "data-atom data-keep" : ""} style="margin:0 0 16px;">
+// //         <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:.3em;text-transform:uppercase;color:${C.gold};margin-bottom:4px;">${escapeHTML(label)}</div>
+// //         <div style="font-family:${SERIF};font-size:32px;font-weight:600;color:${C.roseDeep};line-height:1.2;">${escapeHTML(text)}</div>
+// //         <div style="height:1px;margin-top:10px;background:linear-gradient(to right,${C.champagne},rgba(232,210,180,0));"></div>
+// //       </div>`;
+
+// //     // ---- Cover: text left, arch photo right --------------------------
+// //     const ARCH_W = 330;
+// //     const ARCH_H = 540;
+// //     const ARCH_R = `${ARCH_W / 2}px ${ARCH_W / 2}px 26px 26px`;
+// //     const photo = photoBox(ctx.coverImage, ctx.coverSize, ARCH_W, ARCH_H, `border-radius:${ARCH_R};`);
+// //     const titleSize = title.length <= 12 ? 62 : title.length <= 22 ? 48 : 38;
+
+// //     const statBlock = (label, value, color, sub) => `
+// //       <div style="padding:12px 0;border-top:1px solid ${C.champagne};">
+// //         <div style="font-family:${SANS};font-size:9px;font-weight:600;letter-spacing:.26em;color:${C.gold};">${escapeHTML(label)}</div>
+// //         <div style="font-family:${SANS};font-size:24px;font-weight:600;color:${color};margin-top:5px;line-height:1.2;">${escapeHTML(value)}${
+// //           sub ? ` <span style="font-size:11px;font-weight:400;color:${C.muted};">${escapeHTML(sub)}</span>` : ""
+// //         }</div>
+// //       </div>`;
+
+// //     const stats = [];
+// //     if (durationText) stats.push(statBlock("DURATION", durationText, C.ink, ""));
+// //     if (has(pkg.price)) stats.push(statBlock("STARTING FROM", `\u20B9${formatPrice(pkg.price)}`, C.rose, "per person"));
+
+// //     const coverHTML = `
+// //       <div data-atom style="position:relative;width:${PAGE_W}px;height:660px;overflow:hidden;box-sizing:border-box;padding:46px ${CONTENT_X}px 0;background:${C.cream};">
+// //         <div style="position:absolute;right:-110px;top:-110px;width:440px;height:440px;border-radius:50%;background:${C.roseSoft};"></div>
+// //         <div style="position:absolute;left:-130px;bottom:-150px;width:380px;height:380px;border-radius:50%;background:${C.champagneSoft};opacity:.7;"></div>
+// //         <div style="position:relative;display:flex;gap:38px;align-items:stretch;height:${ARCH_H}px;">
+// //           <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between;">
+// //             <div>${logoChip(ctx, 32, { pad: "7px 14px", shadow: "0 4px 14px rgba(0,0,0,.10)" })}</div>
+// //             <div>
+// //               <div style="font-family:${SANS};font-size:11px;font-weight:600;letter-spacing:.32em;text-transform:uppercase;color:${C.gold};margin-bottom:12px;">${escapeHTML(eyebrow)}</div>
+// //               <div style="font-family:${SERIF};font-size:${titleSize}px;font-weight:600;line-height:1.08;color:${C.roseDeep};">${escapeHTML(title)}</div>
+// //               <div style="width:56px;height:3px;border-radius:3px;background:${C.rose};margin-top:18px;"></div>
+// //             </div>
+// //             <div>${stats.join("")}</div>
+// //           </div>
+// //           <div style="position:relative;flex:none;width:${ARCH_W}px;height:${ARCH_H}px;">
+// //             <div style="position:absolute;left:14px;top:14px;width:${ARCH_W}px;height:${ARCH_H}px;box-sizing:border-box;border:1.5px solid ${C.champagne};border-radius:${ARCH_R};"></div>
+// //             <div style="position:absolute;left:0;top:0;width:${ARCH_W}px;height:${ARCH_H}px;border-radius:${ARCH_R};overflow:hidden;background:linear-gradient(160deg,${C.roseSoft},${C.champagneSoft});">
+// //               ${photo}
+// //             </div>
+// //           </div>
+// //         </div>
+// //       </div>`;
+
+// //     const aboutHTML = pkg.description
+// //       ? `<div data-stretch style="margin-top:34px;">
+// //            ${heading("The Experience", "About This Journey")}
+// //            ${paragraph(pkg.description, 13, C.body, 1.8)}
+// //          </div>`
+// //       : "";
+
+// //     // ---- Itinerary: open rows with big gold numerals -----------------
+// //     const dayRow = (day, index) => {
+// //       const n = has(day?.day) ? day.day : index + 1;
+// //       const label = String(n).padStart(2, "0");
+// //       const last = index === itinerary.length - 1;
+// //       const description = day?.description ? String(day.description).trim() : "";
+
+// //       return `
+// //         <div data-atom data-padstretch style="display:flex;gap:20px;padding:20px 0 ${last ? 20 : 20}px;border-top:1px solid ${C.line};${last ? `border-bottom:1px solid ${C.line};` : ""}">
+// //           <div style="flex:none;width:68px;">
+// //             <div style="font-family:${SANS};font-size:8px;font-weight:600;letter-spacing:.26em;color:${C.gold};">DAY</div>
+// //             <div style="font-family:${SANS};font-size:34px;font-weight:600;line-height:1.05;color:#D9BF98;margin-top:2px;">${escapeHTML(label)}</div>
+// //           </div>
+// //           <div style="flex:1;min-width:0;">
+// //             <div style="font-family:${SERIF};font-size:23px;font-weight:600;color:${C.ink};line-height:1.25;">${escapeHTML(day?.title || `Day ${n}`)}</div>
+// //             ${
+// //               description
+// //                 ? `<div style="font-family:${SANS};font-size:12.5px;line-height:1.7;color:${C.body};margin-top:7px;white-space:pre-line;">${escapeHTML(description)}</div>`
+// //                 : ""
+// //             }
+// //             ${dayImage(ctx, index, CONTENT_W - 92, 250, { radius: 10, top: 14 })}
+// //           </div>
+// //         </div>`;
+// //     };
+
+// //     const itineraryHTML = itinerary.length
+// //       ? `<div data-stretch style="margin-top:38px;">
+// //            ${heading("Your Journey", "Day-by-Day Itinerary")}
+// //            ${itinerary.map(dayRow).join("")}
+// //          </div>`
+// //       : "";
+
+// //     // ---- Facilities / coverage / policies ---------------------------
+// //     const facilitiesHTML = facilities.length
+// //       ? `<div data-stretch style="margin-top:36px;">
+// //            <div data-atom>
+// //              ${heading("Comforts", "Facilities", false)}
+// //              ${itemGrid(facilities, DIAMOND, columnsFor(facilities.length, 3))}
+// //            </div>
+// //          </div>`
+// //       : "";
+
+// //     const column = (title2, body, titleColor, side) => `
+// //       <div style="flex:1;min-width:0;${side === "left" ? "padding-right:26px;" : "padding-left:26px;"}">
+// //         <div style="font-family:${SERIF};font-size:23px;font-weight:600;color:${titleColor};margin-bottom:10px;line-height:1.2;">${escapeHTML(title2)}</div>
+// //         ${body}
+// //       </div>`;
+
+// //     const cols = [];
+// //     if (inclusions.length) cols.push(column("Inclusions", itemGrid(inclusions, TICK, 1), C.roseDeep, cols.length ? "right" : "left"));
+// //     if (exclusions.length) cols.push(column("Exclusions", itemGrid(exclusions, CROSS, 1), C.ink, cols.length ? "right" : "left"));
+
+// //     const coverageHTML = cols.length
+// //       ? `<div data-stretch style="margin-top:36px;">
+// //            ${heading("The Details", "What\u2019s Included")}
+// //            <div data-atom style="display:flex;align-items:stretch;">
+// //              ${cols.join(`<div style="width:1px;background:${C.line};"></div>`)}
+// //            </div>
+// //          </div>`
+// //       : "";
+
+// //     const policyHTML = (label, text, items) =>
+// //       items.length
+// //         ? `<div data-stretch style="margin-top:36px;">
+// //              ${heading(label, text)}
+// //              ${items.map(policyPoint).join("")}
+// //            </div>`
+// //         : "";
+
+// //     // ---- The ONE contact block -------------------------------------
+// //     const pill = whatsappPill(co);
+// //     const addr = addressBlock(co, C.body, C.roseDeep);
+// //     const contactRows = co.cells
+// //       .map(
+// //         (cell, i) => `
+// //           <a href="${escapeHTML(cell.href)}" style="display:flex;align-items:baseline;gap:14px;padding:12px 0;text-decoration:none;${i ? `border-top:1px solid ${C.line};` : ""}">
+// //             <span style="flex:none;width:96px;font-family:${SANS};font-size:8.5px;font-weight:600;letter-spacing:.22em;color:${C.gold};">${escapeHTML(cell.label)}</span>
+// //             <span style="min-width:0;font-family:${SANS};font-size:12.5px;font-weight:500;color:${C.roseDeep};word-break:break-word;">${escapeHTML(cell.text)}</span>
+// //           </a>`
+// //       )
+// //       .join("");
+
+// //     const closingHTML = co.cells.length
+// //       ? `<div data-stretch style="margin-top:38px;">
+// //            <div data-atom style="display:flex;background:#fff;border:1px solid ${C.champagne};border-radius:18px;overflow:hidden;">
+// //              <div style="flex:none;width:262px;box-sizing:border-box;padding:26px 24px;background:linear-gradient(160deg,${C.roseSoft},${C.champagneSoft});">
+// //                <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:.3em;color:${C.gold};">READY TO BOOK?</div>
+// //                <div style="font-family:${SERIF};font-size:28px;font-weight:600;color:${C.roseDeep};line-height:1.15;margin:6px 0 8px;">Plan This Journey With Us</div>
+// //                <div style="font-family:${SANS};font-size:11.5px;line-height:1.6;color:${C.body};">Our travel specialists will tailor dates, stays and experiences to you.</div>
+// //                ${pill ? `<div style="margin-top:16px;">${pill}</div>` : ""}
+// //              </div>
+// //              <div style="flex:1;min-width:0;box-sizing:border-box;padding:12px 24px;">
+// //                ${contactRows}
+// //                ${addr ? `<div style="border-top:1px solid ${C.line};padding:12px 0 6px;">${addr}</div>` : ""}
+// //              </div>
+// //            </div>
+// //          </div>`
+// //       : "";
+
+// //     return `
+// //       ${coverHTML}
+// //       <div style="padding:0 ${CONTENT_X}px;">
+// //         ${aboutHTML}
+// //         ${itineraryHTML}
+// //         ${facilitiesHTML}
+// //         ${coverageHTML}
+// //         ${policyHTML("Please Note", "Terms & Conditions", terms)}
+// //         ${policyHTML("Good to Know", "Cancellation Policy", cancellation)}
+// //         ${closingHTML}
+// //       </div>`;
+// //   },
+
+// //   bars(root, { PAGE_H, totalPages, ctx }) {
+// //     const pad2 = (n) => String(n).padStart(2, "0");
+// //     const out = [];
+// //     for (let p = 1; p < totalPages; p++) {
+// //       out.push(`
+// //         <div style="position:absolute;left:0;top:${p * PAGE_H}px;width:${PAGE_W}px;height:${BAR_TOP_H}px;box-sizing:border-box;padding:0 ${CONTENT_X}px;display:flex;align-items:center;justify-content:space-between;background:${C.cream};border-bottom:1px solid ${C.champagne};">
+// //           ${logoChip(ctx, 18, { pad: "4px 10px", radius: 8, shadow: "" })}
+// //           <span style="font-family:${SANS};font-size:9px;font-weight:600;letter-spacing:.22em;color:${C.gold};text-transform:uppercase;white-space:nowrap;max-width:420px;overflow:hidden;text-overflow:ellipsis;">${escapeHTML(ctx.title)}${ctx.durationText ? ` &nbsp;&middot;&nbsp; ${escapeHTML(ctx.durationText)}` : ""}</span>
+// //         </div>
+// //         <div style="position:absolute;left:0;top:${(p + 1) * PAGE_H - BAR_BOTTOM_H}px;width:${PAGE_W}px;height:${BAR_BOTTOM_H}px;box-sizing:border-box;padding:0 ${CONTENT_X}px;display:flex;align-items:center;justify-content:space-between;background:${C.cream};border-top:1px solid ${C.champagne};">
+// //           <span style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:.2em;color:${C.rose};white-space:nowrap;">${pad2(p + 1)} <span style="color:${C.champagne};">/</span> ${pad2(totalPages)}</span>
+// //           <span style="font-family:${SERIF};font-size:13px;font-style:italic;font-weight:500;color:${C.muted};">${escapeHTML(BRAND)}</span>
+// //         </div>`);
+// //     }
+// //     root.insertAdjacentHTML("beforeend", out.join(""));
+// //   },
+// // };
+
+// // /* =====================================================================
+// //    SHARED ENGINE  (identical in every version - design lives above)
+// //    ===================================================================== */
+
+// // /**
+// //  * @param pkg           package object
+// //  * @param siteSettings  optional - pass the object you already have from
+// //  *                      getSiteSettings(); if omitted it is fetched here.
+// //  */
+// // export const generatePackagePDF = async (pkg, siteSettings = null) => {
+// //   if (!pkg) {
+// //     throw new Error("Package information is required to generate the PDF.");
+// //   }
+
+// //   const { default: html2pdf } = await import("html2pdf.js");
+// //   const { scale: SCALE, pageH: PAGE_H } = getGeometry();
+
+// //   // ---- Normalize data ------------------------------------------------
+// //   const has = (v) => v !== null && v !== undefined && v !== "";
+
+// //   const itinerary = (Array.isArray(pkg.itinerary) ? [...pkg.itinerary] : []).sort(
+// //     (a, b) => Number(a?.day ?? 0) - Number(b?.day ?? 0)
+// //   );
+
+// //   const facilities = normalizeList(pkg.facilities);
+// //   const inclusions = normalizeList(pkg.inclusions);
+// //   const exclusions = normalizeList(pkg.exclusions);
+// //   const terms = normalizePolicy(pkg.terms_and_conditions);
+// //   const cancellation = normalizePolicy(pkg.cancellation_policy);
+
+// //   const images = Array.isArray(pkg.images) ? pkg.images : [];
+// //   const rawCover = images.length ? getImageUrl(images[0]) : null;
+
+// //   const title = pkg.title || "Travel Package";
+// //   const destination = has(pkg.destination) ? String(pkg.destination).trim() : "";
+// //   // "Dubai" above a title that is also "Dubai" looks like a typo: use a neutral eyebrow instead.
+// //   const eyebrow =
+// //     destination && destination.toLowerCase() !== String(title).trim().toLowerCase()
+// //       ? destination
+// //       : "Curated Journey";
+
+// //   const durationText = has(pkg.duration_days)
+// //     ? `${pkg.duration_days} Days${has(pkg.duration_nights) ? ` / ${pkg.duration_nights} Nights` : ""}`
+// //     : "";
+
+// //   // ---- Company details: dynamic, same source as Footer.jsx ----------
+// //   const settings = siteSettings || (await fetchSettings());
+// //   const co = buildCompany(settings);
+
+// //   // ---- Fonts + images MUST be ready before building / measuring -----
+// //   await ensureFonts();
+
+// //   const logoUrl = typeof window !== "undefined" ? `${window.location.origin}${LOGO_PATH}` : null;
+// //   const coverUrl = optimizeUrl(rawCover, 1800);
+// //   const dayUrls = itinerary.map((d) => optimizeUrl(getImageUrl(d?.image), 900));
+// //   const sizes = await preloadImages([logoUrl, coverUrl, ...dayUrls]);
+
+// //   const coverImage = coverUrl && sizes.has(coverUrl) ? coverUrl : null;
+// //   const ctx = {
+// //     pkg,
+// //     title,
+// //     eyebrow,
+// //     has,
+// //     itinerary,
+// //     facilities,
+// //     inclusions,
+// //     exclusions,
+// //     terms,
+// //     cancellation,
+// //     durationText,
+// //     co,
+// //     logoUrl,
+// //     logoSize: logoUrl && sizes.has(logoUrl) ? sizes.get(logoUrl) : null,
+// //     coverImage,
+// //     coverSize: coverImage ? sizes.get(coverImage) : null,
+// //     dayUrls,
+// //     sizes,
+// //   };
+
+// //   // ---- Off-screen container -----------------------------------------
+// //   const container = document.createElement("div");
+// //   Object.assign(container.style, {
+// //     position: "absolute",
+// //     left: "-10000px",
+// //     top: "0",
+// //     width: `${PAGE_W}px`,
+// //     backgroundColor: C.cream,
+// //     zIndex: "999999",
+// //     pointerEvents: "none",
+// //     overflow: "visible",
+// //   });
+
+// //   container.innerHTML = `
+// //     <div style="position:relative;width:${PAGE_W}px;background:${C.cream};color:${C.body};font-family:${SANS};line-height:1.5;box-sizing:border-box;">
+// //       ${DESIGN.build(ctx)}
+// //     </div>`;
+
+// //   document.body.appendChild(container);
+
+// //   try {
+// //     const pdfContent = container.firstElementChild;
+// //     if (!pdfContent) throw new Error("PDF content could not be created.");
+
+// //     await waitForContainerImages(pdfContent);
+// //     await nextFrame();
+
+// //     splitParagraphsIntoLines(pdfContent);
+// //     paginate(pdfContent, PAGE_H);
+// //     balancePages(pdfContent, PAGE_H);
+// //     const totalPages = finishLayout(pdfContent, PAGE_H);
+// //     DESIGN.bars(pdfContent, { PAGE_H, totalPages, ctx });
+// //     await nextFrame();
+
+// //     const fileName = `${slugify(title)}-itinerary.pdf`;
+
+// //     await html2pdf()
+// //       .set({
+// //         margin: 0,
+// //         filename: fileName,
+// //         image: { type: "jpeg", quality: 0.98 },
+// //         enableLinks: true, // <a href> become clickable PDF links
+// //         html2canvas: {
+// //           scale: SCALE,
+// //           useCORS: true,
+// //           allowTaint: false,
+// //           logging: false,
+// //           backgroundColor: C.cream,
+// //           imageTimeout: 15000,
+// //           scrollX: 0,
+// //           scrollY: 0,
+// //           windowWidth: PAGE_W,
+// //           windowHeight: Math.max(pdfContent.scrollHeight, 1123),
+// //         },
+// //         jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true },
+// //         pagebreak: { mode: ["css"] },
+// //       })
+// //       .from(pdfContent)
+// //       .toPdf()
+// //       .get("pdf")
+// //       .then((pdf) => {
+// //         // Rounding can leave a stray blank page at the end: drop it.
+// //         let count = pdf.internal.getNumberOfPages();
+// //         while (count > totalPages && count > 1) {
+// //           pdf.deletePage(count);
+// //           count -= 1;
+// //         }
+// //       })
+// //       .save();
+
+// //     return fileName;
+// //   } catch (error) {
+// //     console.error("PDF GENERATION FAILED:", error);
+// //     throw error;
+// //   } finally {
+// //     container.remove();
+// //   }
+// // };
+
+// // // ---------------------------------------------------------
+// // // Building blocks shared by the designs
+// // // ---------------------------------------------------------
+
+// // // Markers are drawn with plain shapes (no font glyphs) so they always sit centred.
+// // const DIAMOND = `<span style="flex:none;width:6px;height:6px;margin-top:7px;background:${C.gold};transform:rotate(45deg);"></span>`;
+// // const TICK = `<span style="flex:none;position:relative;width:16px;height:16px;margin-top:1px;border-radius:50%;background:${C.rose};"><span style="position:absolute;left:5.5px;top:2.5px;width:4px;height:8px;border:solid #fff;border-width:0 1.8px 1.8px 0;transform:rotate(45deg);"></span></span>`;
+// // const CROSS = `<span style="flex:none;position:relative;width:16px;height:16px;margin-top:1px;box-sizing:border-box;border-radius:50%;border:1px solid ${C.muted};"><span style="position:absolute;left:3.5px;top:6px;width:7px;height:1.5px;background:${C.muted};transform:rotate(45deg);"></span><span style="position:absolute;left:3.5px;top:6px;width:7px;height:1.5px;background:${C.muted};transform:rotate(-45deg);"></span></span>`;
+
+// // /* lead = number of leading words shown in bold ("Refunds:" -> 1) */
+// // const paragraph = (text, size, color, lineHeight, { lead = 0, leadColor = C.ink } = {}) =>
+// //   `<div data-lines ${
+// //     lead ? `data-lead="${lead}" data-leadstyle="font-weight:600;color:${leadColor};"` : ""
+// //   } style="font-family:${SANS};font-size:${size}px;line-height:${lineHeight};color:${color};margin:0 0 8px;white-space:pre-line;">${escapeHTML(text)}</div>`;
+
+// // const policyPoint = (text) => {
+// //   const match = text.match(/^([^:\n]{2,50}):\s+\S/);
+// //   const lead = match ? `${match[1]}:`.split(/\s+/).length : 0;
+// //   return paragraph(text, 11.5, C.muted, 1.7, { lead, leadColor: C.ink });
+// // };
+
+// // const columnsFor = (count, max) => (count <= 2 ? Math.max(1, count) : count === 4 ? 2 : max);
+
+// // const itemGrid = (items, marker, columns) => `
+// //   <div style="display:flex;flex-wrap:wrap;">
+// //     ${items
+// //       .map(
+// //         (item) => `
+// //         <div style="flex:0 0 ${(100 / columns).toFixed(4)}%;box-sizing:border-box;padding:0 12px 9px 0;display:flex;gap:9px;align-items:flex-start;">
+// //           ${marker}
+// //           <span style="min-width:0;font-family:${SANS};font-size:12.5px;line-height:1.5;color:${C.body};">${escapeHTML(item)}</span>
+// //         </div>`
+// //       )
+// //       .join("")}
+// //   </div>`;
+
+// // const panel = (title, body, bg, border, titleColor) => `
+// //   <div style="flex:1;min-width:0;background:${bg};border:1px solid ${border};border-radius:14px;padding:18px 18px 9px;box-sizing:border-box;">
+// //     <div style="font-family:${SERIF};font-size:22px;font-weight:600;color:${titleColor};margin-bottom:10px;line-height:1.2;">
+// //       ${escapeHTML(title)}
+// //     </div>
+// //     ${body}
+// //   </div>`;
+
+// // /* Clickable contact cells: 1-3 in one row, 4 in a 2 x 2 grid. */
+// // const contactGrid = (co, bg, border, radius = 12, align = "left") => {
+// //   const cols = co.cells.length >= 4 ? 2 : Math.max(1, co.cells.length);
+
+// //   return `
+// //     <div style="display:flex;flex-wrap:wrap;border:1px solid ${border};border-radius:${radius}px;overflow:hidden;background:${bg};text-align:${align};">
+// //       ${co.cells
+// //         .map((cell, i) => {
+// //           const edges =
+// //             (i % cols !== 0 ? `border-left:1px solid ${border};` : "") +
+// //             (i >= cols ? `border-top:1px solid ${border};` : "");
+
+// //           return `
+// //             <a href="${escapeHTML(cell.href)}" style="display:block;flex:0 0 ${(100 / cols).toFixed(4)}%;min-width:0;box-sizing:border-box;padding:11px 14px;text-decoration:none;${edges}">
+// //               <div style="font-family:${SANS};font-size:8.5px;font-weight:600;letter-spacing:.22em;color:${C.gold};">${escapeHTML(cell.label)}</div>
+// //               <div style="font-family:${SANS};font-size:11.5px;font-weight:500;color:${C.roseDeep};margin-top:3px;line-height:1.35;word-break:break-word;">${escapeHTML(cell.text)}</div>
+// //             </a>`;
+// //         })
+// //         .join("")}
+// //     </div>`;
+// // };
+
+// // const addressBlock = (co, color, linkColor, align = "left") =>
+// //   co.address
+// //     ? `<div style="font-family:${SANS};font-size:11.5px;line-height:1.55;color:${color};text-align:${align};">
+// //          ${escapeHTML(co.address)}${co.landmark ? `<br><span style="font-size:10.5px;opacity:.8;">${escapeHTML(co.landmark)}</span>` : ""}
+// //          ${
+// //            co.mapsHref
+// //              ? `<br><a href="${escapeHTML(co.mapsHref)}" style="color:${linkColor};text-decoration:none;font-weight:600;font-size:10.5px;letter-spacing:.04em;">View on Google Maps &rarr;</a>`
+// //              : ""
+// //          }
+// //        </div>`
+// //     : "";
+
+// // const whatsappPill = (co) =>
+// //   co.whatsappHref
+// //     ? `<a href="${escapeHTML(co.whatsappHref)}" style="display:inline-block;background:${C.rose};color:#fff;border-radius:999px;padding:9px 20px;font-family:${SANS};font-size:11px;font-weight:600;letter-spacing:.05em;text-decoration:none;white-space:nowrap;">Chat on WhatsApp &rarr;</a>`
+// //     : "";
+
+// // /* Logo on the same light chip the site footer uses; text wordmark as fallback. */
+// // const logoChip = (ctx, height, { pad = "8px 16px", radius = 12, shadow = "0 6px 18px rgba(0,0,0,.18)" } = {}) => {
+// //   const box = `display:inline-block;background:${C.logoBg};border-radius:${radius}px;padding:${pad};${shadow ? `box-shadow:${shadow};` : ""}`;
+// //   if (ctx.logoSize && ctx.logoSize.w && ctx.logoSize.h) {
+// //     const w = Math.round((ctx.logoSize.w / ctx.logoSize.h) * height);
+// //     return `
+// //       <div style="${box}">
+// //         <img src="${escapeHTML(ctx.logoUrl)}" crossorigin="anonymous" alt="${escapeHTML(BRAND)}"
+// //              style="display:block;width:${w}px;height:${height}px;" />
+// //       </div>`;
+// //   }
+// //   return `
+// //     <div style="${box}text-align:center;">
+// //       <div style="font-family:${SERIF};font-size:${Math.round(height * 0.62)}px;font-weight:600;letter-spacing:.3em;color:${C.rose};text-transform:uppercase;padding-left:.3em;line-height:1.2;">Manyara</div>
+// //       <div style="font-family:${SANS};font-size:${Math.max(6, Math.round(height * 0.2))}px;font-weight:500;letter-spacing:.5em;color:${C.gold};margin-top:2px;padding-left:.5em;">PRIVÉ VACATIONS</div>
+// //     </div>`;
+// // };
+
+// // /* Photo that fills w x h (centre-cropped by scaling, so it works in html2canvas). */
+// // function photoBox(url, size, w, h, extraStyle = "") {
+// //   if (!url || !size || !size.w || !size.h) return "";
+// //   const k = Math.max(w / size.w, h / size.h);
+// //   const iw = Math.round(size.w * k);
+// //   const ih = Math.round(size.h * k);
+// //   const left = Math.round((w - iw) / 2);
+// //   const top = Math.round((h - ih) / 2);
+// //   return `
+// //     <div style="position:relative;width:${w}px;height:${h}px;overflow:hidden;${extraStyle}">
+// //       <img src="${escapeHTML(url)}" crossorigin="anonymous" alt=""
+// //            style="position:absolute;left:${left}px;top:${top}px;width:${iw}px;height:${ih}px;display:block;" />
+// //     </div>`;
+// // }
+
+// // /* Itinerary photo: never cropped, only scaled to fit maxW x maxH. */
+// // function dayImage(ctx, index, maxW, maxH, { radius = 12, top = 12, center = false } = {}) {
+// //   const url = ctx.dayUrls[index];
+// //   const size = url ? ctx.sizes.get(url) : null;
+// //   if (!url || !size || !size.w || !size.h) return "";
+
+// //   const fit = Math.min(maxW / size.w, maxH / size.h);
+// //   const w = Math.round(size.w * fit);
+// //   const h = Math.round(size.h * fit);
+
+// //   return `
+// //     <div style="margin:${top}px ${center ? "auto" : "0"} 0;width:${w}px;height:${h}px;border-radius:${radius}px;overflow:hidden;">
+// //       <img src="${escapeHTML(url)}" crossorigin="anonymous" alt=""
+// //            style="display:block;width:${w}px;height:${h}px;" />
+// //     </div>`;
+// // }
+
+// // // ---------------------------------------------------------
+// // // Company details
+// // // ---------------------------------------------------------
+
+// // /** Same API as Footer.jsx; never blocks the PDF for more than 4s. */
+// // async function fetchSettings() {
+// //   try {
+// //     return await Promise.race([
+// //       getSiteSettings(),
+// //       new Promise((resolve) => setTimeout(() => resolve(null), 4000)),
+// //     ]);
+// //   } catch (error) {
+// //     console.warn("Could not load site settings for the PDF:", error);
+// //     return null;
+// //   }
+// // }
+
+// // function buildCompany(data) {
+// //   const email = String(data?.email_address || "").trim();
+// //   const phone = String(data?.phone_number || "").trim();
+// //   const whatsapp = String(data?.whatsapp_number || "").trim();
+// //   const rawAddress = String(data?.company_address || "").trim();
+// //   const address = rawAddress && rawAddress !== DEFAULT_ADDRESS ? rawAddress : "";
+// //   const landmark =
+// //     data?.show_address_landmark === true
+// //       ? String(data?.address_landmark || "").trim()
+// //       : "";
+
+// //   const phoneDigits = phone.replace(/\D/g, "");
+// //   const waDigitsRaw = whatsapp.replace(/\D/g, "");
+
+// //   // Numbers saved without a country code get the default one.
+// //   const withCode = (digits) => (digits.length === 10 ? `${DEFAULT_COUNTRY_CODE}${digits}` : digits);
+// //   const telDigits = withCode(phoneDigits);
+// //   const waDigits = withCode(waDigitsRaw);
+
+// //   const telHref = telDigits ? `tel:+${telDigits}` : "";
+// //   const whatsappHref = waDigits
+// //     ? `https://wa.me/${waDigits}?text=${encodeURIComponent(
+// //         `Hello ${BRAND}, I would like to know more about your travel packages.`
+// //       )}`
+// //     : "";
+
+// //   // Call and WhatsApp are often the same number: show it once.
+// //   const sameNumber =
+// //     phoneDigits && waDigitsRaw && phoneDigits.slice(-10) === waDigitsRaw.slice(-10);
+
+// //   const cells = [];
+// //   if (email) cells.push({ label: "EMAIL", text: email, href: `mailto:${email}` });
+
+// //   if (sameNumber) {
+// //     cells.push({ label: "CALL / WHATSAPP", text: phone, href: telHref });
+// //   } else {
+// //     if (telDigits) cells.push({ label: "CALL US", text: phone, href: telHref });
+// //     if (waDigits) cells.push({ label: "WHATSAPP", text: whatsapp, href: whatsappHref });
+// //   }
+
+// //   cells.push({ label: "WEBSITE", text: SITE_LABEL, href: SITE_URL });
+
+// //   let mapsHref = getMapsLink(data?.address_url, rawAddress);
+// //   if (!mapsHref && address) {
+// //     mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+// //   }
+
+// //   return { email, phone, address, landmark, mapsHref, whatsappHref, cells };
+// // }
+
+// // /** Same Google Maps conversion logic as Footer.jsx / Contact.jsx. */
+// // function getMapsLink(rawUrl, address) {
+// //   const value = String(rawUrl || "").trim();
+// //   if (!value) return "";
+
+// //   let parsed;
+// //   try {
+// //     parsed = new URL(value);
+// //   } catch {
+// //     return "";
+// //   }
+// //   if (parsed.protocol !== "https:") return "";
+
+// //   const host = parsed.hostname.toLowerCase();
+// //   const path = parsed.pathname.toLowerCase();
+
+// //   const isShortLink =
+// //     host === "maps.app.goo.gl" || (host === "goo.gl" && path.startsWith("/maps"));
+// //   const isGoogleMaps =
+// //     isShortLink ||
+// //     host === "maps.google.com" ||
+// //     (["www.google.com", "google.com", "www.google.co.in", "google.co.in"].includes(host) &&
+// //       path.startsWith("/maps"));
+// //   if (!isGoogleMaps) return "";
+
+// //   const output = (parsed.searchParams.get("output") || "").toLowerCase();
+// //   const isEmbed =
+// //     path.includes("/maps/embed") || output === "embed" || output === "svembed";
+// //   if (!isEmbed) return parsed.href;
+
+// //   const cidMatch = value.match(/!1s0x[0-9a-f]+(?::|%3A)0x([0-9a-f]+)/i);
+// //   if (cidMatch) {
+// //     try {
+// //       return `https://www.google.com/maps?cid=${BigInt(`0x${cidMatch[1]}`).toString()}`;
+// //     } catch {
+// //       /* fall through */
+// //     }
+// //   }
+
+// //   const coordMatch = value.match(/!2d(-?\d+(?:\.\d+)?)!3d(-?\d+(?:\.\d+)?)/i);
+// //   if (coordMatch) {
+// //     return `https://www.google.com/maps/search/?api=1&query=${coordMatch[2]},${coordMatch[1]}`;
+// //   }
+
+// //   const fromLink = (
+// //     parsed.searchParams.get("q") || parsed.searchParams.get("destination") || ""
+// //   ).trim();
+// //   const cleanAddress = String(address || "").trim();
+// //   const query = fromLink || (cleanAddress && cleanAddress !== DEFAULT_ADDRESS ? cleanAddress : "");
+// //   return query
+// //     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+// //     : "";
+// // }
+
+// // // ---------------------------------------------------------
+// // // Pagination
+// // // ---------------------------------------------------------
+
+// // /**
+// //  * Replace every [data-lines] block with one atom per rendered line, so a
+// //  * page break can fall BETWEEN lines instead of through one. Optional
+// //  * data-lead="N" makes the first N words bold (policy labels).
+// //  */
+// // function splitParagraphsIntoLines(root) {
+// //   root.querySelectorAll("[data-lines]").forEach((p) => {
+// //     const rows = p.textContent
+// //       .split(/\n+/)
+// //       .map((r) => r.trim())
+// //       .filter(Boolean);
+// //     if (!rows.length) return;
+
+// //     const leadCount = Number(p.getAttribute("data-lead") || 0);
+// //     const leadStyle = p.getAttribute("data-leadstyle") || "font-weight:600;";
+
+// //     p.style.whiteSpace = "normal";
+// //     p.innerHTML = rows
+// //       .map((row, r) =>
+// //         row
+// //           .split(/\s+/)
+// //           .map((word, i) => {
+// //             const isLead = r === 0 && i < leadCount;
+// //             return `<span data-r="${r}"${isLead ? ` data-b="1" style="${leadStyle}"` : ""}>${escapeHTML(word)}</span>`;
+// //           })
+// //           .join(" ")
+// //       )
+// //       .join("<br>");
+
+// //     const groups = [];
+// //     p.querySelectorAll("span").forEach((s) => {
+// //       const top = s.getBoundingClientRect().top;
+// //       const word = { text: s.textContent, bold: s.hasAttribute("data-b") };
+// //       const last = groups[groups.length - 1];
+
+// //       if (last && Math.abs(last.top - top) < 4) last.words.push(word);
+// //       else groups.push({ top, row: Number(s.getAttribute("data-r")), words: [word] });
+// //     });
+
+// //     p.innerHTML = groups
+// //       .map((g, i) => {
+// //         const gap = i > 0 && g.row !== groups[i - 1].row ? "margin-top:6px;" : "";
+// //         const html = g.words
+// //           .map((w) => (w.bold ? `<span style="${leadStyle}">${escapeHTML(w.text)}</span>` : escapeHTML(w.text)))
+// //           .join(" ");
+
+// //         return `<div data-atom style="white-space:nowrap;${gap}">${html}</div>`;
+// //       })
+// //       .join("");
+// //   });
+// // }
+
+// // const rootTopOf = (root) => root.getBoundingClientRect().top;
+// // const topOf = (root, el) => el.getBoundingClientRect().top - rootTopOf(root);
+// // const pageStartOf = (PAGE_H, n) => (n === 0 ? 0 : n * PAGE_H + TOP_SPACE);
+// // const pageEndOf = (PAGE_H, n) => (n + 1) * PAGE_H - BOTTOM_SPACE;
+
+// // /** Pushes `el` down to `target` with a spacer. isBreak marks a real page break. */
+// // function pushTo(root, el, target, isBreak = false) {
+// //   const gap = target - topOf(root, el);
+// //   if (gap <= 0.5) return;
+
+// //   const spacer = document.createElement("div");
+// //   spacer.style.height = `${gap}px`;
+// //   if (isBreak) spacer.setAttribute("data-page-break", "1");
+// //   el.parentNode.insertBefore(spacer, el);
+
+// //   const drift = target - topOf(root, el);
+// //   if (Math.abs(drift) > 0.5) spacer.style.height = `${gap + drift}px`;
+// // }
+
+// // /**
+// //  * Push atoms that would cross a page edge to the start of the next
+// //  * page. Usable area of page n (n >= 1):
+// //  *   [n * PAGE_H + TOP_SPACE, (n + 1) * PAGE_H - BOTTOM_SPACE]
+// //  */
+// // function paginate(root, PAGE_H) {
+// //   const items = Array.from(root.querySelectorAll("[data-atom]"));
+
+// //   items.forEach((el, i) => {
+// //     const top = topOf(root, el);
+// //     const n = Math.max(0, Math.floor((top + 0.5) / PAGE_H));
+
+// //     const rect = el.getBoundingClientRect();
+// //     let height = rect.height;
+
+// //     // Headings stay with whatever comes next.
+// //     const next = items[i + 1];
+// //     if (el.hasAttribute("data-keep") && next) {
+// //       height = next.getBoundingClientRect().bottom - rect.top;
+// //     }
+
+// //     // Starts inside the top padding of a page -> move below it.
+// //     if (top < pageStartOf(PAGE_H, n) - 0.5) {
+// //       pushTo(root, el, pageStartOf(PAGE_H, n));
+// //     }
+
+// //     const t = topOf(root, el);
+// //     const page = Math.max(0, Math.floor((t + 0.5) / PAGE_H));
+// //     const fits = height <= pageEndOf(PAGE_H, page) - pageStartOf(PAGE_H, page);
+
+// //     if (fits && t + height > pageEndOf(PAGE_H, page) + 0.5) {
+// //       pushTo(root, el, pageStartOf(PAGE_H, page + 1), true);
+// //     }
+// //   });
+// // }
+
+// // /**
+// //  * Spread the spare room at the bottom of a page over the blocks above it, so
+// //  * pages end evenly instead of leaving a gap.
+// //  *  - data-stretch     : a spacer is added before the block
+// //  *  - data-padstretch  : the block itself grows (its padding-bottom), which
+// //  *                       keeps things like a timeline line unbroken
+// //  */
+// // function balancePages(root, PAGE_H) {
+// //   const breaks = Array.from(root.querySelectorAll("[data-page-break]"));
+
+// //   breaks.forEach((spacer) => {
+// //     const anchor = spacer.nextElementSibling;
+// //     if (!anchor) return;
+
+// //     const spacerTop = topOf(root, spacer);
+// //     const pageIdx = Math.max(0, Math.floor((spacerTop + 0.5) / PAGE_H));
+// //     const start = pageStartOf(PAGE_H, pageIdx);
+// //     const end = pageEndOf(PAGE_H, pageIdx);
+
+// //     const spare = end - spacerTop - 4;
+// //     if (spare < 8) return;
+
+// //     const targets = Array.from(root.querySelectorAll("[data-stretch],[data-padstretch]")).filter((el) => {
+// //       const t = topOf(root, el);
+// //       return t >= start + 8 && t < spacerTop - 1;
+// //     });
+// //     if (!targets.length) return;
+
+// //     const per = Math.min(MAX_STRETCH, spare / targets.length);
+// //     const before = topOf(root, anchor);
+
+// //     targets.forEach((el) => {
+// //       if (el.hasAttribute("data-padstretch")) {
+// //         const current = parseFloat(getComputedStyle(el).paddingBottom) || 0;
+// //         el.style.paddingBottom = `${current + per}px`;
+// //       } else {
+// //         const extra = document.createElement("div");
+// //         extra.style.height = `${per}px`;
+// //         el.parentNode.insertBefore(extra, el);
+// //       }
+// //     });
+
+// //     // Margin collapsing can make the shift differ slightly: cancel the drift
+// //     // so the next page still starts in the same place.
+// //     for (let pass = 0; pass < 2; pass++) {
+// //       const drift = topOf(root, anchor) - before;
+// //       if (Math.abs(drift) <= 0.5) break;
+
+// //       const current = parseFloat(spacer.style.height) || spacer.getBoundingClientRect().height;
+// //       spacer.style.height = `${Math.max(0, current - drift)}px`;
+// //     }
+// //   });
+// // }
+
+// // /** Counts pages from the last block and fixes the document height. */
+// // function finishLayout(root, PAGE_H) {
+// //   let bottom = 0;
+// //   root.querySelectorAll("[data-atom]").forEach((el) => {
+// //     bottom = Math.max(bottom, topOf(root, el) + el.getBoundingClientRect().height);
+// //   });
+
+// //   const totalPages = Math.max(1, Math.floor((bottom - 0.5) / PAGE_H) + 1);
+// //   // 1px short so rounding can never create an extra blank page.
+// //   root.style.height = `${totalPages * PAGE_H - 1}px`;
+// //   root.style.overflow = "hidden";
+// //   return totalPages;
+// // }
+
+// // // ---------------------------------------------------------
+// // // Fonts / images
+// // // ---------------------------------------------------------
+
+// // async function ensureFonts() {
+// //   try {
+// //     const hasFace = Array.from(document.fonts).some(
+// //       (f) => f.family.replace(/["']/g, "") === "Cormorant Garamond"
+// //     );
+
+// //     if (!hasFace && !document.getElementById("manyara-pdf-fonts")) {
+// //       const link = document.createElement("link");
+// //       link.id = "manyara-pdf-fonts";
+// //       link.rel = "stylesheet";
+// //       link.href = FONT_URL;
+// //       document.head.appendChild(link);
+// //       await new Promise((resolve) => {
+// //         link.onload = resolve;
+// //         link.onerror = resolve;
+// //         setTimeout(resolve, 4000);
+// //       });
+// //     }
+
+// //     await Promise.all([
+// //       document.fonts.load(`600 32px "Cormorant Garamond"`),
+// //       document.fonts.load(`700 32px "Cormorant Garamond"`),
+// //       document.fonts.load(`italic 500 17px "Cormorant Garamond"`),
+// //       document.fonts.load(`400 13px Inter`),
+// //       document.fonts.load(`500 13px Inter`),
+// //       document.fonts.load(`600 13px Inter`),
+// //     ]);
+// //     await document.fonts.ready;
+// //   } catch (error) {
+// //     console.warn("Font loading warning:", error);
+// //   }
+// // }
+
+// // /** Resolves to Map(url -> {w, h}) for the images that loaded. */
+// // function preloadImages(urls) {
+// //   const sizes = new Map();
+
+// //   return Promise.all(
+// //     urls.filter(Boolean).map(
+// //       (url) =>
+// //         new Promise((resolve) => {
+// //           const img = new Image();
+// //           img.crossOrigin = "anonymous";
+// //           img.onload = () => {
+// //             sizes.set(url, { w: img.naturalWidth, h: img.naturalHeight });
+// //             resolve();
+// //           };
+// //           img.onerror = () => {
+// //             console.warn("Image failed to load:", url);
+// //             resolve();
+// //           };
+// //           img.src = url;
+// //         })
+// //     )
+// //   ).then(() => sizes);
+// // }
+
+// // function waitForContainerImages(root) {
+// //   return Promise.all(
+// //     Array.from(root.querySelectorAll("img")).map((img) =>
+// //       img.complete
+// //         ? Promise.resolve()
+// //         : new Promise((resolve) => {
+// //             img.onload = resolve;
+// //             img.onerror = resolve;
+// //           })
+// //     )
+// //   );
+// // }
+
+// // function nextFrame() {
+// //   return new Promise((resolve) =>
+// //     requestAnimationFrame(() => requestAnimationFrame(resolve))
+// //   );
+// // }
+
+// // // ---------------------------------------------------------
+// // // Data helpers
+// // // ---------------------------------------------------------
+
+// // /** Cloudinary: resized JPEG, never upscaled, never cropped (c_limit). */
+// // function optimizeUrl(url, width) {
+// //   if (!url) return null;
+
+// //   if (
+// //     url.includes("res.cloudinary.com") &&
+// //     url.includes("/upload/") &&
+// //     !/\/upload\/(?:[a-z]{1,3}_[^/]*\/)+/.test(url)
+// //   ) {
+// //     return url.replace("/upload/", `/upload/f_jpg,q_auto:best,w_${width},c_limit/`);
+// //   }
+
+// //   return url;
+// // }
+
+// // function getImageUrl(image) {
+// //   if (!image) return null;
+// //   if (typeof image === "string") return image.trim() || null;
+// //   if (typeof image === "object") {
+// //     return image.url || image.secure_url || image.src || image.image_url || null;
+// //   }
+// //   return null;
+// // }
+
+// // function normalizeListItem(item) {
+// //   if (item === null || item === undefined) return "";
+// //   if (typeof item === "object") {
+// //     return String(item.name || item.title || item.description || item.text || item.value || "").trim();
+// //   }
+// //   return String(item).trim();
+// // }
+
+// // const BREAK_CHARS = /[\r\n\u2022\u25AA\u25CF]/; // new line, or a bullet character
+// // const stripBullet = (text) => text.replace(/^[\s\-\u2013\u2014*\u00B7]+/, "").trim();
+
+// // function splitText(text) {
+// //   const value = String(text || "");
+// //   const parts = BREAK_CHARS.test(value)
+// //     ? value.split(/\r?\n|[\u2022\u25AA\u25CF]/)
+// //     : value.split(/[,;]/);
+
+// //   return parts.map(stripBullet).filter(Boolean);
+// // }
+
+// // function normalizeList(value) {
+// //   if (Array.isArray(value)) {
+// //     const items = value.map(normalizeListItem).filter(Boolean);
+
+// //     // A single saved string: treat it like plain text.
+// //     if (items.length === 1) return splitText(items[0]);
+
+// //     return items.flatMap((item) =>
+// //       BREAK_CHARS.test(item) ? splitText(item) : [stripBullet(item)]
+// //     );
+// //   }
+
+// //   if (typeof value === "string") return splitText(value);
+// //   return [];
+// // }
+
+// // /** Each line of a policy becomes its own point. */
+// // function normalizePolicy(value) {
+// //   const source = Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
+
+// //   return source
+// //     .flatMap((item) => normalizeListItem(item).split(/\r?\n+/))
+// //     .map(stripBullet)
+// //     .filter(Boolean);
+// // }
+
+// // function escapeHTML(value) {
+// //   if (value === null || value === undefined) return "";
+
+// //   return String(value)
+// //     .replace(/&/g, "&amp;")
+// //     .replace(/</g, "&lt;")
+// //     .replace(/>/g, "&gt;")
+// //     .replace(/"/g, "&quot;")
+// //     .replace(/'/g, "&#039;");
+// // }
+
+// // function formatPrice(price) {
+// //   if (price === null || price === undefined || price === "") return "0";
+
+// //   const number = Number(price);
+// //   if (Number.isNaN(number)) return String(price);
+
+// //   return number.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+// // }
+
+// // function slugify(value) {
+// //   return (
+// //     String(value)
+// //       .toLowerCase()
+// //       .trim()
+// //       .replace(/[^a-z0-9]+/g, "-")
+// //       .replace(/^-+|-+$/g, "") || "package"
+// //   );
+// // }
+
+// // export default generatePackagePDF;
 
 
 
