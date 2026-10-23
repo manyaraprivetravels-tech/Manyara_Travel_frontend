@@ -1,6 +1,5 @@
 
 
-
 const TRANSFORM_PART = /^[a-z]{1,3}_[^,/]+$/;
 
 function hasTransformation(url) {
