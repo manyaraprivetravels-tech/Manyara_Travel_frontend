@@ -583,15 +583,6 @@ export default function Footer() {
               className="inline-flex items-center justify-center gap-1.5 text-xs leading-5 text-ivory/50 transition-colors duration-200 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 rounded-sm"
             >
 
-                        {/* <img
-              src="/images/vss.jpeg"
-              alt=""
-              loading="lazy"
-              decoding="async"
-              width="28"
-              height="20"
-              className="h-4 w-7 shrink-0 object-contain opacity-80 transition-opacity duration-200 group-hover:opacity-100 sm:h-5 sm:w-8"
-            /> */}
              
               <span>
                 Designed &amp; Developed by{" "}
