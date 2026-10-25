@@ -24,9 +24,7 @@ if (window.location.pathname === "/") {
     query().catch(quiet)
   );
 
-  /* Below the fold: start once the first screen's requests are under way.
-     Their useQuery calls share the same pending promise, so nothing is
-     fetched twice. */
+  
   const prefetchLater = () =>
     [getPackages, getSeasonedDestinations, getBlogs].forEach((query) =>
       query().catch(quiet)
@@ -46,13 +44,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </HelmetProvider>
   </React.StrictMode>,
 );
-
-
-
-
-
-
-
 
 
 

@@ -341,7 +341,7 @@ export default function Footer() {
               className="mb-4 inline-flex max-w-full items-center rounded-xl border border-white/15 bg-[#EEF1F5] px-3 py-2 shadow-[0_6px_20px_rgba(0,0,0,0.16)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-4 sm:py-2.5"
             >
               <img
-                src="/images/Manyara_3.webp"
+                src="/images/manyara_logo.webp"
                 alt={BRAND_NAME}
                 loading="lazy"
                 className="h-auto w-40 object-contain sm:w-44 md:w-48"

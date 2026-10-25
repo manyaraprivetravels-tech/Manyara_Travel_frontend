@@ -293,7 +293,7 @@ return (
           aria-label="Manyara Prive Vacations Home"
         >
           <img
-            src="/images/Manyara_3.webp"
+            src="/images/manyara_logo.webp"
             alt="Manyara Prive Vacations"
             className="
               block

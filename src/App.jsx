@@ -107,9 +107,7 @@ const TeamMemberDetail = lazy(
   () => import("./pages/details/TeamMemberDetail")
 );
 
-const BatchDetails = lazy(
-  () => import("./pages/details/BatchDetails")
-);
+
 
 const ReviewDetail = lazy(
   () => import("./pages/details/ReviewDetail")
@@ -341,19 +339,6 @@ function AppContent() {
               element={<PackageDetail />}
             />
 
-            {/* ==================================================
-                BATCHES
-            ================================================== */}
-
-            <Route
-              path="/batches"
-              element={<BatchesPage />}
-            />
-
-            <Route
-              path="/batches/:slug"
-              element={<BatchDetails />}
-            />
 
             {/* ==================================================
                 DESTINATIONS
@@ -552,13 +537,6 @@ function AppContent() {
               <Route
                 path="packages"
                 element={<PackagesManage />}
-              />
-
-              {/* Batches */}
-
-              <Route
-                path="batches"
-                element={<BatchManage />}
               />
 
               {/* Most Visited */}

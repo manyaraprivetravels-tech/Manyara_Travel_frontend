@@ -1947,7 +1947,7 @@ export default function Hero({ onPlanTrip }) {
                   aria-hidden="true"
                 />
               </button>
-              <p className="text-xs text-white/80 sm:text-center [@media(max-height:760px)]:hidden">
+              <p className="w-full text-center text-xs text-white/80 sm:text-center [@media(max-height:760px)]:hidden">
                 A journey designed around you
               </p>
             </div>
