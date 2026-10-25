@@ -1,11 +1,7 @@
 
-
 import React from "react";
 import { getSiteSettings } from "../api/content"; // same API the Footer / Contact page use
 
-// OPTION B for the logo (most reliable): keep the PNG inside src/assets, import it here,
-// and add `logoAsset` as the FIRST item of LOGO_SOURCES below.
-// import logoAsset from "../assets/manyara_logo_pdf.png";
 
 /* ---------------------------------------------------------------------
    1. BRAND + THEME
@@ -49,8 +45,8 @@ const C = {
 
 const PAGE_W = 595.28;
 const MARGIN_X = 36; // left / right margin
-const HEADER_H = 48; // running header (pages 2+): logo + package name
-const FOOTER_H = 62; // footer on every page: logo + 3 detail boxes + page number
+const HEADER_H = 44; // running header (pages 2+): small logo + package name
+const FOOTER_H = 48; // footer on every page: contact boxes + page number (no logo)
 
 const HERO_H = 250; // full-width cover photo
 const HERO_OVERLAP = 44; // how far the title card overlaps the photo
@@ -65,10 +61,11 @@ const COVER_ABOUT_MAX_CHARS = 1000;
 // and is about 1.61 : 1 (width : height), so a height of 40 gives a width of ~64.
 // The width follows the logo's own proportions; if that would exceed the max
 // width the logo is scaled down to fit.
-const LOGO_COVER = [54, 110]; // on the cover photo (on a white chip)
-const LOGO_HEADER = [34, 70]; // top of pages 2+
-const LOGO_FOOTER = [42, 70]; // bottom of every page
-const LOGO_CLOSING = [80, 150]; // closing note on the last page
+// The logo appears only 3 times: cover, top of pages 2+, and the closing note.
+// It is NOT in the footer: the footer carries the contact details only.
+const LOGO_COVER = [42, 72]; // on the cover photo (on a white chip)
+const LOGO_HEADER = [28, 48]; // top of pages 2+
+const LOGO_CLOSING = [80, 150]; // closing note on the last page (kept as before)
 
 // Image resolution (pixels). PDF viewers zoom, so we keep plenty of detail.
 const COVER_PX = 2200;
@@ -279,16 +276,16 @@ function buildDocument(R, ctx, F) {
         flexShrink: 1,
         flexBasis: 0,
         marginLeft: index ? 6 : 0,
-        paddingVertical: 6,
-        paddingHorizontal: 7,
+        paddingVertical: 5,
+        paddingHorizontal: 8,
         justifyContent: "center",
         backgroundColor: C.white,
         borderWidth: 0.75,
         borderColor: C.champagne,
-        borderRadius: 8,
+        borderRadius: 7,
       }}
     >
-      <Text style={T(5.6, C.gold, { fontWeight: fw(600), letterSpacing: 1.3, marginBottom: 2 })}>{cell.label}</Text>
+      <Text style={T(5.4, C.gold, { fontWeight: fw(600), letterSpacing: 1.3, marginBottom: 2 })}>{cell.label}</Text>
       <Text style={T(7.4, C.roseDeep, { fontWeight: fw(500), lineHeight: 1.25 })}>
         <Link src={cell.href} style={{ color: C.roseDeep, textDecoration: "none" }}>
           {cell.value}
@@ -314,9 +311,7 @@ function buildDocument(R, ctx, F) {
         borderTopColor: C.champagne,
       }}
     >
-      <View style={{ width: LOGO_FOOTER[1], justifyContent: "center" }}>{logoMark(LOGO_FOOTER)}</View>
-
-      <View style={{ flex: 1, flexDirection: "row", alignItems: "stretch", marginHorizontal: 10 }}>{co.cells.map(detailBox)}</View>
+      <View style={{ flex: 1, flexDirection: "row", alignItems: "stretch", marginRight: 12 }}>{co.cells.map(detailBox)}</View>
 
       <Text
         fixed
@@ -367,7 +362,7 @@ function buildDocument(R, ctx, F) {
     <View>
       <View style={{ width: PAGE_W, height: heroH, backgroundColor: C.champagneSoft }}>
         {ctx.cover ? <Image src={ctx.cover.src} style={{ width: PAGE_W, height: heroH }} /> : null}
-        <View style={{ position: "absolute", left: MARGIN_X, top: 22 }}>{logoMark(LOGO_COVER, { chip: true, padV: 8, padH: 14, radius: 12 })}</View>
+        <View style={{ position: "absolute", left: MARGIN_X, top: 20 }}>{logoMark(LOGO_COVER, { chip: true, padV: 7, padH: 12, radius: 10 })}</View>
       </View>
 
       <View style={{ ...card, borderRadius: 14, marginTop: -HERO_OVERLAP, marginHorizontal: MARGIN_X, paddingTop: 18, paddingHorizontal: 22, paddingBottom: stats.length ? 0 : 18 }}>
@@ -875,7 +870,13 @@ function normalizeListItem(item) {
   return String(item).trim();
 }
 
-const BREAK_CHARS = /[\r\n\u2022\u25AA\u25CF]/; // new line, or a bullet character
+// Characters that separate list items: new line, bullet, and the symbol/emoji
+// bullets admins often paste (check marks, crosses, stars, arrows-in-a-box, emoji...).
+// They are split on BEFORE clean() strips them, otherwise a whole list
+// collapses into one long line.
+const BULLET_CHARS = "\\u2022\\u25A0-\\u25FF\\u2600-\\u27BF\\u2B00-\\u2BFF\\u{1F000}-\\u{1FAFF}\\uFE0F\\u200D";
+const BREAK_CHARS = new RegExp(`[\\r\\n${BULLET_CHARS}]`, "u");
+const BREAK_SPLIT = new RegExp(`\\r?\\n|[${BULLET_CHARS}]`, "u");
 
 /** Removes a leading bullet / dash and a stray trailing dash from one list item. */
 const stripBullet = (text) =>
@@ -909,7 +910,7 @@ function splitText(text) {
   const value = String(text || "");
 
   if (BREAK_CHARS.test(value)) {
-    return value.split(/\r?\n|[\u2022\u25AA\u25CF]/).map(stripBullet).filter(Boolean);
+    return value.split(BREAK_SPLIT).map(stripBullet).filter(Boolean);
   }
 
   return mergeSentenceFragments(value.split(/[,;]/).map(stripBullet).filter(Boolean));
@@ -1016,14 +1017,12 @@ export default generatePackagePDF;
 
 
 
-
-
-
-
-
 // import React from "react";
 // import { getSiteSettings } from "../api/content"; // same API the Footer / Contact page use
 
+// // OPTION B for the logo (most reliable): keep the PNG inside src/assets, import it here,
+// // and add `logoAsset` as the FIRST item of LOGO_SOURCES below.
+// // import logoAsset from "../assets/manyara_logo_pdf.png";
 
 // /* ---------------------------------------------------------------------
 //    1. BRAND + THEME
@@ -1040,6 +1039,7 @@ export default generatePackagePDF;
 // const LOGO_SOURCES = [
 //   "/images/manyara_logo_pdf.png",
 //   "/images/manyara_logo_pdf.PNG",
+//   "/images/manyara_logo.webp",
 // ];
 
 // // Mirrors tailwind.config.js + the site's theme-color (#FFF8F5)
@@ -1057,7 +1057,7 @@ export default generatePackagePDF;
 //   line: "#EAE5E8",
 //   cream: "#FFF8F5", // page background
 //   white: "#FFFFFF", // cards
-//   logoBg: "#EEF1F5", // light chip behind the logo on the cover photo
+//   logoBg: "#FFFFFF", // white chip behind the logo on the cover photo
 // };
 
 // /* ---------------------------------------------------------------------
@@ -1066,7 +1066,7 @@ export default generatePackagePDF;
 
 // const PAGE_W = 595.28;
 // const MARGIN_X = 36; // left / right margin
-// const HEADER_H = 40; // running header (pages 2+): logo + package name
+// const HEADER_H = 48; // running header (pages 2+): logo + package name
 // const FOOTER_H = 62; // footer on every page: logo + 3 detail boxes + page number
 
 // const HERO_H = 250; // full-width cover photo
@@ -1078,12 +1078,14 @@ export default generatePackagePDF;
 // // If the description is longer than this it moves to page 2 so the cover never overflows.
 // const COVER_ABOUT_MAX_CHARS = 1000;
 
-// // Logo sizes: [height, max width] in points. The width follows the logo's own
-// // proportions; if that would exceed the max width the logo is scaled down to fit.
-// const LOGO_COVER = [34, 150]; // on the cover photo (on a light chip)
-// const LOGO_HEADER = [22, 100]; // top of pages 2+
-// const LOGO_FOOTER = [26, 84]; // bottom of every page
-// const LOGO_CLOSING = [44, 190]; // closing note on the last page
+// // Logo sizes: [height, max width] in points. The logo is trimmed to its artwork
+// // and is about 1.61 : 1 (width : height), so a height of 40 gives a width of ~64.
+// // The width follows the logo's own proportions; if that would exceed the max
+// // width the logo is scaled down to fit.
+// const LOGO_COVER = [54, 110]; // on the cover photo (on a white chip)
+// const LOGO_HEADER = [34, 70]; // top of pages 2+
+// const LOGO_FOOTER = [42, 70]; // bottom of every page
+// const LOGO_CLOSING = [80, 150]; // closing note on the last page
 
 // // Image resolution (pixels). PDF viewers zoom, so we keep plenty of detail.
 // const COVER_PX = 2200;
@@ -1382,7 +1384,7 @@ export default generatePackagePDF;
 //     <View>
 //       <View style={{ width: PAGE_W, height: heroH, backgroundColor: C.champagneSoft }}>
 //         {ctx.cover ? <Image src={ctx.cover.src} style={{ width: PAGE_W, height: heroH }} /> : null}
-//         <View style={{ position: "absolute", left: MARGIN_X, top: 22 }}>{logoMark(LOGO_COVER, { chip: true, padV: 7, padH: 13, radius: 10 })}</View>
+//         <View style={{ position: "absolute", left: MARGIN_X, top: 22 }}>{logoMark(LOGO_COVER, { chip: true, padV: 8, padH: 14, radius: 12 })}</View>
 //       </View>
 
 //       <View style={{ ...card, borderRadius: 14, marginTop: -HERO_OVERLAP, marginHorizontal: MARGIN_X, paddingTop: 18, paddingHorizontal: 22, paddingBottom: stats.length ? 0 : 18 }}>
@@ -1985,6 +1987,9 @@ export default generatePackagePDF;
 // }
 
 // export default generatePackagePDF;
+
+
+
 
 
 

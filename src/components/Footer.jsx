@@ -343,7 +343,7 @@ export default function Footer() {
               className="mb-5 inline-block rounded-md transition-opacity duration-200 hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
             >
               <img
-                src="/images/manyara_logo.webp"
+                src="/images/manyara_logo_footer.webp"
                 alt={BRAND_NAME}
                 loading="lazy"
                 className="block h-16 w-auto object-contain sm:h-20 lg:h-24"
