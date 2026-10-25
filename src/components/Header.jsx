@@ -292,7 +292,7 @@ return (
           "
           aria-label="Manyara Prive Vacations Home"
         >
-          <img
+          {/* <img
             src="/images/manyara_logo.webp"
             alt="Manyara Prive Vacations"
             className="
@@ -311,7 +311,21 @@ return (
               lg:h-10
               lg:max-w-[165px]
             "
-          />
+          /> */}
+          
+          <img
+              src="/images/manyara_logo.webp"
+              alt="Manyara Prive Vacations"
+              className="
+                block shrink-0 object-contain
+                h-9 w-auto max-w-[44vw]
+                sm:h-11 sm:max-w-[200px]
+                lg:h-11 lg:max-w-[160px]
+                xl:h-12 xl:max-w-[200px]
+                transition-all duration-300 ease-out
+                hover:drop-shadow-[0_0_5px_rgba(244,114,182,0.45)]
+              "
+            />
         </button>
 
         {/* ======================================================
