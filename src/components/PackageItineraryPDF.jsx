@@ -12,7 +12,7 @@ const BRAND = "Manyara Privé Vacations";
 const TAGLINE = "Curated journeys. Effortless luxury.";
 const SITE_URL = "https://manyaraprivevacations.com";
 const SITE_LABEL = "manyaraprivevacations.com";
-const LOGO_PATH = "/images/Manyara_3.webp"; // same logo the site footer uses (WebP is converted to PNG below)
+const LOGO_PATH = "/images/manyara_logo_pdf.png"; // same logo the site footer uses (WebP is converted to PNG below)
 const DEFAULT_COUNTRY_CODE = "91"; // used when a phone number is saved without a country code
 
 // Mirrors tailwind.config.js + the site's theme-color (#FFF8F5)
