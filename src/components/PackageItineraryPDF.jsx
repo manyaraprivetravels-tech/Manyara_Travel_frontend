@@ -22,6 +22,7 @@ const DEFAULT_COUNTRY_CODE = "91"; // used when a phone number is saved without 
 const LOGO_SOURCES = [
   "/images/manyara_logo_pdf.png",
   "/images/manyara_logo_pdf.PNG",
+  "/images/manyara_logo.webp",
 ];
 
 // Mirrors tailwind.config.js + the site's theme-color (#FFF8F5)
@@ -39,7 +40,7 @@ const C = {
   line: "#EAE5E8",
   cream: "#FFF8F5", // page background
   white: "#FFFFFF", // cards
-  logoBg: "#EEF1F5", // light chip behind the logo on the cover photo
+  logoBg: "#FFFFFF", // white chip behind the logo on the cover photo
 };
 
 /* ---------------------------------------------------------------------
@@ -48,7 +49,7 @@ const C = {
 
 const PAGE_W = 595.28;
 const MARGIN_X = 36; // left / right margin
-const HEADER_H = 40; // running header (pages 2+): logo + package name
+const HEADER_H = 48; // running header (pages 2+): logo + package name
 const FOOTER_H = 62; // footer on every page: logo + 3 detail boxes + page number
 
 const HERO_H = 250; // full-width cover photo
@@ -60,12 +61,14 @@ const DAY_H = 111;
 // If the description is longer than this it moves to page 2 so the cover never overflows.
 const COVER_ABOUT_MAX_CHARS = 1000;
 
-// Logo sizes: [height, max width] in points. The width follows the logo's own
-// proportions; if that would exceed the max width the logo is scaled down to fit.
-const LOGO_COVER = [34, 150]; // on the cover photo (on a light chip)
-const LOGO_HEADER = [22, 100]; // top of pages 2+
-const LOGO_FOOTER = [26, 84]; // bottom of every page
-const LOGO_CLOSING = [44, 190]; // closing note on the last page
+// Logo sizes: [height, max width] in points. The logo is trimmed to its artwork
+// and is about 1.61 : 1 (width : height), so a height of 40 gives a width of ~64.
+// The width follows the logo's own proportions; if that would exceed the max
+// width the logo is scaled down to fit.
+const LOGO_COVER = [54, 110]; // on the cover photo (on a white chip)
+const LOGO_HEADER = [34, 70]; // top of pages 2+
+const LOGO_FOOTER = [42, 70]; // bottom of every page
+const LOGO_CLOSING = [80, 150]; // closing note on the last page
 
 // Image resolution (pixels). PDF viewers zoom, so we keep plenty of detail.
 const COVER_PX = 2200;
@@ -364,7 +367,7 @@ function buildDocument(R, ctx, F) {
     <View>
       <View style={{ width: PAGE_W, height: heroH, backgroundColor: C.champagneSoft }}>
         {ctx.cover ? <Image src={ctx.cover.src} style={{ width: PAGE_W, height: heroH }} /> : null}
-        <View style={{ position: "absolute", left: MARGIN_X, top: 22 }}>{logoMark(LOGO_COVER, { chip: true, padV: 7, padH: 13, radius: 10 })}</View>
+        <View style={{ position: "absolute", left: MARGIN_X, top: 22 }}>{logoMark(LOGO_COVER, { chip: true, padV: 8, padH: 14, radius: 12 })}</View>
       </View>
 
       <View style={{ ...card, borderRadius: 14, marginTop: -HERO_OVERLAP, marginHorizontal: MARGIN_X, paddingTop: 18, paddingHorizontal: 22, paddingBottom: stats.length ? 0 : 18 }}>
@@ -1012,6 +1015,12 @@ export default generatePackagePDF;
 
 
 
+
+
+
+
+
+
 // import React from "react";
 // import { getSiteSettings } from "../api/content"; // same API the Footer / Contact page use
 
@@ -1024,8 +1033,14 @@ export default generatePackagePDF;
 // const TAGLINE = "Curated journeys. Effortless luxury.";
 // const SITE_URL = "https://manyaraprivevacations.com";
 // const SITE_LABEL = "manyaraprivevacations.com";
-// const LOGO_PATH = "/images/manyara_logo_pdf.png"; // same logo the site footer uses (WebP is converted to PNG below)
 // const DEFAULT_COUNTRY_CODE = "91"; // used when a phone number is saved without a country code
+
+// // Logo files, tried in this order until one loads. Put your PNG at public/images/manyara_logo_pdf.png.
+// // The last one is the website's own header logo, so the PDF never ends up without a logo.
+// const LOGO_SOURCES = [
+//   "/images/manyara_logo_pdf.png",
+//   "/images/manyara_logo_pdf.PNG",
+// ];
 
 // // Mirrors tailwind.config.js + the site's theme-color (#FFF8F5)
 // const C = {
@@ -1042,7 +1057,7 @@ export default generatePackagePDF;
 //   line: "#EAE5E8",
 //   cream: "#FFF8F5", // page background
 //   white: "#FFFFFF", // cards
-//   logoBg: "#EEF1F5", // chip colour the site footer puts behind the logo
+//   logoBg: "#EEF1F5", // light chip behind the logo on the cover photo
 // };
 
 // /* ---------------------------------------------------------------------
@@ -1051,8 +1066,8 @@ export default generatePackagePDF;
 
 // const PAGE_W = 595.28;
 // const MARGIN_X = 36; // left / right margin
-// const HEADER_H = 34; // slim running header (pages 2+)
-// const FOOTER_H = 52; // footer on every page: logo + contact + page number
+// const HEADER_H = 40; // running header (pages 2+): logo + package name
+// const FOOTER_H = 62; // footer on every page: logo + 3 detail boxes + page number
 
 // const HERO_H = 250; // full-width cover photo
 // const HERO_OVERLAP = 44; // how far the title card overlaps the photo
@@ -1063,10 +1078,17 @@ export default generatePackagePDF;
 // // If the description is longer than this it moves to page 2 so the cover never overflows.
 // const COVER_ABOUT_MAX_CHARS = 1000;
 
+// // Logo sizes: [height, max width] in points. The width follows the logo's own
+// // proportions; if that would exceed the max width the logo is scaled down to fit.
+// const LOGO_COVER = [34, 150]; // on the cover photo (on a light chip)
+// const LOGO_HEADER = [22, 100]; // top of pages 2+
+// const LOGO_FOOTER = [26, 84]; // bottom of every page
+// const LOGO_CLOSING = [44, 190]; // closing note on the last page
+
 // // Image resolution (pixels). PDF viewers zoom, so we keep plenty of detail.
 // const COVER_PX = 2200;
 // const DAY_PX = 900;
-// const LOGO_PX = 700;
+// const LOGO_PX = 800;
 
 // /* ---------------------------------------------------------------------
 //    3. FONTS
@@ -1146,6 +1168,28 @@ export default generatePackagePDF;
 //     borderRadius: 10,
 //   };
 
+//   /**
+//    * Text that may contain the Rupee sign. The body font has no Rupee glyph
+//    * (it showed up as a wrong character), so that one character is drawn
+//    * with the extended font. With built-in fonts it becomes "Rs. ".
+//    */
+//   const rich = (value) => {
+//     const text = clean(value);
+//     if (!text.includes("\u20B9")) return text;
+//     if (!F.web) return text.replace(/\u20B9\s*/g, "Rs. ");
+
+//     return text.split("\u20B9").flatMap((part, i) =>
+//       i === 0
+//         ? [part]
+//         : [
+//             <Text key={`rs-${i}`} style={{ fontFamily: F.ext }}>
+//               {"\u20B9"}
+//             </Text>,
+//             part,
+//           ]
+//     );
+//   };
+
 //   /* ---------- small building blocks ---------- */
 
 //   const diamond = (key) => (
@@ -1166,35 +1210,44 @@ export default generatePackagePDF;
 //     </Svg>
 //   );
 
-//   /* Logo on the same light chip the site footer uses; text wordmark as fallback. */
-//   const logoChip = (height, { padV = 5, padH = 10, radius = 8 } = {}) => {
-//     const box = {
-//       backgroundColor: C.logoBg,
-//       borderRadius: radius,
-//       paddingVertical: padV,
-//       paddingHorizontal: padH,
-//     };
+//   /**
+//    * The logo, drawn at `height` points tall, never wider than `maxW`
+//    * (it is scaled down to fit, proportions kept). `chip` puts it on a light
+//    * rounded box (used over the cover photo). If the logo file could not be
+//    * loaded, a text wordmark is drawn instead.
+//    */
+//   const logoMark = ([height, maxW], { chip = false, padV = 6, padH = 12, radius = 9 } = {}) => {
+//     let inner;
 
 //     if (ctx.logo) {
-//       const w = (ctx.logo.w / ctx.logo.h) * height;
-//       return (
-//         <View style={box}>
-//           <Image src={ctx.logo.src} style={{ width: w, height }} />
+//       const aspect = ctx.logo.w / ctx.logo.h;
+//       let w = aspect * height;
+//       let h = height;
+//       if (w > maxW) {
+//         w = maxW;
+//         h = w / aspect;
+//       }
+//       inner = <Image src={ctx.logo.src} style={{ width: w, height: h }} />;
+//     } else {
+//       const size = Math.min(height * 0.6, maxW / 8.5);
+//       inner = (
+//         <View style={{ alignItems: "center" }}>
+//           <Text style={S(size, C.rose, { letterSpacing: size * 0.25, textTransform: "uppercase" })}>Manyara</Text>
+//           <Text style={T(Math.max(4.2, size * 0.3), C.gold, { fontWeight: fw(500), letterSpacing: size * 0.15 })}>PRIVÉ VACATIONS</Text>
 //         </View>
 //       );
 //     }
 
+//     if (!chip) return inner;
+
 //     return (
-//       <View style={{ ...box, alignItems: "center" }}>
-//         <Text style={S(height * 0.62, C.rose, { letterSpacing: height * 0.18, textTransform: "uppercase" })}>Manyara</Text>
-//         <Text style={T(Math.max(4.5, height * 0.2), C.gold, { fontWeight: fw(500), letterSpacing: height * 0.3 })}>PRIVÉ VACATIONS</Text>
-//       </View>
+//       <View style={{ backgroundColor: C.logoBg, borderRadius: radius, paddingVertical: padV, paddingHorizontal: padH }}>{inner}</View>
 //     );
 //   };
 
-//   /* Section heading: small gold label, serif title, hairline. Never left alone at the bottom of a page. */
+//   /* Section heading: small gold label, serif title, hairline. */
 //   const heading = (label, text) => (
-//     <View wrap={false} minPresenceAhead={90} style={{ marginBottom: 12 }}>
+//     <View wrap={false} style={{ marginBottom: 12 }}>
 //       <Text style={T(7.5, C.gold, { fontWeight: fw(600), letterSpacing: 2.2, textTransform: "uppercase", marginBottom: 3 })}>{label}</Text>
 //       <Text style={S(24, C.roseDeep, { lineHeight: 1.2 })}>{text}</Text>
 //       <View style={{ height: 0.75, marginTop: 8, backgroundColor: C.champagne }} />
@@ -1223,7 +1276,7 @@ export default generatePackagePDF;
 //         borderBottomColor: C.champagne,
 //       }}
 //     >
-//       <Text style={S(11, C.roseDeep, { letterSpacing: 1.6, textTransform: "uppercase" })}>{BRAND}</Text>
+//       <View style={{ flexShrink: 0 }}>{logoMark(LOGO_HEADER)}</View>
 //       <Text maxLines={1} style={T(7, C.gold, { fontWeight: fw(600), letterSpacing: 1.6, textTransform: "uppercase", maxWidth: 300, textAlign: "right" })}>
 //         {title}
 //         {durationText ? `  \u00B7  ${durationText}` : ""}
@@ -1231,18 +1284,33 @@ export default generatePackagePDF;
 //     </View>
 //   );
 
-//   // Contact details as ONE wrapping paragraph: if it is too long for a line it
-//   // goes to a second line instead of being cut off.
-//   const contactNodes = co.cells.flatMap((cell, i) => [
-//     i > 0 ? (
-//       <Text key={`sep-${i}`} style={{ color: C.gold }}>
-//         {"   \u2022   "}
+//   /* One detail box: small gold label, value underneath (clickable). */
+//   const detailBox = (cell, index) => (
+//     <View
+//       key={cell.href}
+//       style={{
+//         // wider text gets a wider box, so nothing is squeezed or cut off
+//         flexGrow: cell.value.length + 6,
+//         flexShrink: 1,
+//         flexBasis: 0,
+//         marginLeft: index ? 6 : 0,
+//         paddingVertical: 6,
+//         paddingHorizontal: 7,
+//         justifyContent: "center",
+//         backgroundColor: C.white,
+//         borderWidth: 0.75,
+//         borderColor: C.champagne,
+//         borderRadius: 8,
+//       }}
+//     >
+//       <Text style={T(5.6, C.gold, { fontWeight: fw(600), letterSpacing: 1.3, marginBottom: 2 })}>{cell.label}</Text>
+//       <Text style={T(7.4, C.roseDeep, { fontWeight: fw(500), lineHeight: 1.25 })}>
+//         <Link src={cell.href} style={{ color: C.roseDeep, textDecoration: "none" }}>
+//           {cell.value}
+//         </Link>
 //       </Text>
-//     ) : null,
-//     <Link key={cell.href} src={cell.href} style={{ color: C.roseDeep, textDecoration: "none", fontWeight: fw(500) }}>
-//       {cell.text}
-//     </Link>,
-//   ]);
+//     </View>
+//   );
 
 //   const footer = () => (
 //     <View
@@ -1261,11 +1329,13 @@ export default generatePackagePDF;
 //         borderTopColor: C.champagne,
 //       }}
 //     >
-//       <View style={{ flexShrink: 0 }}>{logoChip(15, { padV: 3, padH: 8, radius: 6 })}</View>
-//       <Text style={T(8, C.muted, { flex: 1, textAlign: "center", lineHeight: 1.6, paddingHorizontal: 14 })}>{contactNodes}</Text>
+//       <View style={{ width: LOGO_FOOTER[1], justifyContent: "center" }}>{logoMark(LOGO_FOOTER)}</View>
+
+//       <View style={{ flex: 1, flexDirection: "row", alignItems: "stretch", marginHorizontal: 10 }}>{co.cells.map(detailBox)}</View>
+
 //       <Text
 //         fixed
-//         style={T(8, C.gold, { width: 44, textAlign: "right", fontWeight: fw(600), letterSpacing: 1 })}
+//         style={T(7.5, C.gold, { width: 46, textAlign: "right", fontWeight: fw(600), letterSpacing: 1 })}
 //         render={({ pageNumber, totalPages }) => `${pad2(pageNumber)} / ${pad2(totalPages)}`}
 //       />
 //     </View>
@@ -1312,7 +1382,7 @@ export default generatePackagePDF;
 //     <View>
 //       <View style={{ width: PAGE_W, height: heroH, backgroundColor: C.champagneSoft }}>
 //         {ctx.cover ? <Image src={ctx.cover.src} style={{ width: PAGE_W, height: heroH }} /> : null}
-//         <View style={{ position: "absolute", left: MARGIN_X, top: 22 }}>{logoChip(28, { padV: 6, padH: 12, radius: 9 })}</View>
+//         <View style={{ position: "absolute", left: MARGIN_X, top: 22 }}>{logoMark(LOGO_COVER, { chip: true, padV: 7, padH: 13, radius: 10 })}</View>
 //       </View>
 
 //       <View style={{ ...card, borderRadius: 14, marginTop: -HERO_OVERLAP, marginHorizontal: MARGIN_X, paddingTop: 18, paddingHorizontal: 22, paddingBottom: stats.length ? 0 : 18 }}>
@@ -1328,13 +1398,15 @@ export default generatePackagePDF;
 //     </View>
 //   );
 
-//   /* ---------- sections ---------- */
+//   /* ---------- sections ----------
+//      A heading is always kept together with the first block under it, so a
+//      heading can never be left alone at the bottom of a page. */
 
 //   const about = (onCover) =>
 //     pkg.description ? (
 //       <View style={{ marginTop: onCover ? 24 : 0 }}>
 //         {heading("The Experience", "About This Journey")}
-//         <Text style={T(9.8, C.body, { lineHeight: 1.7 })}>{clean(pkg.description)}</Text>
+//         <Text style={T(9.8, C.body, { lineHeight: 1.7 })}>{rich(pkg.description)}</Text>
 //       </View>
 //     ) : null;
 
@@ -1374,7 +1446,7 @@ export default generatePackagePDF;
 //         <View style={{ ...card, flex: 1, flexDirection: "row", alignItems: "flex-start", padding: 12 }}>
 //           <View style={{ flex: 1 }}>
 //             <Text style={S(16, C.ink, { lineHeight: 1.25 })}>{clean(day?.title) || `Day ${n}`}</Text>
-//             {description ? <Text style={T(9, C.body, { lineHeight: 1.65, marginTop: 5 })}>{description}</Text> : null}
+//             {description ? <Text style={T(9, C.body, { lineHeight: 1.65, marginTop: 5 })}>{rich(description)}</Text> : null}
 //           </View>
 //           {photo ? <Image src={photo.src} style={{ width: DAY_W, height: DAY_H, borderRadius: 7, marginLeft: 12 }} /> : null}
 //         </View>
@@ -1385,8 +1457,11 @@ export default generatePackagePDF;
 //   const itinerarySection = () =>
 //     itinerary.length ? (
 //       <View style={{ marginTop: 24 }}>
-//         {heading("Your Journey", "Day-by-Day Itinerary")}
-//         {itinerary.map(dayRow)}
+//         <View wrap={false}>
+//           {heading("Your Journey", "Day-by-Day Itinerary")}
+//           {dayRow(itinerary[0], 0)}
+//         </View>
+//         {itinerary.slice(1).map((day, i) => dayRow(day, i + 1))}
 //       </View>
 //     ) : null;
 
@@ -1397,14 +1472,14 @@ export default generatePackagePDF;
 //     const cols = columnsFor(facilities.length, 3);
 
 //     return (
-//       <View style={{ marginTop: 24 }}>
+//       <View wrap={facilities.length > 30} style={{ marginTop: 24 }}>
 //         {heading("Comforts", "Facilities")}
-//         <View wrap={facilities.length > 30} style={{ ...card, paddingTop: 14, paddingHorizontal: 14, paddingBottom: 5 }}>
+//         <View style={{ ...card, paddingTop: 14, paddingHorizontal: 14, paddingBottom: 5 }}>
 //           <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
 //             {facilities.map((item, i) => (
 //               <View key={`fac-${i}`} wrap={false} style={{ width: `${100 / cols}%`, flexDirection: "row", paddingRight: 10, paddingBottom: 8 }}>
 //                 {diamond(`d-${i}`)}
-//                 <Text style={T(9.4, C.body, { flex: 1, lineHeight: 1.45, marginLeft: 7 })}>{clean(item)}</Text>
+//                 <Text style={T(9.4, C.body, { flex: 1, lineHeight: 1.45, marginLeft: 7 })}>{rich(item)}</Text>
 //               </View>
 //             ))}
 //           </View>
@@ -1419,7 +1494,7 @@ export default generatePackagePDF;
 //       {items.map((item, i) => (
 //         <View key={`${key}-${i}`} wrap={false} style={{ flexDirection: "row", marginBottom: 6 }}>
 //           {marker(`${key}-m-${i}`)}
-//           <Text style={T(9.4, C.body, { flex: 1, lineHeight: 1.45, marginLeft: 7 })}>{clean(item)}</Text>
+//           <Text style={T(9.4, C.body, { flex: 1, lineHeight: 1.45, marginLeft: 7 })}>{rich(item)}</Text>
 //         </View>
 //       ))}
 //     </View>
@@ -1429,9 +1504,9 @@ export default generatePackagePDF;
 //     if (!inclusions.length && !exclusions.length) return null;
 
 //     return (
-//       <View style={{ marginTop: 24 }}>
+//       <View wrap={Math.max(inclusions.length, exclusions.length) > 18} style={{ marginTop: 24 }}>
 //         {heading("The Details", "What\u2019s Included")}
-//         <View wrap={Math.max(inclusions.length, exclusions.length) > 18} style={{ flexDirection: "row" }}>
+//         <View style={{ flexDirection: "row" }}>
 //           {inclusions.length ? panel("inc", "Inclusions", inclusions, tick, C.roseSoft, C.roseLine, C.roseDeep) : null}
 //           {inclusions.length && exclusions.length ? <View style={{ width: 12 }} /> : null}
 //           {exclusions.length ? panel("exc", "Exclusions", exclusions, cross, C.white, C.line, C.ink) : null}
@@ -1448,11 +1523,11 @@ export default generatePackagePDF;
 //       <Text key={`pt-${i}`} style={T(9, C.muted, { lineHeight: 1.65, marginBottom: 6 })}>
 //         {match ? (
 //           <>
-//             <Text style={{ fontWeight: fw(600), color: C.ink }}>{`${match[1]}: `}</Text>
-//             {match[2]}
+//             <Text style={{ fontWeight: fw(600), color: C.ink }}>{`${clean(match[1])}: `}</Text>
+//             {rich(match[2])}
 //           </>
 //         ) : (
-//           text
+//           rich(text)
 //         )}
 //       </Text>
 //     );
@@ -1461,8 +1536,11 @@ export default generatePackagePDF;
 //   const policySection = (label, text, items) =>
 //     items.length ? (
 //       <View style={{ marginTop: 24 }}>
-//         {heading(label, text)}
-//         {items.map(policyPoint)}
+//         <View wrap={false}>
+//           {heading(label, text)}
+//           {policyPoint(items[0], 0)}
+//         </View>
+//         {items.slice(1).map((item, i) => policyPoint(item, i + 1))}
 //       </View>
 //     ) : null;
 
@@ -1473,7 +1551,7 @@ export default generatePackagePDF;
 //         <View style={{ width: 5.5, height: 5.5, marginHorizontal: 10, backgroundColor: C.gold, transform: "rotate(45deg)" }} />
 //         <View style={{ width: 46, height: 0.75, backgroundColor: C.champagne }} />
 //       </View>
-//       <View style={{ marginTop: 14 }}>{logoChip(30, { padV: 7, padH: 14, radius: 10 })}</View>
+//       <View style={{ marginTop: 14, alignItems: "center" }}>{logoMark(LOGO_CLOSING)}</View>
 //       <Text style={{ fontFamily: F.serif, fontStyle: "italic", fontWeight: fw(500), fontSize: 15, color: C.roseDeep, marginTop: 12 }}>{TAGLINE}</Text>
 //       <Text style={T(8, C.muted, { marginTop: 4 })}>{`Thank you for choosing ${BRAND}.`}</Text>
 //     </View>
@@ -1594,13 +1672,15 @@ export default generatePackagePDF;
 //   const co = buildCompany(settings);
 
 //   /* ---- Images: cropped to the exact frame + converted to JPEG/PNG (react-pdf cannot read WebP) ---- */
-//   const logoUrl = typeof window !== "undefined" ? `${window.location.origin}${LOGO_PATH}` : null;
-
 //   const [logo, cover, ...dayImages] = await Promise.all([
-//     loadImage(logoUrl, { maxPx: LOGO_PX, type: "png" }),
+//     loadFirstImage(LOGO_SOURCES, { maxPx: LOGO_PX, type: "png" }),
 //     loadImage(optimizeUrl(rawCover, 2400), { maxPx: COVER_PX, ratio: PAGE_W / HERO_H, focusY: HERO_FOCUS_Y }),
 //     ...itinerary.map((d) => loadImage(optimizeUrl(getImageUrl(d?.image), 1000), { maxPx: DAY_PX, ratio: DAY_W / DAY_H })),
 //   ]);
+
+//   if (!logo) {
+//     console.warn("PDF logo not found. Tried:", LOGO_SOURCES, "- check the file name and that it is inside public/images.");
+//   }
 
 //   const ctx = {
 //     pkg,
@@ -1639,7 +1719,7 @@ export default generatePackagePDF;
 // };
 
 // /* ---------------------------------------------------------------------
-//    Company details (footer on every page)
+//    Company details (footer boxes on every page)
 // --------------------------------------------------------------------- */
 
 // /** Same API as Footer.jsx; never blocks the PDF for more than 4s. */
@@ -1652,7 +1732,7 @@ export default generatePackagePDF;
 //   }
 // }
 
-// /** Returns { cells: [{ text, href }] } : email, phone, (WhatsApp), website. */
+// /** Returns { cells: [{ label, value, href }] } : call, email, website, (WhatsApp if it is a different number). */
 // function buildCompany(data) {
 //   const email = String(data?.email_address || "").trim();
 //   const phone = String(data?.phone_number || "").trim();
@@ -1674,10 +1754,10 @@ export default generatePackagePDF;
 //   const sameNumber = phoneDigits && waDigitsRaw && phoneDigits.slice(-10) === waDigitsRaw.slice(-10);
 
 //   const cells = [];
-//   if (email) cells.push({ text: email, href: `mailto:${email}` });
-//   if (telDigits) cells.push({ text: phone, href: `tel:+${telDigits}` });
-//   if (waDigits && !sameNumber) cells.push({ text: `WhatsApp ${whatsapp}`, href: waHref });
-//   cells.push({ text: SITE_LABEL, href: SITE_URL });
+//   if (telDigits) cells.push({ label: sameNumber ? "CALL / WHATSAPP" : "CALL", value: phone, href: `tel:+${telDigits}` });
+//   if (email) cells.push({ label: "EMAIL", value: email, href: `mailto:${email}` });
+//   cells.push({ label: "WEBSITE", value: SITE_LABEL, href: SITE_URL });
+//   if (waDigits && !sameNumber) cells.push({ label: "WHATSAPP", value: whatsapp, href: waHref });
 
 //   return { cells };
 // }
@@ -1685,6 +1765,22 @@ export default generatePackagePDF;
 // /* ---------------------------------------------------------------------
 //    Images
 // --------------------------------------------------------------------- */
+
+// const toAbsoluteUrl = (url) => {
+//   if (!url) return null;
+//   if (/^(https?:|data:|blob:)/i.test(url)) return url;
+//   if (typeof window === "undefined") return null;
+//   return `${window.location.origin}${url.startsWith("/") ? "" : "/"}${url}`;
+// };
+
+// /** Tries each source in order and returns the first image that loads. */
+// async function loadFirstImage(sources, options) {
+//   for (const source of sources) {
+//     const result = await loadImage(toAbsoluteUrl(source), options);
+//     if (result) return result;
+//   }
+//   return null;
+// }
 
 // /**
 //  * Loads an image, optionally crops it to `ratio` (width / height, like
@@ -1795,13 +1891,43 @@ export default generatePackagePDF;
 // }
 
 // const BREAK_CHARS = /[\r\n\u2022\u25AA\u25CF]/; // new line, or a bullet character
-// const stripBullet = (text) => text.replace(/^[\s\-\u2013\u2014*\u00B7]+/, "").trim();
+
+// /** Removes a leading bullet / dash and a stray trailing dash from one list item. */
+// const stripBullet = (text) =>
+//   text
+//     .replace(/^[\s\-\u2013\u2014*\u00B7]+/, "")
+//     .replace(/[\s\-\u2013\u2014]+$/, "")
+//     .trim();
+
+// /**
+//  * Comma lists sometimes contain a comma INSIDE one item
+//  * ("GST at 5%, as specified in the quotation"). When most pieces start with a
+//  * capital letter or number, a piece that starts in lower case belongs to the
+//  * item before it. Lists written entirely in lower case are left alone.
+//  * (Putting each item on its own line in the admin avoids the guesswork.)
+//  */
+// function mergeSentenceFragments(parts) {
+//   if (parts.length < 3) return parts;
+
+//   const startsUpper = (s) => /^[A-Z0-9\u00C0-\u00DE]/.test(s);
+//   if (parts.filter(startsUpper).length / parts.length < 0.5) return parts;
+
+//   const out = [];
+//   parts.forEach((part) => {
+//     if (!startsUpper(part) && out.length) out[out.length - 1] += `, ${part}`;
+//     else out.push(part);
+//   });
+//   return out;
+// }
 
 // function splitText(text) {
 //   const value = String(text || "");
-//   const parts = BREAK_CHARS.test(value) ? value.split(/\r?\n|[\u2022\u25AA\u25CF]/) : value.split(/[,;]/);
 
-//   return parts.map(stripBullet).filter(Boolean);
+//   if (BREAK_CHARS.test(value)) {
+//     return value.split(/\r?\n|[\u2022\u25AA\u25CF]/).map(stripBullet).filter(Boolean);
+//   }
+
+//   return mergeSentenceFragments(value.split(/[,;]/).map(stripBullet).filter(Boolean));
 // }
 
 // function normalizeList(value) {
@@ -1811,7 +1937,7 @@ export default generatePackagePDF;
 //     // A single saved string: treat it like plain text.
 //     if (items.length === 1) return splitText(items[0]);
 
-//     return items.flatMap((item) => (BREAK_CHARS.test(item) ? splitText(item) : [stripBullet(item)]));
+//     return items.flatMap((item) => (BREAK_CHARS.test(item) ? splitText(item) : [stripBullet(item)])).filter(Boolean);
 //   }
 
 //   if (typeof value === "string") return splitText(value);
@@ -1824,7 +1950,7 @@ export default generatePackagePDF;
 
 //   return source
 //     .flatMap((item) => normalizeListItem(item).split(/\r?\n+/))
-//     .map(stripBullet)
+//     .map((line) => line.replace(/^[\s\-\u2013\u2014*\u00B7\u2022]+/, "").trim())
 //     .filter(Boolean);
 // }
 
@@ -1859,15 +1985,6 @@ export default generatePackagePDF;
 // }
 
 // export default generatePackagePDF;
-
-
-
-
-
-
-
-
-
 
 
 

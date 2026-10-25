@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
@@ -7,7 +6,7 @@ const NAV_LINKS = [
   { label: "Home", href: "/" },
   { label: "Most Visited", href: "/destinations" },
   { label: "Seasonal Views", href: "/seasoned-destinations" },
-   { label: "Packages", href: "/packages" },
+  { label: "Packages", href: "/packages" },
   { label: "Happy Moments", href: "/happy-moments" },
   { label: "Reviews", href: "/reviews" },
   { label: "Blogs", href: "/blog" },
@@ -171,12 +170,14 @@ export default function Header({ onPlanTrip }) {
       : `
           whitespace-nowrap
           rounded-full
-          px-2 py-1
-          text-[13px] font-medium
+          px-1.5 py-1
+          text-[12.5px] font-medium
           text-text
           transition-colors duration-200
           hover:bg-surface-soft
           hover:text-rose-700
+          xl:px-2
+          xl:text-[13px]
         `;
 
     // ----------------------------------------------------------
@@ -228,293 +229,273 @@ export default function Header({ onPlanTrip }) {
     );
   };
 
-return (
-  <>
-    {/* ============================================================
-        MOBILE OUTSIDE-CLICK BACKDROP
-        Closes the menu when the user taps anywhere outside it.
-        ============================================================ */}
-    {open && (
-      <button
-        type="button"
-        aria-label="Close navigation menu"
-        onClick={closeMenu}
-        className="
-          fixed inset-0
-          z-40
-          bg-transparent
-          lg:hidden
-          cursor-default
-        "
-      />
-    )}
-
-    <header
-      ref={headerRef}
-      className="
-        fixed inset-x-0 z-50 w-full
-        border-b border-border
-        bg-ivory/95
-        backdrop-blur-md
-        shadow-navbar
-      "
-      style={{
-        top: "var(--top-info-height, 0px)",
-      }}
-    >
-      {/* ========================================================
-          MAIN HEADER
-          ======================================================== */}
-      <div
-        className="
-          mx-auto
-          flex w-full max-w-7xl
-          items-center justify-between
-          gap-3
-          px-3 sm:px-5 md:px-6 lg:px-8
-          h-[58px] sm:h-[62px] lg:h-[66px]
-        "
-      >
-        {/* ======================================================
-            MANYARA PRIVE VACATIONS LOGO
-            ====================================================== */}
+  return (
+    <>
+      {/* ============================================================
+          MOBILE OUTSIDE-CLICK BACKDROP
+          Closes the menu when the user taps anywhere outside it.
+          ============================================================ */}
+      {open && (
         <button
           type="button"
-          onClick={handleHome}
+          aria-label="Close navigation menu"
+          onClick={closeMenu}
           className="
-            flex min-w-0 shrink-0
-            items-center
-            rounded-md
-            focus:outline-none
-            focus-visible:ring-2
-            focus-visible:ring-rose-500
-            focus-visible:ring-offset-2
+            fixed inset-0
+            z-40
+            bg-transparent
+            lg:hidden
+            cursor-default
           "
-          aria-label="Manyara Prive Vacations Home"
+        />
+      )}
+
+      <header
+        ref={headerRef}
+        className="
+          fixed inset-x-0 z-50 w-full
+          border-b border-border
+          bg-ivory/95
+          backdrop-blur-md
+          shadow-navbar
+        "
+        style={{
+          top: "var(--top-info-height, 0px)",
+        }}
+      >
+        {/* ========================================================
+            MAIN HEADER
+            Heights (58 / 62 / 66px) match HEADER_HEIGHT above.
+            ======================================================== */}
+        <div
+          className="
+            mx-auto
+            flex w-full max-w-7xl
+            items-center justify-between
+            gap-3
+            px-3 sm:px-5 md:px-6 lg:px-8
+            h-[58px] sm:h-[62px] lg:h-[66px]
+          "
         >
-          {/* <img
-            src="/images/manyara_logo.webp"
-            alt="Manyara Prive Vacations"
+          {/* ======================================================
+              MANYARA PRIVE VACATIONS LOGO
+              Trimmed logo, aspect ratio about 1.61 : 1
+              (h-10 = 40px -> ~64px wide, h-11 = 44px -> ~71px,
+              h-12 = 48px -> ~77px). No max-width on purpose: it
+              would squash the logo.
+              ====================================================== */}
+          <button
+            type="button"
+            onClick={handleHome}
             className="
-              block
-              h-8 w-auto
-              max-w-[140px]
-              shrink-0
-              object-contain
-              transition-all
-              duration-300
-              ease-out
-              hover:drop-shadow-[0_0_5px_rgba(244,114,182,0.45)]
-              sm:h-14
-              sm:max-w-[170px]
-              sm:-ml-2
-              lg:h-10
-              lg:max-w-[165px]
+              flex shrink-0
+              items-center
+              rounded-md
+              focus:outline-none
+              focus-visible:ring-2
+              focus-visible:ring-rose-500
+              focus-visible:ring-offset-2
             "
-          /> */}
-          
-          <img
+            aria-label="Manyara Prive Vacations Home"
+          >
+            <img
               src="/images/manyara_logo.webp"
               alt="Manyara Prive Vacations"
               className="
-            block h-10 w-auto max-w-[180px] shrink-0 object-contain
-            transition-all duration-300 ease-out
-            hover:drop-shadow-[0_0_5px_rgba(244,114,182,0.45)]
-            sm:h-12 sm:max-w-[200px]
-            lg:h-12 lg:max-w-[190px]
-            xl:h-13 xl:max-w-[210px]
-          "
+                block h-10 w-auto shrink-0 object-contain
+                transition-all duration-300 ease-out
+                hover:drop-shadow-[0_0_5px_rgba(244,114,182,0.45)]
+                sm:h-11
+                lg:h-12
+              "
             />
-        </button>
-
-        {/* ======================================================
-            DESKTOP NAVIGATION
-            ====================================================== */}
-        <nav
-          className="
-            hidden
-            min-w-0
-            flex-1
-            items-center
-            justify-center
-            gap-1
-            lg:flex
-            xl:gap-2
-            2xl:gap-3
-          "
-          aria-label="Main navigation"
-        >
-          {NAV_LINKS.map((link) => renderNavLink(link))}
-        </nav>
-
-        {/* ======================================================
-            DESKTOP PLAN A TRIP
-            ====================================================== */}
-        <div className="hidden shrink-0 lg:block">
-          <button
-            type="button"
-            onClick={handlePlanTrip}
-            className="
-              whitespace-nowrap
-              rounded-full
-              bg-rose-600
-              px-4 py-2
-              text-[13px]
-              font-semibold
-              text-white
-              shadow-brand
-              transition-all duration-200
-              hover:bg-rose-700
-              hover:shadow-travel-hover
-              focus:outline-none
-              focus-visible:ring-2
-              focus-visible:ring-rose-500
-              focus-visible:ring-offset-2
-            "
-          >
-            Plan a Trip
-          </button>
-        </div>
-
-        {/* ======================================================
-            TABLET / MOBILE ACTIONS
-            ====================================================== */}
-        <div
-          className="
-            flex
-            shrink-0
-            items-center
-            gap-1.5
-            lg:hidden
-          "
-        >
-          <button
-            type="button"
-            onClick={handlePlanTrip}
-            className="
-              shrink-0
-              whitespace-nowrap
-              rounded-full
-              bg-rose-600
-              px-3 py-1.5
-              text-[11px]
-              font-semibold
-              text-white
-              shadow-brand
-              transition-colors duration-200
-              hover:bg-rose-700
-              focus:outline-none
-              focus-visible:ring-2
-              focus-visible:ring-rose-500
-              focus-visible:ring-offset-2
-              sm:px-3.5
-              sm:py-2
-              sm:text-xs
-            "
-          >
-            Plan a Trip
           </button>
 
-          {/* ====================================================
-              BURGER / CLOSE BUTTON
-              ==================================================== */}
-          <button
-            type="button"
-            onClick={() => setOpen((previous) => !previous)}
+          {/* ======================================================
+              DESKTOP NAVIGATION
+              ====================================================== */}
+          <nav
             className="
-              relative
-              z-[60]
-              flex
-              h-9 w-9
-              shrink-0
+              hidden
+              min-w-0
+              flex-1
               items-center
               justify-center
-              rounded-lg
-              text-ink-800
-              transition-colors duration-200
-              hover:bg-surface-soft
-              hover:text-rose-700
-              focus:outline-none
-              focus-visible:ring-2
-              focus-visible:ring-rose-500
-              focus-visible:ring-offset-2
+              gap-0.5
+              lg:flex
+              xl:gap-2
+              2xl:gap-3
             "
-            aria-label={open ? "Close menu" : "Open menu"}
-            aria-expanded={open}
-            aria-controls="mobile-navigation"
+            aria-label="Main navigation"
           >
-            {open ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
-          </button>
-        </div>
-      </div>
+            {NAV_LINKS.map((link) => renderNavLink(link))}
+          </nav>
 
-      {/* ========================================================
-          MOBILE / TABLET NAVIGATION
-          ======================================================== */}
-      {open && (
-        <nav
-          id="mobile-navigation"
-          className="
-            relative
-            z-[55]
-            max-h-[calc(100vh-120px)]
-            overflow-y-auto
-            border-t border-border
-            bg-card
-            px-4
-            pb-3
-            pt-1
-            shadow-navbar
-            sm:px-6
-            lg:hidden
-          "
-          aria-label="Mobile navigation"
-          onClick={(event) => {
-            /*
-             * If the user taps an actual navigation item,
-             * that item's own onClick will close the menu.
-             *
-             * This prevents accidental closing when interacting
-             * with the navigation container itself.
-             */
-            event.stopPropagation();
-          }}
-        >
-          {NAV_LINKS.map((link) => renderNavLink(link, true))}
+          {/* ======================================================
+              DESKTOP PLAN A TRIP
+              ====================================================== */}
+          <div className="hidden shrink-0 lg:block">
+            <button
+              type="button"
+              onClick={handlePlanTrip}
+              className="
+                whitespace-nowrap
+                rounded-full
+                bg-rose-600
+                px-4 py-2
+                text-[13px]
+                font-semibold
+                text-white
+                shadow-brand
+                transition-all duration-200
+                hover:bg-rose-700
+                hover:shadow-travel-hover
+                focus:outline-none
+                focus-visible:ring-2
+                focus-visible:ring-rose-500
+                focus-visible:ring-offset-2
+              "
+            >
+              Plan a Trip
+            </button>
+          </div>
 
-          <button
-            type="button"
-            onClick={handlePlanTrip}
+          {/* ======================================================
+              TABLET / MOBILE ACTIONS
+              ====================================================== */}
+          <div
             className="
-              mt-3
-              w-full
-              rounded-full
-              bg-rose-600
-              px-4 py-2.5
-              text-sm
-              font-semibold
-              text-white
-              shadow-brand
-              transition-colors duration-200
-              hover:bg-rose-700
-              focus:outline-none
-              focus-visible:ring-2
-              focus-visible:ring-rose-500
-              focus-visible:ring-offset-2
+              flex
+              shrink-0
+              items-center
+              gap-1.5
+              lg:hidden
             "
           >
-            Plan a Trip
-          </button>
-        </nav>
-      )}
-    </header>
-  </>
-);
+            <button
+              type="button"
+              onClick={handlePlanTrip}
+              className="
+                shrink-0
+                whitespace-nowrap
+                rounded-full
+                bg-rose-600
+                px-3 py-1.5
+                text-[11px]
+                font-semibold
+                text-white
+                shadow-brand
+                transition-colors duration-200
+                hover:bg-rose-700
+                focus:outline-none
+                focus-visible:ring-2
+                focus-visible:ring-rose-500
+                focus-visible:ring-offset-2
+                sm:px-3.5
+                sm:py-2
+                sm:text-xs
+              "
+            >
+              Plan a Trip
+            </button>
 
+            {/* ====================================================
+                BURGER / CLOSE BUTTON
+                ==================================================== */}
+            <button
+              type="button"
+              onClick={() => setOpen((previous) => !previous)}
+              className="
+                relative
+                z-[60]
+                flex
+                h-9 w-9
+                shrink-0
+                items-center
+                justify-center
+                rounded-lg
+                text-ink-800
+                transition-colors duration-200
+                hover:bg-surface-soft
+                hover:text-rose-700
+                focus:outline-none
+                focus-visible:ring-2
+                focus-visible:ring-rose-500
+                focus-visible:ring-offset-2
+              "
+              aria-label={open ? "Close menu" : "Open menu"}
+              aria-expanded={open}
+              aria-controls="mobile-navigation"
+            >
+              {open ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* ========================================================
+            MOBILE / TABLET NAVIGATION
+            ======================================================== */}
+        {open && (
+          <nav
+            id="mobile-navigation"
+            className="
+              relative
+              z-[55]
+              max-h-[calc(100vh-120px)]
+              overflow-y-auto
+              border-t border-border
+              bg-card
+              px-4
+              pb-3
+              pt-1
+              shadow-navbar
+              sm:px-6
+              lg:hidden
+            "
+            aria-label="Mobile navigation"
+            onClick={(event) => {
+              /*
+               * If the user taps an actual navigation item,
+               * that item's own onClick will close the menu.
+               *
+               * This prevents accidental closing when interacting
+               * with the navigation container itself.
+               */
+              event.stopPropagation();
+            }}
+          >
+            {NAV_LINKS.map((link) => renderNavLink(link, true))}
+
+            <button
+              type="button"
+              onClick={handlePlanTrip}
+              className="
+                mt-3
+                w-full
+                rounded-full
+                bg-rose-600
+                px-4 py-2.5
+                text-sm
+                font-semibold
+                text-white
+                shadow-brand
+                transition-colors duration-200
+                hover:bg-rose-700
+                focus:outline-none
+                focus-visible:ring-2
+                focus-visible:ring-rose-500
+                focus-visible:ring-offset-2
+              "
+            >
+              Plan a Trip
+            </button>
+          </nav>
+        )}
+      </header>
+    </>
+  );
 }
-
-

@@ -5,7 +5,6 @@ import {
   Phone,
   MapPin,
   ExternalLink,
-  Code2,
 } from "lucide-react";
 import {
   FaInstagram,
@@ -224,6 +223,7 @@ export default function Footer() {
         if (!mounted) return;
 
         setSettings({
+          ...data,
           email_address: data?.email_address || "",
           phone_number: data?.phone_number || "",
           whatsapp_number: data?.whatsapp_number || "",
@@ -292,6 +292,8 @@ export default function Footer() {
   );
 
   // The map preview is based on the same displayed admin address.
+  // (Kept for when the embedded map is shown again.)
+  // eslint-disable-next-line no-unused-vars
   const mapsEmbedUrl = getMapsEmbedUrl(companyAddress);
 
   const phoneDigits = phoneNumber.replace(/\D/g, "");
@@ -338,14 +340,13 @@ export default function Footer() {
             <Link
               to="/"
               aria-label={`${BRAND_NAME} home`}
-              className="mb-4 inline-flex max-w-full items-center rounded-xl border border-white/15 bg-[#EEF1F5] px-3 py-2 shadow-[0_6px_20px_rgba(0,0,0,0.16)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-4 sm:py-2.5"
+              className="mb-5 inline-block rounded-md transition-opacity duration-200 hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
             >
               <img
                 src="/images/manyara_logo.webp"
                 alt={BRAND_NAME}
                 loading="lazy"
-                className="h-auto max-h-20 w-40 object-contain sm:max-h-18 sm:w-40 md:max-h-16 md:w-40"
-                //className="h-auto w-40 object-contain sm:w-44 md:w-48"
+                className="block h-16 w-auto object-contain sm:h-20 lg:h-24"
               />
             </Link>
 
@@ -575,27 +576,20 @@ export default function Footer() {
             © {new Date().getFullYear()} {BRAND_NAME}. All rights reserved.
           </p>
 
-
-              <a
-              href="https://vssgowritechonline.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Designed and developed by VSS Gowri Tech Online Private Limited"
-              className="inline-flex items-center justify-center gap-1.5 text-xs leading-5 text-ivory/50 transition-colors duration-200 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 rounded-sm"
-            >
-
-             
-              <span>
-                Designed &amp; Developed by{" "}
-                <span className="font-medium text-ivory/70">
-                  VSS Gowri Tech Online Private Limited
-                </span>
+          <a
+            href="https://vssgowritechonline.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Designed and developed by VSS Gowri Tech Online Private Limited"
+            className="inline-flex items-center justify-center gap-1.5 rounded-sm text-xs leading-5 text-ivory/50 transition-colors duration-200 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+          >
+            <span>
+              Designed &amp; Developed by{" "}
+              <span className="font-medium text-ivory/70">
+                VSS Gowri Tech Online Private Limited
               </span>
-              {/* <ExternalLink
-                className="h-3 w-3 shrink-0 opacity-70"
-                aria-hidden="true"
-              /> */}
-            </a>
+            </span>
+          </a>
 
           <p className="text-xs leading-5 text-ivory/40">
             Travel. Explore. Create memories.
