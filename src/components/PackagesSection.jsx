@@ -1,5 +1,3 @@
-
-
 import {
   memo,
   useCallback,
@@ -37,6 +35,10 @@ const BRAND_NAME = "Manyara Privé Vacations";
 /* How many package cards each collection shows on the home page.
    The "Explore all" card is added after them. */
 const HOME_LIMIT = 7;
+
+/* Section spacing. Change these values to open or close the gap
+   above and below the section (use "py-0" to remove it completely). */
+const SECTION_PADDING = "py-6 sm:py-8 lg:py-10";
 
 /*
   Home-page collections. Order = button order.
@@ -92,15 +94,21 @@ const COLLECTIONS = [
   },
 ];
 
-/* Phones show the next card peeking so people know to swipe */
+/* Card widths. Gaps: gap-4 (16px) on phones, gap-5 (20px) from sm,
+   gap-6 (24px) from lg.
+   - phones: 78% so the next card peeks and people know to swipe
+   - sm:     2 cards full width (50% minus half the 20px gap)
+   - lg:     the carousel column is narrower (heading sits on the left),
+             so 46% leaves a small peek of the third card
+   - xl:     44%, same idea with the wider column */
 const CARD_BASIS =
-  "min-w-0 shrink-0 basis-[78%] snap-start sm:basis-[calc(50%-10px)] xl:basis-[calc(44%-12px)]";
+  "min-w-0 shrink-0 basis-[78%] snap-start sm:basis-[calc(50%-10px)] lg:basis-[calc(46%-12px)] xl:basis-[calc(44%-12px)]";
 
 const NAV_BUTTON =
-  "hidden h-12 w-12 items-center justify-center rounded-full border border-champagne/70 bg-white text-text-dark shadow-travel-card transition-all duration-300 hover:border-ink hover:bg-ink hover:text-champagne focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 lg:flex";
+  "hidden h-11 w-11 items-center justify-center rounded-full border border-champagne/70 bg-white text-text-dark shadow-travel-card transition-colors duration-300 hover:border-ink hover:bg-ink hover:text-champagne focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 lg:flex";
 
 const VIEW_ALL =
-  "group inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-champagne/60 bg-white px-5 text-sm font-semibold tracking-wide text-text-dark transition-colors duration-300 hover:border-ink hover:bg-ink hover:text-champagne focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
+  "group inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-champagne/60 bg-white px-5 text-[14px] font-semibold leading-none text-text-dark transition-colors duration-300 hover:border-ink hover:bg-ink hover:text-champagne focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
 
 /* =========================================================
    HELPERS
@@ -196,27 +204,14 @@ const getPackageKey = (packageItem, index) =>
 const sortByOrder = (a, b) =>
   Number(a?.display_order ?? 0) - Number(b?.display_order ?? 0);
 
-/* Last word set in italic, same treatment as the hero. Weight 500 matches
-   the Playfair Display weights loaded in index.html. */
-function renderTitle(text) {
-  const words = String(text).trim().split(/\s+/);
-  if (words.length < 3) return text;
-  const last = words.pop();
-  return (
-    <>
-      {words.join(" ")}{" "}
-      <em className="font-medium italic text-ink/70">{last}</em>
-    </>
-  );
-}
-
 /* =========================================================
    PACKAGE CARD
 
    A white mat frames the photo like a print. Duration sits on the
    photo; destination, title, one-line highlight and price sit on the
    light card below, so text never fights the image.
-   Hover (mouse) or press (touch) lifts the card and slowly zooms the photo.
+   Hover (mouse) or press (touch) slowly zooms the photo. The card itself
+   never moves up or down, so every card stays on the same line.
 ========================================================= */
 
 const PackageCard = memo(function PackageCard({ packageItem, badge }) {
@@ -241,25 +236,26 @@ const PackageCard = memo(function PackageCard({ packageItem, badge }) {
   useEffect(() => {
     setImageFailed(false);
   }, [image]);
+
   const frameClass =
-    "group block h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 rounded-[1.75rem]";
+    "group block h-full rounded-[1.75rem] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4";
 
   const content = (
-    <div className="flex h-full flex-col rounded-[1.75rem] border border-champagne/70 bg-white p-1.5 shadow-travel-card transition-[transform,box-shadow,border-color] duration-500 ease-soft group-hover:-translate-y-1.5 group-hover:border-champagne group-hover:shadow-[0_30px_50px_-24px_rgba(47,42,51,0.45)] group-active:-translate-y-1">
+    <div className="flex h-full flex-col rounded-[1.75rem] border border-champagne/70 bg-white p-1.5 shadow-travel-card transition-[box-shadow,border-color] duration-500 ease-soft group-hover:border-champagne group-hover:shadow-[0_18px_34px_-20px_rgba(47,42,51,0.45)] group-active:border-champagne group-active:shadow-[0_18px_34px_-20px_rgba(47,42,51,0.45)]">
       {/* PHOTO */}
       <div className="relative aspect-[10/11] w-full shrink-0 transform-gpu overflow-hidden rounded-[1.4rem] bg-surface-strong">
         {!imageFailed ? (
           <img
             src={cld(image, 700)}
             srcSet={cldSrcSet(image, [400, 700, 1000])}
-            sizes="(max-width: 640px) 78vw, (max-width: 1280px) 45vw, 30vw"
+            sizes="(max-width: 640px) 78vw, (max-width: 1024px) 45vw, (max-width: 1280px) 30vw, 28vw"
             alt=""
             loading="lazy"
             decoding="async"
             fetchPriority="low"
             draggable={false}
             onError={() => setImageFailed(true)}
-            className="h-full w-full object-cover transition-transform duration-[1400ms] ease-soft group-hover:scale-[1.07] group-active:scale-[1.07]"
+            className="h-full w-full object-cover transition-transform duration-[1400ms] ease-soft group-hover:scale-[1.06] group-active:scale-[1.06]"
           />
         ) : (
           <div
@@ -277,7 +273,7 @@ const PackageCard = memo(function PackageCard({ packageItem, badge }) {
 
         {/* Another collection this package belongs to (never the open tab) */}
         {badge && (
-          <span className="absolute left-3.5 top-3.5 inline-flex h-8 max-w-[calc(100%-1.75rem)] items-center gap-2 rounded-full border border-white/30 bg-ink/50 px-3 text-[11px] font-medium uppercase tracking-[0.18em] text-white sm:bg-ink/35 sm:backdrop-blur-md">
+          <span className="absolute left-3.5 top-3.5 inline-flex h-8 max-w-[calc(100%-1.75rem)] items-center gap-1.5 rounded-full border border-white/30 bg-ink/50 px-3 text-[13px] font-medium leading-none text-white sm:bg-ink/35 sm:backdrop-blur-md">
             <BadgeIcon
               className="h-3.5 w-3.5 shrink-0 text-champagne"
               aria-hidden="true"
@@ -287,7 +283,7 @@ const PackageCard = memo(function PackageCard({ packageItem, badge }) {
         )}
 
         {duration && (
-          <span className="absolute bottom-3.5 left-3.5 inline-flex h-8 max-w-[calc(100%-1.75rem)] items-center gap-2 rounded-full bg-white/90 px-3 text-[12px] font-medium text-text-dark">
+          <span className="absolute bottom-3.5 left-3.5 inline-flex h-8 max-w-[calc(100%-1.75rem)] items-center gap-1.5 rounded-full bg-white/90 px-3 text-[13px] font-medium leading-none text-text-dark">
             <Clock3
               className="h-3.5 w-3.5 shrink-0 text-primary"
               aria-hidden="true"
@@ -297,49 +293,52 @@ const PackageCard = memo(function PackageCard({ packageItem, badge }) {
         )}
       </div>
 
-      {/* DETAILS */}
-      <div className="flex flex-1 flex-col px-4 pb-4 pt-5 text-left antialiased">
+      {/* DETAILS
+          Everything is left aligned. The title always reserves two lines
+          and the price row is pinned to the bottom, so destination, title
+          and price sit on the same lines in every card. */}
+      <div className="flex flex-1 flex-col px-3.5 pb-3.5 pt-4 text-left antialiased sm:px-4 sm:pb-4">
         {destination && (
-          <div className="flex items-center gap-2 text-primary">
-            <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            <span className="truncate text-[11px] font-medium uppercase tracking-[0.22em]">
+          <div className="flex items-center gap-1.5 text-primary">
+            <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="truncate text-[14px] font-medium leading-none">
               {destination}
             </span>
           </div>
         )}
 
-        <h3 className="mt-2 line-clamp-2 font-display text-[1.7rem] font-medium leading-[1.08] tracking-[-0.005em] text-text-display [text-wrap:balance] sm:text-[1.6rem] lg:text-[1.75rem]">
+        <h3 className="mt-2 line-clamp-2 min-h-[2.4em] font-display text-[1.6rem] font-semibold leading-[1.2] tracking-[-0.005em] text-text-display [text-wrap:balance] lg:text-[1.7rem]">
           {title}
         </h3>
 
         {highlight && (
-          <p className="mt-2 line-clamp-2 text-[14px] leading-6 text-text-secondary">
+          <p className="mt-1.5 line-clamp-2 text-[14px] leading-6 text-text-secondary">
             {highlight}
           </p>
         )}
 
-        {/* Price row: one padding, vertically centred with the arrow button.
-            lining-nums keeps the digits level in Playfair Display. */}
-        <div className="mt-auto flex items-center justify-between gap-3 border-t border-champagne/50 pt-4">
+        {/* Price row: fixed height, vertically centred with the arrow button.
+            Price uses Inter with tabular numerals so the digits stay level. */}
+        <div className="mt-auto flex h-[4.25rem] items-center justify-between gap-3 border-t border-champagne/50 pt-3">
           <div className="min-w-0">
             {price ? (
               <>
-                <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-text-secondary">
-                  From
+                <p className="text-[12px] font-medium leading-none text-text-secondary">
+                  Starts from
                 </p>
-                <p className="mt-1 truncate font-display text-[1.6rem] font-medium leading-none tracking-tight text-text-display tabular-nums lining-nums">
+                <p className="mt-1.5 truncate font-sans text-[1.5rem] font-semibold leading-none tracking-tight text-text-dark tabular-nums">
                   {price}
                 </p>
               </>
             ) : (
-              <p className="font-display text-lg italic text-text-secondary">
+              <p className="font-display text-lg font-medium italic leading-none text-text-secondary">
                 Price on request
               </p>
             )}
           </div>
 
           <span
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-champagne/70 bg-white text-text-dark transition-all duration-300 group-hover:border-ink group-hover:bg-ink group-hover:text-champagne group-active:border-ink group-active:bg-ink group-active:text-champagne"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-champagne/70 bg-white text-text-dark transition-colors duration-300 group-hover:border-ink group-hover:bg-ink group-hover:text-champagne group-active:border-ink group-active:bg-ink group-active:text-champagne"
             aria-hidden="true"
           >
             <ArrowUpRight className="h-[18px] w-[18px]" />
@@ -383,7 +382,7 @@ const ViewAllCard = memo(function ViewAllCard({
     <Link
       to={href}
       aria-label={`Explore all ${collection.tab} journeys`}
-      className="group relative flex h-full min-h-[24rem] flex-col justify-between overflow-hidden rounded-[1.75rem] border border-ink bg-ink p-7 text-left shadow-travel-card transition-[transform,box-shadow] duration-500 ease-soft hover:-translate-y-1.5 hover:shadow-[0_30px_50px_-24px_rgba(47,42,51,0.45)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 active:-translate-y-1"
+      className="group relative flex h-full min-h-[24rem] flex-col justify-between overflow-hidden rounded-[1.75rem] border border-ink bg-ink p-6 text-left shadow-travel-card transition-shadow duration-500 ease-soft hover:shadow-[0_18px_34px_-20px_rgba(47,42,51,0.45)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 sm:p-7"
     >
       {/* soft champagne glow */}
       <div
@@ -396,22 +395,22 @@ const ViewAllCard = memo(function ViewAllCard({
           <CollectionIcon className="h-5 w-5" aria-hidden="true" />
         </span>
 
-        <p className="mt-6 text-[11px] font-medium uppercase tracking-[0.24em] text-champagne/80">
+        <p className="mt-5 text-[14px] font-medium leading-none text-champagne/80">
           {collection.tab} collection
         </p>
 
-        <h3 className="mt-3 font-display text-[2rem] font-medium leading-[1.08] tracking-[-0.005em] text-white [text-wrap:balance]">
+        <h3 className="mt-2.5 font-display text-[1.8rem] font-semibold leading-[1.15] tracking-[-0.005em] text-white [text-wrap:balance] lg:text-[2rem]">
           Explore all {collection.tab} journeys
         </h3>
 
-        <p className="mt-3 text-sm leading-6 text-white/70">
+        <p className="mt-2.5 text-[14px] leading-6 text-white/70">
           {more > 0
             ? `${more} more ${more === 1 ? "journey is" : "journeys are"} waiting in this collection.`
             : "See the full collection, with filters for price, duration and destination."}
         </p>
       </div>
 
-      <span className="relative mt-8 inline-flex h-11 items-center gap-2 self-start rounded-full border border-champagne/50 px-5 text-sm font-semibold tracking-wide text-champagne transition-colors duration-300 group-hover:bg-champagne group-hover:text-ink">
+      <span className="relative mt-6 inline-flex h-11 items-center gap-2 self-start rounded-full border border-champagne/50 px-5 text-[14px] font-semibold leading-none text-champagne transition-colors duration-300 group-hover:bg-champagne group-hover:text-ink">
         View all
         <ArrowRight
           className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
@@ -621,7 +620,7 @@ export default function PackagesSection() {
     <section
       id="packages"
       aria-labelledby="packages-section-title"
-      className="relative isolate w-full overflow-x-clip bg-gradient-to-b from-background to-surface-alt py-16 antialiased sm:py-20 lg:py-24"
+      className={`relative isolate w-full overflow-x-clip bg-gradient-to-b from-background to-surface-alt antialiased ${SECTION_PADDING}`}
     >
       {/* Top hairline + soft champagne wash, matching the sections above */}
       <div
@@ -634,30 +633,30 @@ export default function PackagesSection() {
       />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="lg:grid lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] lg:items-start lg:gap-10 xl:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] xl:gap-16">
+        <div className="lg:grid lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] lg:items-start lg:gap-10 xl:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] xl:gap-14">
           {/* =================================================
               LEFT: HEADING, BUTTONS, CONTROLS
           ================================================= */}
-          <div className="lg:sticky lg:top-28">
+          <div className="text-left lg:sticky lg:top-28">
             <Reveal className="max-w-2xl lg:max-w-none">
-              <div className="flex items-center gap-3">
-                <span
-                  className="h-px w-8 shrink-0 bg-champagne"
+              <div className="flex items-center gap-2">
+                <Gem
+                  className="h-4 w-4 shrink-0 text-primary"
                   aria-hidden="true"
                 />
-                <span className="truncate text-[11px] font-medium uppercase tracking-[0.24em] text-primary sm:text-xs">
+                <span className="truncate text-[14px] font-medium leading-none text-primary">
                   {BRAND_NAME}
                 </span>
               </div>
 
               <h2
                 id="packages-section-title"
-                className="mt-4 font-display text-[2.6rem] font-medium leading-[1.03] tracking-[-0.015em] text-text-display [text-wrap:balance] sm:text-[3.25rem] lg:text-[3rem] xl:text-[3.5rem]"
+                className="mt-2.5 font-display text-[2.4rem] font-semibold leading-[1.05] tracking-[-0.015em] text-text-display [text-wrap:balance] sm:text-[3rem] lg:text-[2.75rem] xl:text-[3.1rem]"
               >
-                {renderTitle("Journeys made to measure")}
+                Journeys made to measure
               </h2>
 
-              <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-text-secondary sm:text-base sm:leading-7">
+              <p className="mt-2.5 max-w-xl text-[15px] leading-7 text-text-secondary [text-wrap:pretty] sm:text-base">
                 Every itinerary is planned end to end by our travel team, from
                 the first idea to the journey home.
               </p>
@@ -668,7 +667,7 @@ export default function PackagesSection() {
               <div
                 role="tablist"
                 aria-label="Journey collections"
-                className="-mx-4 mt-7 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 lg:flex-wrap lg:overflow-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                className="-mx-4 mt-5 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 lg:flex-wrap lg:overflow-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
               >
                 {tabs.map(({ collection, items: collectionItems }, index) => {
                   const TabIcon = collection.icon;
@@ -685,7 +684,7 @@ export default function PackagesSection() {
                       tabIndex={selected ? 0 : -1}
                       onClick={() => setActiveKey(collection.key)}
                       onKeyDown={(event) => handleTabKeyDown(event, index)}
-                      className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold tracking-wide transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                      className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-[14px] font-semibold leading-none transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                         selected
                           ? "border-ink bg-ink text-champagne"
                           : "border-champagne/60 bg-white text-text-dark hover:border-ink"
@@ -710,13 +709,13 @@ export default function PackagesSection() {
 
             <p
               key={activeCollection.key}
-              className="mt-4 max-w-xl text-sm leading-6 text-text-secondary"
+              className="mt-3 max-w-xl text-[14px] leading-6 text-text-secondary"
             >
               {activeCollection.description}
             </p>
 
             {/* DESKTOP CONTROLS */}
-            <div className="mt-8 hidden items-center gap-3 lg:flex">
+            <div className="mt-6 hidden items-center gap-3 lg:flex">
               <button
                 type="button"
                 onClick={() => scrollCarousel("left")}
@@ -743,15 +742,20 @@ export default function PackagesSection() {
                   aria-hidden="true"
                 />
               </button>
-
-              <Link to={viewAllHref} className={`${VIEW_ALL} ml-2`}>
-                View all journeys
-                <ArrowRight
-                  className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
-                  aria-hidden="true"
-                />
-              </Link>
             </div>
+
+            {/* The "View all" button sits on its own row under the arrows:
+                next to them it did not fit the 18rem column on lg screens. */}
+            <Link
+              to={viewAllHref}
+              className={`${VIEW_ALL} mt-4 hidden lg:inline-flex`}
+            >
+              View all journeys
+              <ArrowRight
+                className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+                aria-hidden="true"
+              />
+            </Link>
           </div>
 
           {/* =================================================
@@ -760,10 +764,12 @@ export default function PackagesSection() {
           <div
             ref={revealRef}
             data-inview={inView}
-            className="mt-10 min-w-0 lg:mt-0"
+            className="mt-5 min-w-0 lg:mt-0"
           >
             {/* On phones the width is automatic so the negative margins
-                stretch the scroller edge to edge; from sm it is w-full. */}
+                stretch the scroller edge to edge; from sm it is w-full.
+                items-stretch keeps every card the same height; pt-1 / pb-2
+                only leave room for the card shadow. */}
             <div
               ref={carouselRef}
               onScroll={handleScroll}
@@ -772,7 +778,7 @@ export default function PackagesSection() {
               aria-labelledby={
                 tabs.length > 1 ? `packages-tab-${activeCollectionKey}` : undefined
               }
-              className="-mx-4 flex snap-x snap-mandatory scroll-pl-4 gap-4 overflow-x-auto scroll-smooth px-4 pb-8 pt-2 sm:mx-0 sm:w-full sm:scroll-pl-0 sm:gap-5 sm:px-1 lg:gap-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+              className="-mx-4 flex snap-x snap-mandatory scroll-pl-4 items-stretch gap-4 overflow-x-auto scroll-smooth px-4 pb-2 pt-1 sm:mx-0 sm:w-full sm:scroll-pl-0 sm:gap-5 sm:px-1 lg:gap-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             >
               {items.map((packageItem, index) => (
                 <div
@@ -805,7 +811,7 @@ export default function PackagesSection() {
             </div>
 
             {/* PHONE / TABLET FOOTER: swipe progress + view all */}
-            <div className="mt-1 flex items-center gap-4 lg:hidden">
+            <div className="mt-3 flex items-center gap-4 lg:hidden">
               {canScroll ? (
                 <div
                   className="h-0.5 flex-1 overflow-hidden rounded-full bg-champagne/40"
@@ -831,10 +837,3 @@ export default function PackagesSection() {
     </section>
   );
 }
-
-
-
-
-
-
-

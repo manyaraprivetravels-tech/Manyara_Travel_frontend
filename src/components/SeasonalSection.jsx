@@ -1,5 +1,3 @@
-
-
 import {
   memo,
   useCallback,
@@ -33,18 +31,28 @@ import { Reveal, useInView } from "./Reveal";
      white footer strip.
    - Destinations currently in season appear first.
    - Mouse: active on hover. Touch: active briefly on tap.
+   - Cards never move up or down: only the image zoom, ring
+     and shadow respond, so every card stays on the same line.
 ========================================================= */
 
 const SEASONAL_BASE = "/seasoned-destinations";
 const MAX_CARDS = 8;
 
+/* Section spacing. Change these two values to open or close the gap
+   above and below the section (use "py-0" to remove it completely). */
+const SECTION_PADDING = "py-6 sm:py-8 lg:py-10";
+const HEADER_MARGIN = "mb-6 sm:mb-8";
+
+/* Gaps: gap-4 (16px) on phones, gap-5 (20px) from sm, gap-6 (24px) from lg.
+   The basis values below subtract exactly that share of the gaps:
+   2 cards -> 20px / 2 = 10px, 4 cards -> 3 x 24px / 4 = 18px. */
 const CARD_BASIS =
   "min-w-0 shrink-0 basis-[80%] snap-start sm:basis-[calc(50%-10px)] lg:basis-[calc(25%-18px)]";
 
-const CARD_HEIGHT = "h-[28rem] sm:h-[29rem] lg:h-[30rem]";
+const CARD_HEIGHT = "h-[27rem] sm:h-[28rem] lg:h-[29rem]";
 
 const NAV_BUTTON =
-  "hidden h-12 w-12 items-center justify-center rounded-full border border-champagne/70 bg-white text-text-dark shadow-travel-card transition-all duration-300 hover:border-primary hover:bg-primary hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 sm:flex";
+  "hidden h-11 w-11 items-center justify-center rounded-full border border-champagne/70 bg-white text-text-dark shadow-travel-card transition-colors duration-300 hover:border-primary hover:bg-primary hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 sm:flex";
 
 /* =========================================================
    HELPERS
@@ -141,23 +149,6 @@ const normalizeResponse = (data) => {
   if (Array.isArray(data?.items)) return data.items;
   return [];
 };
-
-/* Last word of the title is italicised. Uses weight 500 so it matches
-   the Playfair Display weights loaded in index.html. */
-function renderTitle(text) {
-  const words = String(text).trim().split(/\s+/);
-
-  if (words.length < 3) return text;
-
-  const last = words.pop();
-
-  return (
-    <>
-      {words.join(" ")}{" "}
-      <em className="font-medium italic text-primary">{last}</em>
-    </>
-  );
-}
 
 /* =========================================================
    SEASONAL CARD
@@ -265,7 +256,7 @@ const SeasonalCard = memo(function SeasonalCard({
         aria-label={`${placeName}${seasonLabel ? `, ${seasonLabel}` : ""}${
           price ? `, starts from ${price}` : ""
         }`}
-        className={`relative isolate flex ${CARD_HEIGHT} transform-gpu flex-col overflow-hidden rounded-3xl bg-card shadow-travel-card ring-1 ring-divider transition-all duration-500 ease-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 group-data-[active=true]:-translate-y-1.5 group-data-[active=true]:shadow-travel-hover group-data-[active=true]:ring-champagne`}
+        className={`relative isolate flex ${CARD_HEIGHT} transform-gpu flex-col overflow-hidden rounded-3xl bg-card shadow-travel-card ring-1 ring-divider transition-[box-shadow,--tw-ring-color] duration-500 ease-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 group-data-[active=true]:shadow-travel-hover group-data-[active=true]:ring-champagne`}
       >
         {/* =================================================
             IMAGE AREA
@@ -278,12 +269,12 @@ const SeasonalCard = memo(function SeasonalCard({
               <img
                 src={cld(image, 700)}
                 srcSet={cldSrcSet(image, [400, 700, 1000])}
-                sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw"
+                sizes="(max-width: 640px) 80vw, (max-width: 1024px) 45vw, 25vw"
                 alt=""
                 loading="lazy"
                 decoding="async"
                 draggable={false}
-                className="h-full w-full object-cover transition-transform duration-[1400ms] ease-soft group-data-[active=true]:scale-[1.1]"
+                className="h-full w-full object-cover transition-transform duration-[1400ms] ease-soft group-data-[active=true]:scale-[1.08]"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-surface-soft">
@@ -292,9 +283,10 @@ const SeasonalCard = memo(function SeasonalCard({
             )}
           </div>
 
-          {/* Readability gradient */}
+          {/* Readability gradient (a little stronger at the bottom so the
+              text block stays readable on bright photos) */}
           <div
-            className="absolute inset-0 -z-10 bg-gradient-to-t from-ink-900/85 via-ink-900/15 to-ink-900/25"
+            className="absolute inset-0 -z-10 bg-gradient-to-t from-ink-900/90 via-ink-900/25 to-ink-900/25"
             aria-hidden="true"
           />
 
@@ -306,16 +298,14 @@ const SeasonalCard = memo(function SeasonalCard({
 
           {/*
             Season label.
-            Mobile fix: it used a fixed max-w-[62%], which could run into the
-            "In season" chip on the right when the label was long. When the
-            chip is shown, the label now stops short of it:
-            100% minus both side insets, the chip (~7rem) and a small gap.
+            When the "In season" chip is shown, the label stops short of it:
+            100% minus both side insets, the chip (~6.5rem) and a small gap.
           */}
           {seasonLabel && (
             <span
-              className={`absolute left-4 top-4 z-20 inline-flex h-8 items-center gap-2 rounded-full border border-white/30 bg-ink/50 px-3 text-[11px] font-medium uppercase tracking-[0.18em] text-white sm:bg-ink/35 sm:backdrop-blur-md ${
+              className={`absolute left-4 top-4 z-20 inline-flex h-8 items-center gap-1.5 rounded-full border border-white/30 bg-ink/50 px-3 text-[13px] font-medium leading-none text-white sm:bg-ink/35 sm:backdrop-blur-md ${
                 inSeason
-                  ? "max-w-[calc(100%-9.5rem)]"
+                  ? "max-w-[calc(100%-8.5rem)]"
                   : "max-w-[calc(100%-2rem)]"
               }`}
             >
@@ -329,7 +319,7 @@ const SeasonalCard = memo(function SeasonalCard({
 
           {/* In season */}
           {inSeason && (
-            <span className="absolute right-4 top-4 z-20 inline-flex h-8 items-center gap-2 rounded-full bg-champagne px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink">
+            <span className="absolute right-4 top-4 z-20 inline-flex h-8 items-center gap-2 rounded-full bg-champagne px-3 text-[13px] font-semibold leading-none text-ink">
               <span className="relative flex h-2 w-2" aria-hidden="true">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 motion-reduce:animate-none" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
@@ -338,63 +328,59 @@ const SeasonalCard = memo(function SeasonalCard({
             </span>
           )}
 
-          {/* Details */}
+          {/* Details: name first, then the facts under it, all left aligned */}
           <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col p-5 text-left antialiased sm:p-6">
-            {bestTime && (
-              <div className="mb-2 flex items-center gap-2 text-champagne">
-                <span
-                  className="h-px w-6 shrink-0 bg-champagne/70 transition-all duration-500 group-data-[active=true]:w-10"
-                  aria-hidden="true"
-                />
-                <span className="truncate text-[11px] font-medium uppercase tracking-[0.22em]">
-                  Best in {bestTime}
-                </span>
-              </div>
-            )}
-
-            <h3 className="line-clamp-2 font-display text-[1.9rem] font-medium leading-[1.08] tracking-[0.005em] text-white [text-wrap:balance] sm:text-[1.75rem] lg:text-[2rem]">
+            <h3 className="line-clamp-2 font-display text-[1.7rem] font-semibold leading-[1.15] tracking-[-0.005em] text-white [text-wrap:balance] lg:text-[1.8rem]">
               {placeName}
             </h3>
 
+            {bestTime && (
+              <p className="mt-2 flex items-center gap-2 text-[14px] font-medium leading-snug text-champagne">
+                <Sun className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="truncate">Best in {bestTime}</span>
+              </p>
+            )}
+
             {seasonRange && (
-              <div className="mt-2.5 flex items-center gap-2 text-[13px] text-white/85">
+              <p className="mt-1.5 flex items-center gap-2 text-[14px] leading-snug text-white/85">
                 <CalendarDays
                   className="h-4 w-4 shrink-0 text-champagne"
                   aria-hidden="true"
                 />
                 <span className="truncate">Season: {seasonRange}</span>
-              </div>
+              </p>
             )}
           </div>
         </div>
 
         {/* =================================================
             FOOTER — STARTING PRICE + CTA
-            Mobile fix: smaller price and tighter Explore pill on phones so
-            six-digit prices (e.g. ₹1,25,000) are not truncated. lining-nums
-            keeps the digits level with the baseline in Playfair Display.
+            Fixed height, so the price strip sits on the same line in
+            every card. Price uses Inter (font-sans) with tabular
+            lining numerals so six-digit prices such as ₹1,25,000 stay
+            level and are not truncated on phones.
         ================================================= */}
 
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-champagne/60 bg-card px-5 py-4 sm:px-6">
+        <div className="flex h-[4.75rem] shrink-0 items-center justify-between gap-3 border-t border-champagne/60 bg-card px-5 sm:px-6">
           <div className="min-w-0">
             {price ? (
               <>
-                <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-muted">
+                <p className="text-[12px] font-medium leading-none text-muted">
                   Starts from
                 </p>
 
-                <p className="mt-0.5 truncate font-display text-[1.45rem] font-semibold leading-none tracking-tight text-primary lining-nums sm:text-[1.65rem]">
+                <p className="mt-1.5 truncate font-sans text-[1.4rem] font-semibold leading-none tracking-tight text-primary tabular-nums sm:text-[1.5rem]">
                   {price}
                 </p>
               </>
             ) : (
-              <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-muted">
+              <p className="text-[14px] font-medium leading-none text-muted">
                 Plan this season
               </p>
             )}
           </div>
 
-          <span className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-primary/30 bg-primary-lighter px-3.5 text-[13px] font-medium tracking-[0.06em] text-primary transition-all duration-300 group-data-[active=true]:border-primary group-data-[active=true]:bg-primary group-data-[active=true]:text-white sm:px-4">
+          <span className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-primary/30 bg-primary-lighter px-3.5 text-[14px] font-semibold leading-none text-primary transition-colors duration-300 group-data-[active=true]:border-primary group-data-[active=true]:bg-primary group-data-[active=true]:text-white sm:px-4">
             Explore
             <ArrowRight
               className="h-4 w-4 transition-transform duration-300 group-data-[active=true]:translate-x-1"
@@ -416,7 +402,7 @@ function ViewAllTile() {
     <div className={`${CARD_BASIS} reveal-item`} style={{ "--i": 6 }}>
       <Link
         to={SEASONAL_BASE}
-        className={`group relative isolate flex ${CARD_HEIGHT} flex-col justify-between overflow-hidden rounded-3xl border border-champagne/70 bg-petal-gradient p-6 text-left shadow-travel-card transition-all duration-500 ease-soft hover:-translate-y-1.5 hover:border-champagne hover:shadow-travel-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:p-7`}
+        className={`group relative isolate flex ${CARD_HEIGHT} flex-col justify-between overflow-hidden rounded-3xl border border-champagne/70 bg-petal-gradient p-6 text-left shadow-travel-card transition-[border-color,box-shadow] duration-500 ease-soft hover:border-champagne hover:shadow-travel-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:p-7`}
       >
         {/* Decorative glow */}
         <div
@@ -429,20 +415,20 @@ function ViewAllTile() {
         </span>
 
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-primary">
+          <p className="text-[14px] font-medium leading-none text-primary">
             Every season
           </p>
 
-          <h3 className="mt-3 font-display text-[2rem] font-medium leading-[1.08] text-text-display [text-wrap:balance] lg:text-[2.25rem]">
+          <h3 className="mt-2.5 font-display text-[1.8rem] font-semibold leading-[1.15] tracking-[-0.005em] text-text-display [text-wrap:balance] lg:text-[2rem]">
             See all seasonal destinations
           </h3>
 
-          <p className="mt-3 text-sm leading-6 text-text-secondary">
+          <p className="mt-2.5 text-[14px] leading-6 text-text-secondary">
             Filter by season, check dates, starting prices and the best
             months to travel.
           </p>
 
-          <span className="mt-6 inline-flex h-11 items-center gap-2 rounded-full border border-primary bg-primary px-5 text-[13px] font-medium tracking-[0.08em] text-white shadow-brand transition-all duration-300 group-hover:bg-primary-dark">
+          <span className="mt-5 inline-flex h-11 items-center gap-2 rounded-full border border-primary bg-primary px-5 text-[14px] font-semibold leading-none text-white shadow-brand transition-colors duration-300 group-hover:bg-primary-dark">
             View all
             <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
           </span>
@@ -596,7 +582,7 @@ export default function SeasonalSection() {
     <section
       id="seasonal-destinations"
       aria-labelledby="seasonal-title"
-      className="relative isolate w-full overflow-x-clip bg-gradient-to-b from-surface-alt to-background py-16 antialiased [contain-intrinsic-size:auto_860px] sm:py-20 lg:py-24"
+      className={`relative isolate w-full overflow-x-clip bg-gradient-to-b from-surface-alt to-background antialiased ${SECTION_PADDING}`}
     >
       {/* Top hairline */}
       <div
@@ -612,30 +598,28 @@ export default function SeasonalSection() {
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* HEADER */}
-        <div className="mb-10 flex items-end justify-between gap-6 sm:mb-12">
-          <Reveal className="max-w-2xl">
-            <div className="flex items-center gap-3">
-              <span
-                className="h-px w-8 shrink-0 bg-champagne"
-                aria-hidden="true"
-              />
+        <div
+          className={`${HEADER_MARGIN} flex items-end justify-between gap-6`}
+        >
+          <Reveal className="max-w-2xl text-left">
+            <div className="flex items-center gap-2">
               <Sun
                 className="h-4 w-4 shrink-0 text-primary"
                 aria-hidden="true"
               />
-              <span className="truncate text-[11px] font-medium uppercase tracking-[0.24em] text-primary sm:text-xs">
+              <span className="truncate text-[14px] font-medium leading-none text-primary">
                 Travel by season
               </span>
             </div>
 
             <h2
               id="seasonal-title"
-              className="mt-4 font-display text-[2.6rem] font-medium leading-[1.03] tracking-[-0.015em] text-text-display [text-wrap:balance] sm:text-[3.25rem] lg:text-[3.75rem]"
+              className="mt-2.5 font-display text-[2.4rem] font-semibold leading-[1.05] tracking-[-0.015em] text-text-display [text-wrap:balance] sm:text-[3rem] lg:text-[3.4rem]"
             >
-              {renderTitle("The right place for every season")}
+              The right place for every season
             </h2>
 
-            <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-text-secondary sm:text-base sm:leading-7">
+            <p className="mt-2.5 max-w-xl text-[15px] leading-7 text-text-secondary [text-wrap:pretty] sm:text-base">
               Every destination peaks at a different time of year. See
               what is in season now, check starting prices and plan your
               trip around the weather you want.
@@ -643,7 +627,7 @@ export default function SeasonalSection() {
 
             <Link
               to={SEASONAL_BASE}
-              className="group mt-6 inline-flex h-11 items-center gap-2 rounded-full border border-champagne/70 bg-white px-5 text-sm font-semibold tracking-wide text-text-dark transition-colors duration-300 hover:border-primary hover:bg-primary hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              className="group mt-4 inline-flex h-11 items-center gap-2 rounded-full border border-champagne/70 bg-white px-5 text-[14px] font-semibold leading-none text-text-dark transition-colors duration-300 hover:border-primary hover:bg-primary hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
               View all seasons
               <ArrowRight
@@ -692,17 +676,16 @@ export default function SeasonalSection() {
           className="relative w-full"
         >
           {/*
-            Mobile fix: this scroller had `w-full` together with `-mx-4`.
-            A fixed width of 100% ignores the negative margins, so the
-            scroller never reached the right screen edge. The peeking next
-            card was cut off 1rem early with a blank strip of background.
-            On phones the width is now automatic so the negative margins
-            stretch it edge to edge; from sm it is w-full again.
+            On phones the width is automatic so the negative margins stretch
+            the scroller edge to edge (a fixed w-full would ignore them and
+            cut the peeking card off early); from sm it is w-full again.
+            pt-1 / pb-2 only leave room for the card shadow, which the
+            scroll container would otherwise clip.
           */}
           <div
             ref={carouselRef}
             onScroll={handleScroll}
-            className="-mx-4 flex snap-x snap-mandatory scroll-pl-4 gap-4 overflow-x-auto scroll-smooth px-4 pb-8 pt-2 sm:mx-0 sm:w-full sm:scroll-pl-0 sm:gap-5 sm:px-1 lg:gap-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            className="-mx-4 flex snap-x snap-mandatory scroll-pl-4 items-stretch gap-4 overflow-x-auto scroll-smooth px-4 pb-2 pt-1 sm:mx-0 sm:w-full sm:scroll-pl-0 sm:gap-5 sm:px-1 lg:gap-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
           >
             {places.map(({ item, inSeason }, index) => (
               <SeasonalCard
@@ -719,7 +702,7 @@ export default function SeasonalSection() {
           {/* Mobile swipe progress */}
           {canScroll && (
             <div
-              className="mt-1 h-0.5 overflow-hidden rounded-full bg-champagne/50 sm:hidden"
+              className="mt-3 h-0.5 overflow-hidden rounded-full bg-champagne/50 sm:hidden"
               aria-hidden="true"
             >
               <div
@@ -733,7 +716,3 @@ export default function SeasonalSection() {
     </section>
   );
 }
-
-
-
-
